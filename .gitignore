@@ -1,0 +1,6 @@
+Makefile
+*.make
+*.txt
+bin/
+obj/
+.vscode/
