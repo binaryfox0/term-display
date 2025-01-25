@@ -108,7 +108,7 @@ void resize_display(int signal)
   internal_failure = 1;
   return; // Uhhhh, how to continue processing without the display
  }
- texture_fill(texout_init(&display, 3, vec2_init(width, height)), rgba_init(0,0,0,255));
+ texture_fill(texout_init(&display, 3, vec2_init(width, height)), to_rgba(clear_color));
  clear_screen(0);
 }
 
@@ -160,8 +160,8 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
 
 void display_set_color(struct term_rgba color)
 {
- 
- texture_fill(texout_init(&display, 3, vec2_init(width, height)), pixel_blend(rgba_init(0,0,0,255),color));
+ color = pixel_blend(rgba_init(0,0,0,255), color);
+ texture_fill(texout_init(&display, 3, vec2_init(width, height)), color);
 }
 
 /* Sub-function begin */
