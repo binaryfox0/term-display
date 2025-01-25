@@ -108,7 +108,7 @@ void resize_display(int signal)
   internal_failure = 1;
   return; // Uhhhh, how to continue processing without the display
  }
- texture_fill(texout_init(&display, 3, vec2_init(width, height)), to_rgba(clear_color));
+ texture_fill(texout_init(display, 3, vec2_init(width, height)), to_rgba(clear_color));
  clear_screen(0);
 }
 
@@ -161,7 +161,7 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
 void display_set_color(struct term_rgba color)
 {
  color = pixel_blend(rgba_init(0,0,0,255), color);
- texture_fill(texout_init(&display, 3, vec2_init(width, height)), color);
+ texture_fill(texout_init(display, 3, vec2_init(width, height)), color);
 }
 
 /* Sub-function begin */
@@ -189,16 +189,7 @@ u8 copy_rgba_texture(
  struct term_vec2 pos
 )
 {
- for(u32 row = 0; row < size.y; row++)
- {
-  for(u32 col = 0; col < size.x; col++)
-  {
-//   transparent_blend(
-  //  vec2_init(pos.x+col, pos.y + row),
-    //&texture[(row*size.x+col)*4]
-  // );
-  }
- }
+ texture_merge(texout_init(display, 3, vec2_init(width, height)), texin_init(texture, 4, size), pos);
  return 0; // Just for fun
 }
 /* Sub-function end */

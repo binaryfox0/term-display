@@ -5,7 +5,7 @@
 
 struct texout
 {
- u8** out_texture;
+ u8* out_texture;
  u8 channel;
  struct term_vec2 size;
 };
@@ -17,7 +17,7 @@ struct texin
  const struct term_vec2 size;
 };
 
-static inline struct texout texout_init(u8** texture, u8 channel, struct term_vec2 size)
+static inline struct texout texout_init(u8* texture, u8 channel, struct term_vec2 size)
 {
  return (struct texout) { .out_texture = texture, .channel = channel, .size = size };
 }

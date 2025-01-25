@@ -44,7 +44,7 @@ int main()
   max_frame_count++;
   double start_frame = get_time();
  
-  display_set_color(rgba_init(109, 154, 140, 255)); // Approximtely patina
+  display_set_color(rgba_init(109, 154, 140, max_frame_count%256)); // Approximtely patina
 
   double fps = 1.0 / delta_time;
   char* string = to_string(fps);
@@ -53,7 +53,7 @@ int main()
   display_copy_texture(texture, 4, size, (struct term_pos){.x=-1.0f,.y=1.0f,});
   free(texture);
   free(string);
-  texture = display_string_texture(text, strlen(text), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,127));
+  texture = display_string_texture(text, strlen(text), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,255));
   display_copy_texture(texture, 4, size, pos_init(-1.0f, 0.0f));
   free(texture);
   fprintf(statics, "Texture size: %d, %d\n", size.x, size.y);
