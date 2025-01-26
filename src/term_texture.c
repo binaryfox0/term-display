@@ -77,7 +77,7 @@ void texture_fill(struct texout out, struct term_rgba color)
  ) return;
  u8 c[4] = {color.r, color.g, color.b, color.a};
  if(
-  c[4] != 255 ||
+  c[3] != 255 ||
   IS_TRANSPARENT(out.channel)
  )
  {
@@ -98,15 +98,16 @@ void texture_fill(struct texout out, struct term_rgba color)
 
 void texture_merge(struct texout out, struct texin in, struct term_vec2 pos)
 {
- u8 *start_row = &out.out_texture[pos.y*out.size.x];
+ u8 *start_row = &out.out_texture[pos.y*out.size.x*out.channel];
  for(u32 row = 0; row < in.size.y; row++)
  {
   for(u32 col = 0; col < in.size.x; col++)
   {
    transparent_blend(
-    &start_row[(row*out.size.x+(pos.x + col))*out.channel],
+    &start_row[(row*out.size.x+(pos.x+col))*out.channel],
     &in.in_texture[(row*in.size.x+col)*in.channel],
-    in.channel, out.channel
+    in.channel,
+    out.channel
    );
   }
  }

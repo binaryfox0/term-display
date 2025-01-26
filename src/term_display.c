@@ -83,8 +83,8 @@ struct term_vec2 ndc_to_pos(struct term_pos pos)
   (u32)((1 - pos.y) * 0.5f * height)
  );
 }
-/*
-void transparent_blend(struct term_vec2 pos, u8 color[4])
+
+void transparent_blending(struct term_vec2 pos, u8 color[4])
 {
  float alpha = color[3] * (1.0f / 255.0f); // To range 0-1f
  float inverse = 1.0f - alpha;
@@ -93,7 +93,7 @@ void transparent_blend(struct term_vec2 pos, u8 color[4])
  current[1] = alpha * color[1] + inverse * current[1];
  current[2] = alpha * color[2] + inverse * current[2];
 }
-*/
+
 //void stdin_echo
 /* Utils function end */
 
@@ -190,6 +190,7 @@ u8 copy_rgba_texture(
 )
 {
  texture_merge(texout_init(display, 3, vec2_init(width, height)), texin_init(texture, 4, size), pos);
+ 
  return 0; // Just for fun
 }
 /* Sub-function end */
