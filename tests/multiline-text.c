@@ -50,11 +50,11 @@ int main()
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
   u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texture, 4, size, (struct term_pos){.x=-1.0f,.y=1.0f,});
+  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
   free(texture);
   free(string);
   texture = display_string_texture(text, strlen(text), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,255));
-  display_copy_texture(texture, 4, size, pos_init(-1.0f, 0.0f));
+  display_copy_texture(texinfo_init(&texture, 4, size), pos_init(-1.0f, 0.0f));
   free(texture);
   fprintf(statics, "Texture size: %d, %d\n", size.x, size.y);
  /*

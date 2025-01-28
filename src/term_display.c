@@ -1,5 +1,4 @@
 #include "term_display.h"
-#include "term_texture.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -58,12 +57,6 @@ void clear_screen(int nothing)
   "\x1b[2J", // Clear entire screen
   16
  );
- printf(
-  "\x1b[0m"  // Reset colors mode
-  "\x1b[3J"  // Clear saved line (scrollbuffer)
-  "\x1b[H"   // To position 0,0
-  "\x1b[2J" // Clear entire screen
- );
 }
 
 u8 set_handler(int type, void (*handler)(int))
@@ -101,14 +94,9 @@ void resize_display(int signal)
 {
  (void)signal; // Disable unused paramater warning
  get_maximum_size();
- if(
-  !(display = (u8*)realloc(display, pixel_count*3))
- )
- {
-  internal_failure = 1;
+ if((internal_failure = !(display = (u8*)realloc(display, pixel_count*3))))
   return; // Uhhhh, how to continue processing without the display
- }
- texture_fill(texout_init(display, 3, vec2_init(width, height)), to_rgba(clear_color));
+ texture_fill(texinfo_init(&display, 3, vec2_init(width, height)), to_rgba(clear_color));
  clear_screen(0);
 }
 
@@ -120,13 +108,11 @@ u8 display_init()
  if(internal_failure)
   return 1;
  printf("\x1b[?25l"); // Hide cursor
- return 0;
-/*
-  set_handler(SIGWINCH, clear_screen) ||
+ return
+  set_handler(SIGWINCH, clear_screen) || // Remove resizing artifact
   set_handler(SIGINT, display_free) ||
   set_handler(SIGTERM, display_free) ||
   set_handler(SIGQUIT, display_free);
-*/
 }
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
@@ -161,58 +147,20 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
 void display_set_color(struct term_rgba color)
 {
  color = pixel_blend(rgba_init(0,0,0,255), color);
- texture_fill(texout_init(display, 3, vec2_init(width, height)), color);
+ texture_fill(texinfo_init(&display, 3, vec2_init(width, height)), color);
 }
 
-/* Sub-function begin */
-u8 copy_rgb_texture(
- u8* texture,
- struct term_vec2 size,
- struct term_vec2 pos
-)
-{
- for(u32 row = 0; row < size.y; row++)
- {
-  if(!memcpy(
-   &display[((pos.y+row)*width+pos.x)*3],
-   &texture[row*size.x],
-   size.x*3
-  ))
-   return 1;
- }
- return 0;
-}
-
-u8 copy_rgba_texture(
- u8* texture,
- struct term_vec2 size,
- struct term_vec2 pos
-)
-{
- texture_merge(texout_init(display, 3, vec2_init(width, height)), texin_init(texture, 4, size), pos);
- 
- return 0; // Just for fun
-}
-/* Sub-function end */
-
-u8 display_copy_texture(
- u8* texture,
- u8 channel,
- struct term_vec2 size,
+void display_copy_texture(
+ struct texinfo texture,
  struct term_pos pos
 )
 {
  struct term_vec2 display_pos = ndc_to_pos(pos);
  u32 mw = width - display_pos.x, mh = height - display_pos.y;
  // Apply thereshold
- if(size.x > mw) size.x = mw;
- if(size.y > mh) size.y = mh;
- switch(channel)
- {
- case 3: return copy_rgb_texture(texture, size, display_pos);
- case 4: return copy_rgba_texture(texture, size, display_pos);
- }
- return 1;
+// if(size.x > mw) size.x = mw;
+// if(size.y > mh) size.y = mh;
+ texture_merge(texinfo_init(&display, 3, vec2_init(width, height)), texture, display_pos);
 }
 
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797

@@ -40,7 +40,7 @@ int main()
  u8 enable = 1;
  if(display_init())
   return 1;
- display_option(auto_resize, 0, &enable);
+// display_option(auto_resize, 0, &enable);
  FILE* statics = fopen("statics.txt", "w");
  setvbuf(statics, 0, _IONBF, 0);
  double speed = 0.05, elapsed = 0.0;
@@ -61,7 +61,7 @@ int main()
   fprintf(statics, "%s\n", string);
   struct term_vec2 size = {0};
   u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-  display_copy_texture(texture, 4, size, (struct term_pos){.x=-1.0f,.y=1.0f,});
+  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
   free(texture);
   free(string);
 

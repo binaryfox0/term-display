@@ -78,7 +78,7 @@ int main()
   u8* noise = 0;
   if((noise = generate_noise(size)))
   {
-   display_copy_texture(noise, 3, size, (struct term_pos){.x=-1.0f,.y=1.0f,});
+   display_copy_texture(texinfo_init(&noise, 3, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
    free(noise);
   }
 
@@ -86,7 +86,7 @@ int main()
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
   u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texture, 4, size, (struct term_pos){.x=-1.0f,.y=1.0f,});
+  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
   free(texture);
   free(string);
 
