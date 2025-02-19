@@ -27,26 +27,25 @@ char* to_string(double number)
  return string;
 }
 
-u8* generate_noise(struct term_vec2 size)
+term_texture* generate_noise(struct term_vec2 size)
 {
+ term_texture* out = texture_create(0, 3, size, 0, 0);
+ u8* raw = texture_get_location(vec2_init(0,0), out);
  u64 byte = size.x * size.y * 3;
- u8* texture = 0;
  int fd = 0;
- if(!(texture = (u8*)malloc(byte)))
-  return 0;
  if((fd = open("/dev/urandom", O_RDONLY)) < 0)
  {
-  free(texture);
+  texture_free(out);
   return 0;
  }
- if(read(fd, texture, byte) != byte)
+ if(read(fd, raw, byte) != byte)
  {
   close(fd);
-  free(texture);
+  texture_free(out);
   return 0;
  }
  close(fd);
- return texture;
+ return out;
 }
 
 int main()
@@ -75,19 +74,19 @@ int main()
   });
   */
   display_option(display_size, 1, &size);
-  u8* noise = 0;
+  term_texture* noise = 0;
   if((noise = generate_noise(size)))
   {
-   display_copy_texture(texinfo_init(&noise, 3, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
-   free(noise);
+   display_copy_texture(noise, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
+   texture_free(noise);
   }
 
   double fps = 1.0 / delta_time;
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
-  u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
-  free(texture);
+  term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
+  display_copy_texture(texture, (struct term_pos){.x=-1.0f,.y=1.0f,}, TEXTURE_MERGE_CROP);
+  texture_free(texture);
   free(string);
 
   display_show();

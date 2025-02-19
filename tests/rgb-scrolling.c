@@ -60,8 +60,8 @@ int main()
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
   struct term_vec2 size = {0};
-  u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
+  term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
+  display_copy_texture(texture, (struct term_pos){.x=-1.0f,.y=1.0f,}, TEXTURE_MERGE_CROP);
   free(texture);
   free(string);
 

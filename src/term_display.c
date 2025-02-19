@@ -12,8 +12,8 @@
 #include <fcntl.h>
 
 /* Global variable begin */
-u8* display = 0; // Actual bitmap
-u16 width = 0, height = 0; // The terminal size
+term_texture* display = 0;
+struct term_vec2 term_size = (struct term_vec2) { .x = 0, .y = 0 }; // The terminal size
 u32 pixel_count = 0; // width * height
 struct term_rgb clear_color = (struct term_rgb) { .r = 0, .g = 0, .b = 0 };
 u8 numeric_options[1] = {0};
@@ -26,24 +26,8 @@ void get_maximum_size()
 {
  struct winsize ws;
  ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
- width = ws.ws_col/2;
- height = ws.ws_row;
- pixel_count = width * height;
-}
-void fill_display()
-{
- if(!pixel_count)
-  return;
- memcpy(display, &clear_color, 3);
- // Exponentially filling display
- u32 filled = 3;
- while(filled < pixel_count*3 - filled)
- {
-  memcpy(&display[filled], display, filled);
-  filled *= 2;
- }
- // Filling the remaining
- memcpy(&display[filled], display, (pixel_count*3 - filled));
+ term_size = vec2_init(ws.ws_col/2, ws.ws_row);
+ pixel_count = term_size.x * term_size.y;
 }
 
 void clear_screen(int nothing)
@@ -72,37 +56,26 @@ u8 set_handler(int type, void (*handler)(int))
 struct term_vec2 ndc_to_pos(struct term_pos pos)
 {
  return vec2_init(
-  (u32)((pos.x + 1) * 0.5f * width),
-  (u32)((1 - pos.y) * 0.5f * height)
+  (u32)((pos.x + 1) * 0.5f * term_size.x),
+  (u32)((1 - pos.y) * 0.5f * term_size.y)
  );
 }
 
-void transparent_blending(struct term_vec2 pos, u8 color[4])
-{
- float alpha = color[3] * (1.0f / 255.0f); // To range 0-1f
- float inverse = 1.0f - alpha;
- u8* current = &display[(pos.y*width+pos.x)*3];
- current[0] = alpha * color[0] + inverse * current[0];
- current[1] = alpha * color[1] + inverse * current[1];
- current[2] = alpha * color[2] + inverse * current[2];
-}
-
-//void stdin_echo
 /* Utils function end */
 
 void resize_display(int signal)
 {
  (void)signal; // Disable unused paramater warning
  get_maximum_size();
- if((internal_failure = !(display = (u8*)realloc(display, pixel_count*3))))
+ if((internal_failure = texture_resize_internal(display, term_size)))
   return; // Uhhhh, how to continue processing without the display
- texture_fill(texinfo_init(&display, 3, vec2_init(width, height)), to_rgba(clear_color));
+ texture_fill(display, to_rgba(clear_color));
  clear_screen(0);
 }
 
 u8 display_init()
 {
- if(!isatty(STDOUT_FILENO))
+ if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
   return 1; // It's output can't seen by user (aka piped)
  resize_display(0);
  if(internal_failure)
@@ -133,10 +106,9 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
  }
  case display_size:
  {
-  OPT_GET_CASE(struct term_vec2, vec2_init(width, height));
+  OPT_GET_CASE(struct term_vec2, term_size);
   struct term_vec2* ptr = (struct term_vec2*)option;
-  width = ptr->x;
-  height = ptr->y;
+  term_size = vec2_init(ptr->x, ptr->y);
   return 0;
  }
  default: break;
@@ -147,20 +119,17 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
 void display_set_color(struct term_rgba color)
 {
  color = pixel_blend(rgba_init(0,0,0,255), color);
- texture_fill(texinfo_init(&display, 3, vec2_init(width, height)), color);
+ texture_fill(display, color);
 }
 
 void display_copy_texture(
- struct texinfo texture,
- struct term_pos pos
+ const term_texture* texture,
+ const struct term_pos pos,
+ const enum texture_merge_mode mode
 )
 {
  struct term_vec2 display_pos = ndc_to_pos(pos);
- u32 mw = width - display_pos.x, mh = height - display_pos.y;
- // Apply thereshold
-// if(size.x > mw) size.x = mw;
-// if(size.y > mh) size.y = mh;
- texture_merge(texinfo_init(&display, 3, vec2_init(width, height)), texture, display_pos);
+ texture_merge(display, texture, display_pos, mode, 0);
 }
 
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
@@ -168,13 +137,12 @@ u8 display_show()
 {
  if(internal_failure || !display)
   return 1;
- sigset_t block_mask, old_mask;
  printf("\x1b[H");
- u8* ref = display;
+ u8* ref = texture_get_location(vec2_init(0,0), display);
  static u8 prev[3] = {0};
- for(u16 row = 0; row < height; row++)
+ for(u16 row = 0; row < term_size.y; row++)
  {
-  for(u16 col = 0; col < width; col++, ref += 3)
+  for(u16 col = 0; col < term_size.x; col++, ref += 3)
   {
    if(
     prev[0] != ref[0] ||
@@ -204,7 +172,7 @@ void display_free(i32 nothing)
  clear_screen(0);
  // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
  // Technically, it can still failed, but return type is void and have undefined behaviour in the docs
- free(display);
+ texture_free(display);
  if(nothing)
  {
   set_handler(nothing, SIG_DFL); // Reset to default

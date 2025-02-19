@@ -3,24 +3,56 @@
 
 #include "term_def.h"
 
-struct texinfo
+struct term_texture_s;
+typedef struct term_texture_s term_texture;
+
+/* Constructor start */
+term_texture* texture_create(
+ u8* texture,
+ const u8 channel,
+ const struct term_vec2 size,
+ const u8 freeable,
+ const u8 copy
+);
+
+term_texture* texture_copy(term_texture* texture);
+/* Constructor end */
+
+u8* texture_get_location(
+ const struct term_vec2 pos,
+ const term_texture* texture
+);
+
+static inline struct term_vec2 texture_get_size(const term_texture* texture);
+
+/* Texture editing function start */
+void texture_fill(const term_texture* texture, const struct term_rgba color);
+
+enum texture_merge_mode
 {
- u8** texture;
- u8 channel;
- struct term_vec2 size;
+ TEXTURE_MERGE_CROP = 0,
+ TEXTURE_MERGE_RESIZE
 };
 
-static inline struct texinfo texinfo_init(u8** texture, u8 channel, struct term_vec2 size)
-{
- return (struct texinfo) { .texture = texture, .channel = channel, .size = size };
-}
+// Texture b will place over texture a with proper blending
+void texture_merge(
+ const term_texture* texture_a,
+ const term_texture* texture_b,
+ const struct term_vec2 placment_pos,
+ const enum texture_merge_mode mode,
+ const u8 replace
+);
 
-/* Developer notes */
-// We recommend you use raw pointer for texture, struct may have pad
-// disabling it can result in bad performance, which
-// program want to prevent it as much as possible
+// Resizing texture with bilinear interpolation
+void texture_resize(term_texture* texture, const struct term_vec2 new_size);
+// Resizing only the raw texture storage
+u8 texture_resize_internal(term_texture* texture, const struct term_vec2 new_size);
+void texture_crop(term_texture* texture, const struct term_vec2 new_size);
+/* Texture editing function end */
+
+void texture_free(term_texture* texture);
+
+// Additional functions
 struct term_rgba pixel_blend(struct term_rgba a, struct term_rgba b);
-void texture_fill(struct texinfo out, struct term_rgba color);
-void texture_merge(struct texinfo out, struct texinfo in, struct term_vec2 pos);
-#endif
 
+#endif

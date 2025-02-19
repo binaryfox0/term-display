@@ -1,165 +1,322 @@
 #include "term_texture.h"
 
+#include <stdlib.h>
 #include <string.h>
 
-#define IN_RANGE(value, first, last) ((value) >= (first) && (value) <= (last))
-#define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
-//https://stackoverflow.com/questions/27016781/is-performance-of-less-greater-than-than-better-than-less-greater-than-or-equ
-#define IS_GRAYSCALE(channel) IN_RANGE(channel, 1, 2)
-#define IS_TRUECOLOR(channel) IN_RANGE(channel, 3, 4)
-
-u8 convert_grayscale(const u8* color)
+struct term_texture_s
 {
- return color[0] * 0.2989 + color[1] * 0.5870 + color[2] * 0.1140;
+ u8 *data;
+ u8 channel;
+ struct term_vec2 size;
+ u8 freeable;
+};
+
+/* Helper utilities start */
+#define IN_RANGE(value, first, last) ((first) <= (value) || (value) <= (last))
+#define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
+#define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)
+#define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
+
+#define fast_floor(x) ((u32)(x))
+#define fast_ceil(x) ((u32)(x) + ((x) > (u32)(x)))
+/* Inline function start */
+// Assuming texture have 24bpp (RGB) or 8bpp (Grayscale)
+static inline u64 calculate_size(struct term_vec2 size, u8 channel) {return size.x*size.y*channel; }
+static inline u8 to_grayscale(const u8* c) {return (77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8;}
+static inline u64 convert_pos(u32 x, u32 y, u32 width, u8 ch) {return (y*width+x)*ch;}
+// Singular line, y discarded from the formula
+static inline float lerp(u8 c0, u8 c1, float t) {return c0 + t * (c1 - c0);}
+static inline u8 bilerp(u8 c00, u8 c10, u8 c01, u8 c11, float xt, float yt){
+return lerp(lerp(c00, c10, xt),lerp(c01, c11, xt), yt);
+}
+/* Inline function end */
+
+// Convert b to have the same type as a
+void convert(u8* b_out, const u8* b_in, u8 ch_a, u8* ch_b)
+{
+ u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(*ch_b);
+ if(a_g && !b_g)
+ {
+  b_out[0] = to_grayscale(b_in);
+  b_out[1] = *ch_b - 3 ? b_out[3] : 255;
+  *ch_b = ch_a;
+  return;
+ }
+ else if(!a_g && b_g)
+ {
+  b_out[3] = *ch_b - 1 ? b_in[1] : 255;
+  b_out[0] = b_out[1] = b_out[2] = b_in[0];
+  *ch_b = ch_a;
+  return;
+ }
+ for(u8 i = 0; i < *ch_b; i++)
+  b_out[i] = b_in[i];;
 }
 
-// Output result directly into a
-// Only bit depth 8 is supported (1 byte for each channel)
-void transparent_blend(u8* a, const u8* b, u8 ch_in, u8 ch_out)
+u8 convert_ch(u8 ch_a, u8 ch_b)
 {
- u8 color[4] = {0};
- if(IN_RANGE(ch_in, 1, 2) && IN_RANGE(ch_out, 3, 4))
- {
-  if(ch_in == 2)
-   color[3] = color[1];
-  color[0] = color[1] = color[2] = color[0];
-  ch_in += 2;
- }
- else if(IN_RANGE(ch_in, 3, 4) && IN_RANGE(ch_out, 1, 2))
- {
-  color[0] = convert_grayscale(color); // Convert to grayscale
-  ch_in -= 2;
-  if(ch_in == 2)
-   color[1] = color[3];
- }
- else if (IN_RANGE(ch_in, 1, 4)) { memcpy(color, b, ch_in); }
- else return;
- u8 t = ch_out < 3 ? 1 : ((ch_out < 5) ? 3 : 0); // Exclude alpha because it have different formula for it
- const u8
-  in_transparency = IS_TRANSPARENT(ch_in),
-  out_transparency = IS_TRANSPARENT(ch_out),
-  transparency = in_transparency || out_transparency;
- const u8
-  in_transparency_i = ch_in - 1,
-  out_transparency_i = ch_out - 1;
- const u8
-  alpha = transparency ? (in_transparency ? color[in_transparency_i] : a[out_transparency_i]) : 255,
-  inverse = 255 - alpha;
+ u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
+ if(!a_g && b_g) return ch_b - 2;
+ if(a_g && !b_g) return ch_b + 2;
+ return ch_b;
+}
 
- for(u8 i = 0; i < t; i++)
-  a[i] = transparency ? (alpha * color[i] + inverse * a[i]) >> 8 : color[i];
- if(out_transparency)
-  a[out_transparency_i] = alpha + ((inverse + a[out_transparency_i]) >> 8);
+void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
+{
+ u8 out_a = IS_TRANSPARENT(ch_a);
+ u8 a_i = ch_a - 1;
+ u8 a_a = out_a ? a[ch_a - 1] : 255;
+ u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
+ if(ch_a < 5)
+  a[0] = (a_b * b[0] + iva_b * a[0]) >> 8;
+ if(ch_a > 2)
+  a[1] = (a_b * b[1] + iva_b * a[1]) >> 8;
+  a[2] = (a_b * b[2] + iva_b * a[2]) >> 8;
+ if(out_a)
+  a[a_i] = !iva_b ? 255 : a_b + ((iva_b + a[a_i]) >> 8);
+}
+/* Helper utilities end   */
+
+term_texture* texture_create(
+ u8* texture,
+ const u8 channel,
+ const struct term_vec2 size,
+ const u8 freeable,
+ const u8 copy
+)
+{
+ if(
+  !IN_RANGE(channel, 1, 4) ||
+  !size.x || !size.y
+ ) return 0;
+ term_texture* out = 0;
+ if(!(out = (term_texture*)malloc(sizeof(term_texture))))
+  return 0;
+ u64 alloc_size = calculate_size(size, channel);
+ 
+ if (!texture || copy)
+ {
+  out->data = (u8*)malloc(alloc_size);
+  if (!out->data)
+  {
+   free(out);
+   return 0;
+  }
+  out->freeable = 1;
+  if (!texture)
+   memset(out->data, 0, alloc_size);
+  else
+  {
+   memcpy(out->data, texture, alloc_size);
+   if(freeable) free(texture);
+  }
+ }
+ else
+ {
+  out->data = texture;
+  out->freeable = freeable;
+ }
+
+ out->size = size;
+ out->channel = channel;
+ return out;
+}
+
+term_texture* texture_copy(term_texture* texture)
+{
+ return 0;
+}
+
+u8* texture_get_location(const struct term_vec2 pos, const term_texture* texture)
+{
+ if(!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
+  return 0;
+ return &(texture->data[(pos.y * texture->size.x + pos.x) * texture->channel]);
+}
+
+static inline struct term_vec2 texture_get_size(const term_texture* texture)
+{
+ if(!texture)
+  return vec2_init(0,0);
+ return texture->size;
+}
+
+// Only support for the same color type as texture
+void exponentially_fill(u8* data, u64 size, u8* c, u8 ch)
+{
+ memcpy(data, c, ch);
+ u64 filled = ch;
+ while(filled < size)
+ {
+  memcpy(&data[filled], data, filled);
+  filled *= 2;
+ }
+}
+
+void texture_fill(const term_texture* texture, const struct term_rgba color)
+{
+ if(!texture || !color.a)
+  return;
+ u8 c[4] = EXPAND_RGBA(color), tmp = 4;
+ struct term_vec2 size = texture->size;
+ u8* data = texture->data;
+ u8 ch = texture->channel;
+
+ convert(c, c, ch, &tmp);
+ if(IS_TRANSPARENT(ch) || color.a != 255)
+ {
+  for(u32 row = 0; row < size.y; row++)
+  {
+   for(u32 col = 0; col < size.x; col++, data += ch)
+    alpha_blend(data, c, ch, 4);
+  }
+  return;
+ }
+ exponentially_fill(data, size.x*size.y*ch, c, ch);
+}
+
+
+// Forward declaration section
+u8* crop_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
+u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
+
+void texture_merge(
+ const term_texture* texture_a,
+ const term_texture* texture_b,
+ const struct term_vec2 placement_pos,
+ const enum texture_merge_mode mode,
+ const u8 replace
+)
+{
+  if(!texture_a || !texture_b) return;
+  u8 cha = texture_a->channel, chb = texture_b->channel;
+ struct term_vec2 sa = texture_a->size, sb = texture_b->size;
+ u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data;
+
+ // Apply size thersehold
+ u64 max_space_x = sa.x - placement_pos.x, max_space_y = sa.y - placement_pos.y;
+ u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
+ if(b_freeable)
+ {
+  struct term_vec2 new_size = vec2_init(sb.x > max_space_x ? max_space_x : sb.x, sb.y > max_space_y ? max_space_y : sb.y);
+  if(mode == TEXTURE_MERGE_RESIZE)
+   tb = resize_texture(tb, chb, sb, new_size);
+  else
+   tb = crop_texture(tb, chb, sb, new_size);
+  sb = new_size;
+ }
+ 
+ u32 space = (sa.x - sb.x) * cha;
+ for(u32 row = 0; row < sb.y; row++, ta += space)
+ {
+  for(u32 col = 0; col < sb.x; col++, ta += cha, tb += chb)
+  {
+   u8 tmp[4] = {0}, tmp_1 = chb;
+   convert(tmp, tb, cha, &tmp_1);
+   replace ? memcpy(ta, tmp, cha) : alpha_blend(ta, tmp, cha, tmp_1);
+  }
+ }
+ if(b_freeable) free(tb);
+}
+
+struct term_vec2 calculate_new_size(const struct term_vec2 old, const struct term_vec2 size)
+{
+ if(!size.x) return vec2_init((old.x * size.y) / old.y ,size.y);
+ if(!size.y) return vec2_init(size.x, (old.y * size.x) / old.x);
+ return size;
+}
+
+u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
+{
+ if(!new_size.x || !new_size.y) new_size = calculate_new_size(old_size, new_size);
+ float
+  x_ratio = (float)(old_size.x - 1) / (new_size.x - 1),
+  y_ratio = (float)(old_size.y - 1) / (new_size.y - 1);
+ u8 *raw = (u8*)malloc(calculate_size(new_size, channel));
+ if(!raw) return 0;
+
+ for (u32 row = 0; row < new_size.y; row++)
+ {
+  float tmp = row * y_ratio;
+  u32 iyf = fast_floor(tmp),
+      iyc = fast_ceil(tmp);
+  float ty = tmp - iyf;
+  for (u32 col = 0; col < new_size.x; col++)
+  {
+   tmp = col * x_ratio;
+   u32 ixf = fast_floor(tmp),
+       ixc = fast_ceil(tmp);
+   float tx = tmp - ixf;
+
+   u32 i00 = convert_pos(ixf, iyf, old_size.x, channel),
+       i10 = convert_pos(ixc, iyf, old_size.x, channel),
+       i01 = convert_pos(ixf, iyc, old_size.x, channel),
+       i11 = convert_pos(ixc, iyc, old_size.x, channel);
+
+   for(u8 c = 0; c < channel; c++, raw++)
+    raw[0] = bilerp(old[i00+c], old[i10+c], old[i01+c], old[i11+c], tx, ty);
+  }
+ }
+ return raw;
+}
+
+//https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716
+void texture_resize(term_texture* texture, const struct term_vec2 size)
+{
+ if(!texture) return;
+ u8* tmp = resize_texture(texture->data, texture->channel, texture->size, size);
+ if(!tmp) return;
+ free(texture->data);
+ texture->data = tmp;
+ texture->size = size;
+}
+
+u8 texture_resize_internal(term_texture* texture, const struct term_vec2 new_size)
+{
+ if(!texture) return 0;
+ u8* tmp = (u8*)realloc(texture->data, calculate_size(new_size, texture->channel));
+ if(!tmp) return 1;
+ texture->data = tmp;
+ texture->size = new_size;
+ return 0;
+}
+
+u8* crop_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
+{
+ u8* raw = 0;
+ if(!(raw = (u8*)malloc(calculate_size(new_size, channel))))
+  return 0;
+ u8* ptr = raw;
+ u64 row_length = new_size.x * channel;
+ for(u32 row = 0; row < new_size.y; row++)
+  for(u32 col = 0; col < new_size.x; col++)
+   for(u64 i = 0; i < row_length; i++, ptr++, old++)
+    ptr[0] = old[0];
+ return raw;
+}
+
+void texture_crop(term_texture *texture, const struct term_vec2 new_size)
+{
+ if(!texture || new_size.x >= texture->size.x || new_size.y >= texture->size.y) return;
+ u8* tmp = crop_texture(texture->data, texture->channel, texture->size, new_size);
+ if(!tmp) return;
+ free(texture->data);
+ texture->data = tmp;
+ texture->size = new_size;
+}
+
+void texture_free(term_texture* texture)
+{
+ if(!texture)
+  return;
+ if(texture->freeable)
+  free(texture->data);
+ free(texture);
 }
 
 struct term_rgba pixel_blend(struct term_rgba a, struct term_rgba b)
 {
- u8 au[4] = {a.r,a.g,a.b,a.a}, bu[4] = {b.r,b.g,b.b,b.a};
- transparent_blend(au, bu, 4, 4);
- return rgba_init(au[0],au[1],au[2],au[3]);
-}
-
-void texture_fill_rgb(u8* texture, struct term_vec2 size, u8* color)
-{
- if(!size.x || !size.y)
-  return;
- u32 bytes_count = size.x * size.y * 3;
- memcpy(texture, color, 3);
- // Exponentially filling display
- u32 filled = 3;
- while(filled < bytes_count - filled)
- {
-  memcpy(&texture[filled], texture, filled);
-  filled *= 2;
- }
- // Filling the remaining
- memcpy(&texture[filled], texture, (bytes_count - filled));
-}
-
-void texture_fill(struct texinfo out, struct term_rgba color)
-{
- if(
-  !out.texture ||
-  !color.a || // Alpha channel is 0, no more processing
-  !IN_RANGE(out.channel, 1, 4)
- ) return;
- if(!*out.texture) return;
- u8 c[4] = {color.r, color.g, color.b, color.a};
- if(
-  c[3] != 255 ||
-  IS_TRANSPARENT(out.channel)
- )
- {
-  for(u32 row = 0; row < out.size.y; row++)
-  {
-    for(u32 col = 0; col < out.size.x; col++)
-    {
-     transparent_blend(
-      &(*out.texture)[(row*out.size.x+col)*out.channel], c,
-      4, out.channel
-     );
-    }
-  }
-  return;
- }
- texture_fill_rgb(*out.texture, out.size, c);
-}
-
-void texture_merge_truecolor(u8* start, u32 rlen, struct texinfo in, struct term_vec2 pos)
-{
- for(u32 row = 0; row < in.size.x; row++)
-   for(u32 col = 0; col < in.size.y; col++)
-   {
-    memset(
-     &start[(row*rlen+(pos.x+col))*3],
-     (*in.texture)[(row*in.size.x+col)], 3
-    );
-   }
-}
-
-void texture_merge_grayscale(u8* start, u32 rlen, struct texinfo in, struct term_vec2 pos)
-{
- for(u32 row = 0; row < in.size.x; row++)
-  for(u32 col = 0; col < in.size.y; col++)
-  {
-   start[(row*rlen+(pos.x+col))*3] = convert_grayscale(
-    &(*in.texture)[(row*in.size.x+col)*3]);
-  }
-}
-
-void texture_merge(struct texinfo out, struct texinfo in, struct term_vec2 pos)
-{
- if(!IN_RANGE(out.channel, 1, 4) || !IN_RANGE(in.channel, 1, 4) ||
-  !out.texture || !in.texture) return;
- if(!*out.texture) return;
-
- u8 *start_row = &(*out.texture)[pos.y*out.size.x*out.channel];
- if(IS_TRANSPARENT(out.channel) || IS_TRANSPARENT(in.channel))
- {
-  for(u32 row = 0; row < in.size.y; row++)
-  {
-   for(u32 col = 0; col < in.size.x; col++)
-   {
-    transparent_blend(
-     &start_row[(row*out.size.x+(pos.x+col))*out.channel],
-     &(*in.texture)[(row*in.size.x+col)*in.channel],
-     in.channel,
-     out.channel
-    );
-   }
-  }
-  return;
- }
- if(IS_TRUECOLOR(out.channel)&&IS_GRAYSCALE(in.channel)){texture_merge_truecolor(start_row,out.size.x,in,pos);return;}
- if(IS_GRAYSCALE(out.channel)&&IS_TRUECOLOR(in.channel)){texture_merge_grayscale(start_row,out.size.x,in,pos);return;}
-
- // Now out.channel should equal to in.channel
- for(u32 row = 0; row < in.size.y; row++)
- {
-  memcpy(
-   &start_row[(row*out.size.x+pos.x)*out.channel],
-   &in.texture[(row*in.size.x)*out.channel],
-   in.size.x*out.channel
-  );
- }
+ u8 ar[4] = EXPAND_RGBA(a), br[4] = EXPAND_RGBA(b);
+ alpha_blend(ar, br, 4, 4);
+ return rgba_init(ar[0], ar[1], ar[2], ar[3]);
 }

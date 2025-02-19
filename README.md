@@ -26,4 +26,5 @@ If you are considering using `term-display` in a **serious project**, it's bette
 Currently known issues with `term-display`
  - **Bad Performance**: Rendering complex or large pixel grids in the terminal using `term-display` can be slower compared to alternatives. It is especially worse on virtual environments such as `termux` on mobile, which isn't fully optimized.
  - **Low Resolution**: Terminal-based output is limited by the size, resolution of the terminal window.
- - **Bad Code Structure**: This is my first large-size project, it has a very bad code structure. May lead to bad performance in the near feature
+ - Some user event handling problems
+ - Bad code structure

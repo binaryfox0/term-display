@@ -20,10 +20,12 @@ char* to_string(double number)
 {
  int len = snprintf(0, 0, "%f", number);
  char* string = (char*)malloc(len+1);
- memset(string, 0, len+1);
+ string[len] = 0;
  snprintf(string, len+1, "%f", number);
  return string;
 }
+
+char* generate_log(char* message);
 
 int main()
 {
@@ -35,37 +37,33 @@ int main()
  setvbuf(statics, 0, _IONBF, 0);
  double speed = 0.05, elapsed = 0.0;
  double delta_time = 1.0; // Remember dont divide by 0
- u64 max_frame_count = 1;
- double max_frame_time = 1.0 / 60; // 60 FPS
  struct term_vec2 size = {0}; // Temporary
  const char* text = "\rHello\nWorld!";
- for(unsigned long long i = 0; i < max_frame_count; i++)
+ u64 frame_count = 0;
+ while(1)
  {
-  max_frame_count++;
+  frame_count++;
   double start_frame = get_time();
  
-  display_set_color(rgba_init(109, 154, 140, max_frame_count%256)); // Approximtely patina
+  display_set_color(rgba_init(109, 154, 140, frame_count%256)); // Approximtely patina
 
   double fps = 1.0 / delta_time;
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
-  u8* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texinfo_init(&texture, 4, size), (struct term_pos){.x=-1.0f,.y=1.0f,});
-  free(texture);
+  term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
+  display_copy_texture(texture, (struct term_pos){.x=-1.0f,.y=1.0f,}, TEXTURE_MERGE_CROP);
+  texture_free(texture);
   free(string);
   texture = display_string_texture(text, strlen(text), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,255));
-  display_copy_texture(texinfo_init(&texture, 4, size), pos_init(-1.0f, 0.0f));
-  free(texture);
-  fprintf(statics, "Texture size: %d, %d\n", size.x, size.y);
+  display_copy_texture(texture, pos_init(-1.0f, 0.0f), TEXTURE_MERGE_CROP);
+  texture_free(texture);
  /*
   texture = display_char_texture('d', rgba_init(255,255,255,255), rgba_init(0,0,0,255));
   display_copy_texture(texture, 4, vec2_init(3,5), pos_init(-1.0f, 0.0f));*/
   display_show();
   elapsed += speed;
 
-  /* FPS limiter start */
-  while((delta_time = get_time() - start_frame) < max_frame_time) {}
-//  delta_time = get_time() - start_frame;
+  delta_time = get_time() - start_frame;
  }
  display_free(0);
  fclose(statics);

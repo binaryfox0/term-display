@@ -436,7 +436,7 @@ u8 query_newline(
  return 0;
 }
 
-i8 convert_ch(i8 ch)
+i8 mapped_ch(i8 ch)
 {
  if(IN_RANGE(ch, 0x61, 0x7A))
   return ch - 0x61 + 0x41; // To uppercase (how this font mapped)
@@ -445,19 +445,23 @@ i8 convert_ch(i8 ch)
 
 /* Utils function end */
 
-u8* display_char_texture(i8 ch, struct term_rgba color, struct term_rgba fg)
+term_texture* display_char_texture(i8 ch, struct term_rgba color, struct term_rgba fg)
 {
- ch = convert_ch(ch);
+ ch = mapped_ch(ch);
  if(!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
   ch = LOWER_LIMIT; // Space (nothing)
  u8* ch_template = texture_atlas[ch - LOWER_LIMIT];
- static u8 ch_texture[CHAR_PIXEL * 4];
- for(u16 i = 0; i < CHAR_PIXEL; i++)
-  memcpy(&ch_texture[i*4], (ch_template[i] ? &color : &fg), 4);
- return ch_texture;
+ term_texture* out = texture_create(0, 4, vec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
+ u8* raw = texture_get_location(vec2_init(0, 0), out);
+ u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
+ for(u8 i = 0; i < CHAR_PIXEL; i++)
+  for(u8 j = 0; j < 4; j++, raw++)
+   raw[0] = ch_template[i] ? a[j] : b[j];
+   
+ return out;
 }
 
-u8* display_string_texture(
+term_texture* display_string_texture(
  const i8* str, u64 len,
  struct term_vec2* s,
  struct term_rgba color,
@@ -470,61 +474,22 @@ u8* display_string_texture(
  // s->x is maximum character in one line, s->y is the line in the input text
  s->x = longest_line * CHAR_WIDTH + calculate_pad(longest_line);
  s->y = lines_count * CHAR_HEIGHT + calculate_pad(lines_count);
- u32 size = (s->x * s->y) * 4;
- u8* out = 0;
- // on glibc implementation, malloc(0) can return unique pointer (man malloc)
- if(!(out = (u8*)malloc(size)) || !size)
-  return out;
- /* Filling gaps section */
- u8 honz_gap_filled = 0;
- for(u32 row = 0; row < lines_count; row++)
- {
-  u64 line_l = lines_length[row];
-  u32 row_start = ((CHAR_HEIGHT * row) + calculate_pad(row+1))*s->x;
-  u64 shorter = (longest_line - line_l) * (CHAR_WIDTH + 1);
-  // Filling gaps between character
-  // First line
-  for(u64 col = 1; col < line_l; col++)
-   memcpy(&out[(row_start + CHAR_WIDTH*col+col-1)*4], &fg, 4);
-  u64 end_start = line_l * CHAR_WIDTH + calculate_pad(line_l);
-  for(u64 col = 0; col < shorter; col++)
-   memcpy(&out[(row_start + end_start + col) * 4], &fg, 4);
-  // Other lines
-  for(u8 ch_row = 1; ch_row < CHAR_HEIGHT; ch_row++)
-   memcpy(&out[(row_start + ch_row * s->x)*4], &out[row_start*4], s->x*4);
-  // Gaps between rows
-  if(honz_gap_filled)
-  {
-    memcpy(&out[((CHAR_HEIGHT*row + (row-1)) * s->x)* 4], &out[(CHAR_HEIGHT*s->x)*4], s->x*4);
-    continue;
-  }
-  if(row)
-  {
-   for(u64 col = 0; col < s->x*4; col++)
-    memcpy(&out[((CHAR_HEIGHT * (row)) * s->x + col)* 4], &fg, 4);
-   honz_gap_filled = 1;
-  }
- }
+ term_texture* out = texture_create(0, 4, *s, 0, 0);
+ if(!out) return 0;
+ texture_fill(out, fg);
 
  // Placing character into place
  u64 current_index = 0;
  for(u32 row = 0; row < lines_count; row++)
  {
-  u64 row_l = lines_length[row];
+  u64 row_l = lines_length[row],
+   start_y = row * (CHAR_HEIGHT + 1); // 1 is pad
   for(u64 col = 0; col < row_l; col++)
   {
-   u8* ch_texture = display_char_texture(str[current_index+col], color, fg);
-   u64 start_y = row * (CHAR_HEIGHT + 1), // 1 is pad
-    start_x = col * (CHAR_WIDTH + 1);
-   // Copy each character row into buffer
-   for(u8 ch_r = 0; ch_r < CHAR_HEIGHT; ch_r++)
-   {
-    memcpy(
-     &out[((start_y + ch_r)*s->x + start_x)*4],
-     &ch_texture[ch_r*CHAR_WIDTH*4],
-     4*CHAR_WIDTH
-    );
-   }
+   term_texture* ch_texture = display_char_texture(str[current_index+col], color, fg);
+   u64 start_x = col * (CHAR_WIDTH + 1);
+   texture_merge(out, ch_texture, vec2_init(start_x, start_y), TEXTURE_MERGE_CROP, 1);
+   texture_free(ch_texture);
   }
   current_index += row_l; // Now at newline characater
   if(is_newline(str, &current_index, len))
