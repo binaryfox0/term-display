@@ -146,11 +146,12 @@ void exponentially_fill(u8* data, u64 size, u8* c, u8 ch)
 {
  memcpy(data, c, ch);
  u64 filled = ch;
- while(filled < size)
+ while(filled * 2 < size)
  {
   memcpy(&data[filled], data, filled);
   filled *= 2;
  }
+ memcpy(&data[filled], data, size - filled);
 }
 
 void texture_fill(const term_texture* texture, const struct term_rgba color)

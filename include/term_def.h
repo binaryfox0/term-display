@@ -1,7 +1,7 @@
 #ifndef TERMINAL_DEFINITION_H
 #define TERMINAL_DEFINITION_H
 
-#define EXPAND_RGBA(c) (u8[4]) { (c).r, (c).g, (c).b, (c).a }
+#define EXPAND_RGBA(c) { (c).r, (c).g, (c).b, (c).a }
 
 typedef char i8;
 typedef unsigned char u8;

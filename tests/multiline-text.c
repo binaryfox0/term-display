@@ -45,7 +45,7 @@ int main()
   frame_count++;
   double start_frame = get_time();
  
-  display_set_color(rgba_init(109, 154, 140, frame_count%256)); // Approximtely patina
+  display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
 
   double fps = 1.0 / delta_time;
   char* string = to_string(fps);
