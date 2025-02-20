@@ -178,7 +178,7 @@ void texture_fill(const term_texture* texture, const struct term_rgba color)
 
 
 // Forward declaration section
-u8* crop_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
+u8* crop_texture(u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
 u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
 
 void texture_merge(
@@ -192,7 +192,7 @@ void texture_merge(
   if(!texture_a || !texture_b) return;
   u8 cha = texture_a->channel, chb = texture_b->channel;
  struct term_vec2 sa = texture_a->size, sb = texture_b->size;
- u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data;
+ u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data, *old = 0;
 
  // Apply size thersehold
  u64 max_space_x = sa.x - placement_pos.x, max_space_y = sa.y - placement_pos.y;
@@ -204,6 +204,7 @@ void texture_merge(
    tb = resize_texture(tb, chb, sb, new_size);
   else
    tb = crop_texture(tb, chb, sb, new_size);
+  old = tb;
   sb = new_size;
  }
  
@@ -217,7 +218,7 @@ void texture_merge(
    replace ? memcpy(ta, tmp, cha) : alpha_blend(ta, tmp, cha, tmp_1);
   }
  }
- if(b_freeable) free(tb);
+ if(b_freeable) free(old);
 }
 
 struct term_vec2 calculate_new_size(const struct term_vec2 old, const struct term_vec2 size)
@@ -282,18 +283,16 @@ u8 texture_resize_internal(term_texture* texture, const struct term_vec2 new_siz
  return 0;
 }
 
-u8* crop_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
+u8* crop_texture(u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
 {
  u8* raw = 0;
  if(!(raw = (u8*)malloc(calculate_size(new_size, channel))))
   return 0;
- u8* ptr = raw;
- u64 row_length = new_size.x * channel;
- for(u32 row = 0; row < new_size.y; row++)
-  for(u32 col = 0; col < new_size.x; col++)
-   for(u64 i = 0; i < row_length; i++, ptr++, old++)
-    ptr[0] = old[0];
- return raw;
+ u8* ptr = old, *start = raw;
+ u64 row_length = new_size.x * channel, old_length = old_size.x * channel;
+ for(u32 row = 0; row < new_size.y; row++, raw += row_length, ptr += old_length)
+  memcpy(raw, ptr, row_length);
+ return start;
 }
 
 void texture_crop(term_texture *texture, const struct term_vec2 new_size)
