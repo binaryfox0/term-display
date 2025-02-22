@@ -21,7 +21,7 @@ char* to_string(double number)
  return string;
 }
 
-struct term_rgb calculate_rgb(double d)
+term_rgb calculate_rgb(double d)
 {
  return rgb_init(
    (u8)((sin(d)+1)*127.5),
@@ -45,15 +45,15 @@ int main()
   double start_frame = get_time();
   display_set_color(to_rgba(calculate_rgb(elapsed)));
 /*  display_copy_texture(
-   (u8*)&texture_Digit[0], 4, (struct term_vec2){.x = 3, .y = 5}, (struct term_pos){.x = -1.0f, .y = 1.0f});*/
-//  display_set_color((struct term_color){.red=100,.green=50,.blue=255});
+   (u8*)&texture_Digit[0], 4, (term_vec2){.x = 3, .y = 5}, (term_pos){.x = -1.0f, .y = 1.0f});*/
+//  display_set_color((term_color){.red=100,.green=50,.blue=255});
 
   double fps = 1.0 / delta_time;
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
-  struct term_vec2 size = {0};
+  term_vec2 size = {0};
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-  display_copy_texture(texture, (struct term_pos){.x=-1.0f,.y=1.0f,}, TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   free(texture);
   free(string);
 

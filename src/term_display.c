@@ -11,26 +11,23 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 
+#include "term_priv.h"
+
 /* Global variable begin */
 term_texture* display = 0;
-struct term_vec2 term_size = (struct term_vec2) { .x = 0, .y = 0 }; // The terminal size
+term_vec2 term_size = (term_vec2) { .x = 0, .y = 0 }; // The terminal size
 u32 pixel_count = 0; // width * height
-struct term_rgb clear_color = (struct term_rgb) { .r = 0, .g = 0, .b = 0 };
+term_rgb clear_color = (term_rgb) { .r = 0, .g = 0, .b = 0 };
 u8 numeric_options[1] = {0};
 volatile u8 internal_failure = 0;
 volatile u8 __display_is_running = 0;
 /* Global variable end */
 
 /* Utlis function begin */
-// https://stackoverflow.com/questions/23369503/get-size-of-terminal-window-rows-columns
-void get_maximum_size()
-{
- struct winsize ws;
- ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws);
- term_size = vec2_init(ws.ws_col/2, ws.ws_row);
- pixel_count = term_size.x * term_size.y;
-}
 
+
+
+// https://stackoverflow.com/questions/23369503/get-size-of-terminal-window-rows-columns
 void clear_screen(int nothing)
 {
  (void)nothing; // Just for plugging into sa_handler
@@ -54,7 +51,7 @@ u8 set_handler(int type, void (*handler)(int))
 }
 
 // https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-getting-started?redirectedfrom=MSDN
-struct term_vec2 ndc_to_pos(struct term_pos pos)
+static inline term_vec2 ndc_to_pos(term_pos pos)
 {
  return vec2_init(
   (u32)((pos.x + 1) * 0.5f * term_size.x),
@@ -67,7 +64,7 @@ struct term_vec2 ndc_to_pos(struct term_pos pos)
 void resize_display(int signal)
 {
  (void)signal; // Disable unused paramater warning
- get_maximum_size();
+ term_size = query_terminal_size();
  if((internal_failure = texture_resize_internal(display, term_size)))
   return; // Uhhhh, how to continue processing without the display
  texture_fill(display, to_rgba(clear_color));
@@ -85,6 +82,11 @@ u8 display_init()
   return 1;
  printf("\x1b[?25l"); // Hide cursor
  __display_is_running = 1;
+#ifdef TERMINAL_WINDOWS
+#else
+ fcntl(STDIN_FILENO, F_SETOWN, getpid());
+ fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL, 0) | O_ASYNC);
+#endif
  return
   set_handler(SIGWINCH, clear_screen) || // Remove resizing artifact
   set_handler(SIGINT, stop_display) ||
@@ -94,7 +96,7 @@ u8 display_init()
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
 
-u8 display_option(enum display_settings_types type, u8 get, void* option)
+u8 display_option(display_settings_types type, u8 get, void* option)
 {
  switch(type)
  {
@@ -110,8 +112,8 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
  }
  case display_size:
  {
-  OPT_GET_CASE(struct term_vec2, term_size);
-  term_size = *(struct term_vec2*)option;
+  OPT_GET_CASE(term_vec2, term_size);
+  term_size = *(term_vec2*)option;
   return 0;
  }
  default: break;
@@ -119,7 +121,36 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
  return 1;
 }
 
-void display_set_color(struct term_rgba color)
+key_callback private_key_callback = 0;
+void io_callback(int signal)
+{
+ u8 ch = 0;
+ int mods = 0;
+ read(STDIN_FILENO, &ch, 1);
+ if(ch == 0x1b)
+ if(IN_RANGE(ch, 0x01, 0x1A)) // Ctrl + <key>
+ {
+  ch += 64;
+  mods |= key_ctrl;
+ }
+ else if(IN_RANGE(ch, 0x61, 0x7A))
+ {
+  ch -= 32;
+  mods |= key_shift;
+ }
+ private_key_callback(ch, mods, key_press);
+}
+
+void display_set_key_callback(key_callback callback)
+{
+#ifdef TERMINAL_WINDOWS
+#else
+ private_key_callback = callback;
+ set_handler(SIGIO, io_callback);
+#endif
+}
+
+void display_set_color(term_rgba color)
 {
  color = pixel_blend(rgba_init(0,0,0,255), color);
  texture_fill(display, color);
@@ -127,11 +158,11 @@ void display_set_color(struct term_rgba color)
 
 void display_copy_texture(
  const term_texture* texture,
- const struct term_pos pos,
+ const term_pos pos,
  const enum texture_merge_mode mode
 )
 {
- struct term_vec2 display_pos = ndc_to_pos(pos);
+ term_vec2 display_pos = ndc_to_pos(pos);
  texture_merge(display, texture, display_pos, mode, 0);
 }
 
@@ -172,6 +203,7 @@ void display_free(i32 nothing)
  // Show the cursor again
  // Reset color / graphics mode
  write(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
+ fflush(stdout); // Flush remaining data
  clear_screen(0);
  // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
  // Technically, it can still failed, but return type is void and have undefined behaviour in the docs

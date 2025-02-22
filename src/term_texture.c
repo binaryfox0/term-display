@@ -7,12 +7,11 @@ struct term_texture_s
 {
  u8 *data;
  u8 channel;
- struct term_vec2 size;
+ term_vec2 size;
  u8 freeable;
 };
 
 /* Helper utilities start */
-#define IN_RANGE(value, first, last) ((first) <= (value) || (value) <= (last))
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)
 #define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
@@ -21,7 +20,7 @@ struct term_texture_s
 #define fast_ceil(x) ((u32)(x) + ((x) > (u32)(x)))
 /* Inline function start */
 // Assuming texture have 24bpp (RGB) or 8bpp (Grayscale)
-static inline u64 calculate_size(struct term_vec2 size, u8 channel) {return size.x*size.y*channel; }
+static inline u64 calculate_size(term_vec2 size, u8 channel) {return size.x*size.y*channel; }
 static inline u8 to_grayscale(const u8* c) {return (77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8;}
 static inline u64 convert_pos(u32 x, u32 y, u32 width, u8 ch) {return (y*width+x)*ch;}
 // Singular line, y discarded from the formula
@@ -80,7 +79,7 @@ void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
 term_texture* texture_create(
  u8* texture,
  const u8 channel,
- const struct term_vec2 size,
+ const term_vec2 size,
  const u8 freeable,
  const u8 copy
 )
@@ -124,17 +123,30 @@ term_texture* texture_create(
 
 term_texture* texture_copy(term_texture* texture)
 {
- return 0;
+ term_texture* out = 0;
+ if(!(out = (term_texture*)malloc(sizeof(term_texture))))
+  return 0;
+ u64 size = texture->size.x * texture->size.y * texture->channel;
+ if(!(out->data = (u8*)malloc(size)))
+ {
+  free(out);
+  return 0;
+ }
+ memcpy(out->data, texture->data, size);
+ out->freeable = 1;
+ out->size = texture->size;
+ out->channel = texture->channel;
+ return out;
 }
 
-u8* texture_get_location(const struct term_vec2 pos, const term_texture* texture)
+u8* texture_get_location(const term_vec2 pos, const term_texture* texture)
 {
  if(!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
   return 0;
  return &(texture->data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-static inline struct term_vec2 texture_get_size(const term_texture* texture)
+static inline term_vec2 texture_get_size(const term_texture* texture)
 {
  if(!texture)
   return vec2_init(0,0);
@@ -154,12 +166,12 @@ void exponentially_fill(u8* data, u64 size, u8* c, u8 ch)
  memcpy(&data[filled], data, size - filled);
 }
 
-void texture_fill(const term_texture* texture, const struct term_rgba color)
+void texture_fill(const term_texture* texture, const term_rgba color)
 {
  if(!texture || !color.a)
   return;
  u8 c[4] = EXPAND_RGBA(color), tmp = 4;
- struct term_vec2 size = texture->size;
+ term_vec2 size = texture->size;
  u8* data = texture->data;
  u8 ch = texture->channel;
 
@@ -178,20 +190,20 @@ void texture_fill(const term_texture* texture, const struct term_rgba color)
 
 
 // Forward declaration section
-u8* crop_texture(u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
-u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size);
+u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size);
+u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size);
 
 void texture_merge(
  const term_texture* texture_a,
  const term_texture* texture_b,
- const struct term_vec2 placement_pos,
+ const term_vec2 placement_pos,
  const enum texture_merge_mode mode,
  const u8 replace
 )
 {
   if(!texture_a || !texture_b) return;
   u8 cha = texture_a->channel, chb = texture_b->channel;
- struct term_vec2 sa = texture_a->size, sb = texture_b->size;
+ term_vec2 sa = texture_a->size, sb = texture_b->size;
  u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data, *old = 0;
 
  // Apply size thersehold
@@ -199,7 +211,7 @@ void texture_merge(
  u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
  if(b_freeable)
  {
-  struct term_vec2 new_size = vec2_init(sb.x > max_space_x ? max_space_x : sb.x, sb.y > max_space_y ? max_space_y : sb.y);
+  term_vec2 new_size = vec2_init(sb.x > max_space_x ? max_space_x : sb.x, sb.y > max_space_y ? max_space_y : sb.y);
   if(mode == TEXTURE_MERGE_RESIZE)
    tb = resize_texture(tb, chb, sb, new_size);
   else
@@ -221,14 +233,14 @@ void texture_merge(
  if(b_freeable) free(old);
 }
 
-struct term_vec2 calculate_new_size(const struct term_vec2 old, const struct term_vec2 size)
+term_vec2 calculate_new_size(const term_vec2 old, const term_vec2 size)
 {
  if(!size.x) return vec2_init((old.x * size.y) / old.y ,size.y);
  if(!size.y) return vec2_init(size.x, (old.y * size.x) / old.x);
  return size;
 }
 
-u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
+u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
 {
  if(!new_size.x || !new_size.y) new_size = calculate_new_size(old_size, new_size);
  float
@@ -263,7 +275,7 @@ u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct 
 }
 
 //https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716
-void texture_resize(term_texture* texture, const struct term_vec2 size)
+void texture_resize(term_texture* texture, const term_vec2 size)
 {
  if(!texture) return;
  u8* tmp = resize_texture(texture->data, texture->channel, texture->size, size);
@@ -273,7 +285,7 @@ void texture_resize(term_texture* texture, const struct term_vec2 size)
  texture->size = size;
 }
 
-u8 texture_resize_internal(term_texture* texture, const struct term_vec2 new_size)
+u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
 {
  if(!texture) return 0;
  u8* tmp = (u8*)realloc(texture->data, calculate_size(new_size, texture->channel));
@@ -283,7 +295,7 @@ u8 texture_resize_internal(term_texture* texture, const struct term_vec2 new_siz
  return 0;
 }
 
-u8* crop_texture(u8* old, u8 channel, struct term_vec2 old_size, struct term_vec2 new_size)
+u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
 {
  u8* raw = 0;
  if(!(raw = (u8*)malloc(calculate_size(new_size, channel))))
@@ -295,7 +307,7 @@ u8* crop_texture(u8* old, u8 channel, struct term_vec2 old_size, struct term_vec
  return start;
 }
 
-void texture_crop(term_texture *texture, const struct term_vec2 new_size)
+void texture_crop(term_texture *texture, const term_vec2 new_size)
 {
  if(!texture || new_size.x >= texture->size.x || new_size.y >= texture->size.y) return;
  u8* tmp = crop_texture(texture->data, texture->channel, texture->size, new_size);
@@ -314,7 +326,7 @@ void texture_free(term_texture* texture)
  free(texture);
 }
 
-struct term_rgba pixel_blend(struct term_rgba a, struct term_rgba b)
+term_rgba pixel_blend(term_rgba a, term_rgba b)
 {
  u8 ar[4] = EXPAND_RGBA(a), br[4] = EXPAND_RGBA(b);
  alpha_blend(ar, br, 4, 4);

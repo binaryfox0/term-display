@@ -4,8 +4,8 @@
 #include "term_def.h"
 #include "term_texture.h"
 
-term_texture* display_char_texture(i8 ch, struct term_rgba color, struct term_rgba fg);
-term_texture* display_string_texture(const i8* str, u64 len, struct term_vec2* size, struct term_rgba color, struct term_rgba fg);
+term_texture* display_char_texture(i8 ch, term_rgba color, term_rgba fg);
+term_texture* display_string_texture(const i8* str, u64 len, term_vec2* size, term_rgba color, term_rgba fg);
 
 #endif
 

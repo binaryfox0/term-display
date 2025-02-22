@@ -10,8 +10,6 @@
 #define CHAR_HEIGHT 5
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
-#define IN_RANGE(var, first, last) ((first) <= (var) && (var) <= (last))
-
 u8 texture_atlas[UPPER_LIMIT - LOWER_LIMIT + 1][CHAR_PIXEL] =
 {
  {  /* Character space start */
@@ -445,7 +443,7 @@ i8 mapped_ch(i8 ch)
 
 /* Utils function end */
 
-term_texture* display_char_texture(i8 ch, struct term_rgba color, struct term_rgba fg)
+term_texture* display_char_texture(i8 ch, term_rgba color, term_rgba fg)
 {
  ch = mapped_ch(ch);
  if(!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
@@ -463,9 +461,9 @@ term_texture* display_char_texture(i8 ch, struct term_rgba color, struct term_rg
 
 term_texture* display_string_texture(
  const i8* str, u64 len,
- struct term_vec2* s,
- struct term_rgba color,
- struct term_rgba fg
+ term_vec2* s,
+ term_rgba color,
+ term_rgba fg
 )
 {
  u32 lines_count = 0, longest_line = 0;

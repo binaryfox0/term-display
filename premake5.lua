@@ -18,6 +18,11 @@ workspace "term-display"
   files { "src/*.c" }
   includedirs { "include" }
 
+  filter "system:windows"
+   removefiles { "src/term_priv_linux.c" }
+   filter "system:linux"
+   removefiles { "src/term_priv_win32.c" }
+
 function tests_project(name, lib, platform_libs)
  project(name)
   kind "ConsoleApp"
@@ -39,6 +44,6 @@ function tests_project(name, lib, platform_libs)
   end
 end
 
-tests_project("rgb-scrolling", { "m" }, {})
+tests_project("rgb_scrolling", { "m" }, {})
 tests_project("noise", {}, { ["windows"] = {"Bcrypt"} })
 tests_project("multiline-text", {}, {})

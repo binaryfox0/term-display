@@ -26,7 +26,7 @@ char* to_string(double number)
  return string;
 }
 
-term_texture* generate_noise(struct term_vec2 size)
+term_texture* generate_noise(term_vec2 size)
 {
  term_texture* out = texture_create(0, 3, size, 0, 0);
  u8* raw = texture_get_location(vec2_init(0,0), out);
@@ -65,7 +65,7 @@ int main()
  setvbuf(statics, 0, _IONBF, 0);
  double delta_time = 1.0; // Remember dont divide by 0
  u64 max_frame_count = 1;
- struct term_vec2 size = {0}; // Temporary
+ term_vec2 size = {0}; // Temporary
  while(display_is_running())
  {
   double start_frame = get_time();
@@ -82,7 +82,7 @@ int main()
   char* string = to_string(fps);
   fprintf(statics, "%s\n", string);
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texture, (struct term_pos){.x=-1.0f,.y=1.0f,}, TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
   free(string);
 
