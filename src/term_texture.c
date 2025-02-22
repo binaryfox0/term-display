@@ -234,7 +234,7 @@ u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct 
  float
   x_ratio = (float)(old_size.x - 1) / (new_size.x - 1),
   y_ratio = (float)(old_size.y - 1) / (new_size.y - 1);
- u8 *raw = (u8*)malloc(calculate_size(new_size, channel));
+ u8 *raw = (u8*)malloc(calculate_size(new_size, channel)), *start = raw;
  if(!raw) return 0;
 
  for (u32 row = 0; row < new_size.y; row++)
@@ -259,7 +259,7 @@ u8* resize_texture(const u8* old, u8 channel, struct term_vec2 old_size, struct 
     raw[0] = bilerp(old[i00+c], old[i10+c], old[i01+c], old[i11+c], tx, ty);
   }
  }
- return raw;
+ return start;
 }
 
 //https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716

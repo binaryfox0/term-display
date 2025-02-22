@@ -18,6 +18,7 @@ u32 pixel_count = 0; // width * height
 struct term_rgb clear_color = (struct term_rgb) { .r = 0, .g = 0, .b = 0 };
 u8 numeric_options[1] = {0};
 volatile u8 internal_failure = 0;
+volatile u8 __display_is_running = 0;
 /* Global variable end */
 
 /* Utlis function begin */
@@ -73,6 +74,8 @@ void resize_display(int signal)
  clear_screen(0);
 }
 
+void stop_display(int signal) { (void)signal; __display_is_running = 0; }
+
 u8 display_init()
 {
  if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
@@ -81,11 +84,12 @@ u8 display_init()
  if(internal_failure)
   return 1;
  printf("\x1b[?25l"); // Hide cursor
+ __display_is_running = 1;
  return
   set_handler(SIGWINCH, clear_screen) || // Remove resizing artifact
-  set_handler(SIGINT, display_free) ||
-  set_handler(SIGTERM, display_free) ||
-  set_handler(SIGQUIT, display_free);
+  set_handler(SIGINT, stop_display) ||
+  set_handler(SIGTERM, stop_display) ||
+  set_handler(SIGQUIT, stop_display);
 }
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
@@ -107,8 +111,7 @@ u8 display_option(enum display_settings_types type, u8 get, void* option)
  case display_size:
  {
   OPT_GET_CASE(struct term_vec2, term_size);
-  struct term_vec2* ptr = (struct term_vec2*)option;
-  term_size = vec2_init(ptr->x, ptr->y);
+  term_size = *(struct term_vec2*)option;
   return 0;
  }
  default: break;
@@ -173,9 +176,4 @@ void display_free(i32 nothing)
  // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
  // Technically, it can still failed, but return type is void and have undefined behaviour in the docs
  texture_free(display);
- if(nothing)
- {
-  set_handler(nothing, SIG_DFL); // Reset to default
-  raise(nothing);
- }
 }

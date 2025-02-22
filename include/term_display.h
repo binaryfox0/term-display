@@ -14,6 +14,10 @@ enum display_settings_types
 
 u8 display_init();
 u8 display_option(enum display_settings_types type, u8 get, void* option);
+// Event-related functions
+extern volatile u8 __display_is_running;
+static inline u8 display_is_running() { return __display_is_running; }
+
 // Graphics-related functions
 void display_set_color(struct term_rgba color);
 void display_copy_texture(

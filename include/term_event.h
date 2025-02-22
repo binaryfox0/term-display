@@ -1,0 +1,4 @@
+#ifndef TERMINAL_EVENT_HANDLING
+#define TERMINAL_EVENT_HANDLING
+
+#endif

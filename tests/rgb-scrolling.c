@@ -2,20 +2,15 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-#include "term_display.h"
-#include "term_font.h"
 #include <unistd.h>
 #include <string.h>
 
-#define M_PI 3.14159265358979323846
+#include "term_display.h"
+#include "term_font.h"
 
-// In seconds
-double get_time()
-{
- struct timespec ts;
- clock_gettime(CLOCK_MONOTONIC, &ts);
- return ts.tv_sec + ((double)ts.tv_nsec / 1000000000);
-}
+#include "test_utils.h"
+
+#define M_PI 3.14159265358979323846
 
 char* to_string(double number)
 {
@@ -45,11 +40,8 @@ int main()
  setvbuf(statics, 0, _IONBF, 0);
  double speed = 0.05, elapsed = 0.0;
  double delta_time = 1.0; // Remember dont divide by 0
- u64 max_frame_count = 50;
- double max_frame_time = 1.0 / 60; // 60 FPS
- for(unsigned long long i = 0; i < max_frame_count; i++)
+ while(display_is_running())
  {
-  max_frame_count++;
   double start_frame = get_time();
   display_set_color(to_rgba(calculate_rgb(elapsed)));
 /*  display_copy_texture(
@@ -68,8 +60,7 @@ int main()
   display_show();
   elapsed += speed;
 
-  /* FPS limiter start */
-  while((delta_time = get_time() - start_frame) < max_frame_time) {}
+  delta_time = get_time() - start_frame;
  }
  display_free(0);
  fclose(statics);

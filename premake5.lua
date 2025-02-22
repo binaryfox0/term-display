@@ -18,15 +18,27 @@ workspace "term-display"
   files { "src/*.c" }
   includedirs { "include" }
 
-function tests_project(name, lib)
+function tests_project(name, lib, platform_libs)
  project(name)
   kind "ConsoleApp"
   language "C"
   includedirs "include"
-  files { "tests/%{prj.name}.c" }
-  links { "term-display", lib }
+  files { "tests/%{prj.name}.c", "tests/test_utils.c" }
+  links { "term-display" }
+
+  if lib then
+   links(lib)
+  end
+
+  if platform_libs then
+   for platform, libs in pairs(platform_libs) do
+    filter { "system:" .. platform }
+     links(libs)
+   end
+   filter {}
+  end
 end
 
-tests_project("rgb-scrolling", { "m" })
-tests_project("noise", {})
-tests_project("multiline-text")
+tests_project("rgb-scrolling", { "m" }, {})
+tests_project("noise", {}, { ["windows"] = {"Bcrypt"} })
+tests_project("multiline-text", {}, {})

@@ -3,6 +3,10 @@
 
 #define EXPAND_RGBA(c) { (c).r, (c).g, (c).b, (c).a }
 
+#if defined(_WIN64) || defined(_WIN32)
+ #define TERMINAL_WINDOWS
+#endif
+
 typedef char i8;
 typedef unsigned char u8;
 typedef unsigned short u16;
