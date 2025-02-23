@@ -10,25 +10,13 @@ term_vec2 query_terminal_size()
  return vec2_init(0, 0);
 }
 
-DWORD orig_mode = 0;
-u8 disable_echo()
-{
- HANDLE h_in = 0;
- if((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
-  return 1;
- if(!GetConsoleMode(h_in, &orig_mode))
-  return 1;
- if(!SetConsoleMode(h_in, orig_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT)))
-  return 1;
- return 0;
-}
+u8 setup_kb() {}
+u8 restore_kb() {}
 
-u8 restore_state()
+void kbpoll_events(key_callback_func func)
 {
- HANDLE h_in = 0;
- if((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
-  return 1;
-if(!SetConsoleMode(h_in, orig_mode))
-  return 1;
- return 0;
+ if(_kbhit())
+ {
+  
+ }
 }

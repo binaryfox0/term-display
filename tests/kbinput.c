@@ -19,20 +19,30 @@ char* to_string(double number)
  return string;
 }
 
+FILE* statics = 0;
+void key_callback(int key, int mods, key_state state)
+{
+ fprintf(statics, "%02X, %d, %d", key, mods, state);
+ display_free();
+ exit(0);
+}
+
 int main()
 {
  u8 enable = 1;
  if(display_init())
   return 1;
  display_option(auto_resize, 0, &enable);
- FILE* statics = fopen("statics.txt", "w");
+ statics = fopen("statics.txt", "w");
  setvbuf(statics, 0, _IONBF, 0);
  double delta_time = 1.0; // Remember dont divide by 0
  term_vec2 size = {0}; // Temporary
  const char* text = "\rHello\nWorld!";
  u64 frame_count = 0;
+ display_set_key_callback(key_callback);
  while(display_is_running())
  {
+  display_poll_events();
   frame_count++;
   double start_frame = get_time();
  

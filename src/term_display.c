@@ -9,7 +9,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>
 
 #include "term_priv.h"
 
@@ -44,7 +43,7 @@ void clear_screen(int nothing)
 u8 set_handler(int type, void (*handler)(int))
 {
  struct sigaction sa;
- sa.sa_flags = 0;
+ sa.sa_flags = SA_SIGINFO;
  sigemptyset(&sa.sa_mask);
  sa.sa_handler = handler;
  return (sigaction(type, &sa, 0)!=0);
@@ -84,8 +83,7 @@ u8 display_init()
  __display_is_running = 1;
 #ifdef TERMINAL_WINDOWS
 #else
- fcntl(STDIN_FILENO, F_SETOWN, getpid());
- fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL, 0) | O_ASYNC);
+ if(setup_kb()) return 1;
 #endif
  return
   set_handler(SIGWINCH, clear_screen) || // Remove resizing artifact
@@ -121,32 +119,17 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  return 1;
 }
 
-key_callback private_key_callback = 0;
-void io_callback(int signal)
+key_callback_func private_key_callback = 0;
+void display_poll_events()
 {
- u8 ch = 0;
- int mods = 0;
- read(STDIN_FILENO, &ch, 1);
- if(ch == 0x1b)
- if(IN_RANGE(ch, 0x01, 0x1A)) // Ctrl + <key>
- {
-  ch += 64;
-  mods |= key_ctrl;
- }
- else if(IN_RANGE(ch, 0x61, 0x7A))
- {
-  ch -= 32;
-  mods |= key_shift;
- }
- private_key_callback(ch, mods, key_press);
+ kbpoll_events(private_key_callback);
 }
 
-void display_set_key_callback(key_callback callback)
+void display_set_key_callback(key_callback_func callback)
 {
 #ifdef TERMINAL_WINDOWS
 #else
  private_key_callback = callback;
- set_handler(SIGIO, io_callback);
 #endif
 }
 
@@ -198,13 +181,14 @@ u8 display_show()
  return 0;
 }
 
-void display_free(i32 nothing)
+void display_free()
 {
  // Show the cursor again
  // Reset color / graphics mode
  write(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
  fflush(stdout); // Flush remaining data
  clear_screen(0);
+ restore_state();
  // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
  // Technically, it can still failed, but return type is void and have undefined behaviour in the docs
  texture_free(display);

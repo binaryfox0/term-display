@@ -25,8 +25,10 @@ u8 display_option(display_settings_types type, u8 get, void* option);
 extern volatile u8 __display_is_running;
 static inline u8 display_is_running() { return __display_is_running; }
 
-typedef void (*key_callback)(int key, int mods, key_state actions);
-void display_set_key_callback(key_callback callback);
+void display_poll_events();
+
+typedef void (*key_callback_func)(int key, int mods, key_state actions);
+void display_set_key_callback(key_callback_func callback);
 
 // Graphics-related functions
 void display_set_color(term_rgba color);
@@ -36,7 +38,7 @@ void display_copy_texture(
  const enum texture_merge_mode mode
 );
 u8 display_show();
-void display_free(i32 nothing);
+void display_free();
 
 #endif
 

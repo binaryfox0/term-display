@@ -2,7 +2,7 @@
 #define TERMINAL_DEFINITION_H
 
 #define EXPAND_RGBA(c) { (c).r, (c).g, (c).b, (c).a }
-#define IN_RANGE(value, first, last) ((first) <= (value) || (value) <= (last))
+#define IN_RANGE(value, first, last) ((first) <= (value) && (value) <= (last))
 
 #if defined(_WIN64) || defined(_WIN32)
  #define TERMINAL_WINDOWS
