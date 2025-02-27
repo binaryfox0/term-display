@@ -201,8 +201,11 @@ void texture_merge(
  const u8 replace
 )
 {
-  if(!texture_a || !texture_b) return;
-  u8 cha = texture_a->channel, chb = texture_b->channel;
+ if(!texture_a || !texture_b) return;
+ if(
+   placement_pos.x > texture_a->size.x - texture_b->size.x ||
+   placement_pos.y > texture_a->size.y - texture_b->size.y) return;
+ u8 cha = texture_a->channel, chb = texture_b->channel;
  term_vec2 sa = texture_a->size, sb = texture_b->size;
  u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data, *old = 0;
 

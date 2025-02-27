@@ -14,7 +14,9 @@
 
 /* Global variable begin */
 term_texture* display = 0;
-term_vec2 term_size = (term_vec2) { .x = 0, .y = 0 }; // The terminal size
+term_vec2 size = (term_vec2) { .x = 0, .y = 0 },
+ term_size = (term_vec2) { .x = 0, .y = 0 }, // The terminal size
+ prev_size = (term_vec2) { .x = 0, .y = 0 };
 u32 pixel_count = 0; // width * height
 term_rgb clear_color = (term_rgb) { .r = 0, .g = 0, .b = 0 };
 u8 numeric_options[1] = {0};
@@ -63,8 +65,7 @@ static inline term_vec2 ndc_to_pos(term_pos pos)
 void resize_display(int signal)
 {
  (void)signal; // Disable unused paramater warning
- term_size = query_terminal_size();
- if((internal_failure = texture_resize_internal(display, term_size)))
+ if((internal_failure = texture_resize_internal(display, size)))
   return; // Uhhhh, how to continue processing without the display
  texture_fill(display, to_rgba(clear_color));
  clear_screen(0);
@@ -76,6 +77,7 @@ u8 display_init()
 {
  if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
   return 1; // It's output can't seen by user (aka piped)
+ size = query_terminal_size(); // Disable calling callback
  resize_display(0);
  if(internal_failure)
   return 1;
@@ -86,7 +88,6 @@ u8 display_init()
  if(setup_kb()) return 1;
 #endif
  return
-  set_handler(SIGWINCH, clear_screen) || // Remove resizing artifact
   set_handler(SIGINT, stop_display) ||
   set_handler(SIGTERM, stop_display) ||
   set_handler(SIGQUIT, stop_display);
@@ -101,16 +102,11 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  case auto_resize:
  {
   OPT_GET_CASE(u8, numeric_options[type]);
-  return set_handler(
-   SIGWINCH,
-   (numeric_options[type] = *(u8*)option) ?
-    resize_display :
-    SIG_DFL
-  );
+  numeric_options[type] = 1;
  }
  case display_size:
  {
-  OPT_GET_CASE(term_vec2, term_size);
+  OPT_GET_CASE(term_vec2, size);
   term_size = *(term_vec2*)option;
   return 0;
  }
@@ -119,18 +115,27 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  return 1;
 }
 
-key_callback_func private_key_callback = 0;
+// Default callback
+void default_key_callback(int keys, int mods, key_state state) {}
+void default_resize_callback(term_vec2 new_size) {}
+
+key_callback_func private_key_callback = default_key_callback;
+resize_callback_func private_resize_callback = default_resize_callback;
 void display_poll_events()
 {
  kbpoll_events(private_key_callback);
+ if(!compare_vec2((term_size = query_terminal_size()), prev_size))
+ {
+  private_resize_callback(term_size);
+  if(numeric_options[auto_resize]) { size = term_size; resize_display(0); }
+  else clear_screen(0);
+  prev_size = term_size;
+ }
 }
 
 void display_set_key_callback(key_callback_func callback)
 {
-#ifdef TERMINAL_WINDOWS
-#else
  private_key_callback = callback;
-#endif
 }
 
 void display_set_color(term_rgba color)
@@ -157,9 +162,9 @@ u8 display_show()
  printf("\x1b[H");
  u8* ref = texture_get_location(vec2_init(0,0), display);
  static u8 prev[3] = {0};
- for(u16 row = 0; row < term_size.y; row++)
+ for(u16 row = 0; row < size.y; row++)
  {
-  for(u16 col = 0; col < term_size.x; col++, ref += 3)
+  for(u16 col = 0; col < size.x; col++, ref += 3)
   {
    if(
     prev[0] != ref[0] ||
@@ -188,7 +193,7 @@ void display_free()
  write(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
  fflush(stdout); // Flush remaining data
  clear_screen(0);
- restore_state();
+ restore_kb();
  // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
  // Technically, it can still failed, but return type is void and have undefined behaviour in the docs
  texture_free(display);

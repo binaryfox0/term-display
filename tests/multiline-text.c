@@ -35,6 +35,8 @@ int main()
  {
   frame_count++;
   double start_frame = get_time();
+
+  display_poll_events();
  
   display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
 
@@ -55,7 +57,7 @@ int main()
 
   delta_time = get_time() - start_frame;
  }
- display_free(0);
+ display_free();
  fclose(statics);
  return 0;
 }

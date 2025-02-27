@@ -56,6 +56,8 @@ static inline term_vec2 vec2_init(u32 x, u32 y)
 {
  return (term_vec2) { .x = x, .y = y };
 }
+
+static inline u8 compare_vec2(term_vec2 a, term_vec2 b) { return a.x == b.x && a.y == b.y; }
 /* Structure initializer end */
 
 #endif

@@ -70,6 +70,8 @@ int main()
  {
   double start_frame = get_time();
 
+  display_poll_events();
+
   display_option(display_size, 1, &size);
   term_texture* noise = 0;
   if((noise = generate_noise(size)))
@@ -90,7 +92,7 @@ int main()
 
   delta_time = get_time() - start_frame;
  }
- display_free(0);
+ display_free();
  fclose(statics);
  return 0;
 }

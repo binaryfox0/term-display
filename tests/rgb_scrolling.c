@@ -43,6 +43,9 @@ int main()
  while(display_is_running())
  {
   double start_frame = get_time();
+
+  display_poll_events();
+
   display_set_color(to_rgba(calculate_rgb(elapsed)));
 /*  display_copy_texture(
    (u8*)&texture_Digit[0], 4, (term_vec2){.x = 3, .y = 5}, (term_pos){.x = -1.0f, .y = 1.0f});*/
@@ -62,7 +65,7 @@ int main()
 
   delta_time = get_time() - start_frame;
  }
- display_free(0);
+ display_free();
  fclose(statics);
  return 0;
 }
