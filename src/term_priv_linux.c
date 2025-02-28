@@ -40,12 +40,40 @@ u8 restore_kb()
 
 static inline u8 handle_single_byte(int *ch, int *mods)
 {
- if(IN_RANGE(*ch, 0x01, 0x1A)) { *ch += 64; *mods |= key_ctrl; return 0; }
- if(IN_RANGE(*ch, 'A', 'Z')
- ) { *mods |= key_shift; return 0; }
- if(IN_RANGE(*ch, 'a', 'z')) { *ch -= 32; return 0; }
- if(IN_RANGE(*ch, '0', '9') return 0;
- return 1;
+ switch(*ch)
+ {
+  case '\0': { *ch = term_key_grave_accent; *mods |= key_ctrl; break; }
+  case '!':
+  case '#':
+  case '$':
+  case '%':
+  {
+   *ch += 16;
+   *mods |= key_shift;
+   break;
+  }
+  case '+': { *ch = term_key_equal; *mods |= key_shift; break;}
+  case '@': { *ch = term_key_2; *mods |= key_shift; break; }
+  case '^': { *ch = term_key_6; *mods |= key_shift; break; }
+  case '&':
+  case '(': { *ch += 17; *mods |= key_shift; break; }
+  case '*': { *ch = term_key_8; *mods |= key_shift; break; }
+  case ')': { *ch = term_key_0; *mods |= key_shift; break; }
+  case '{':
+  case '|':
+  case '}': { *ch -= 32; *mods |=key_shift; break; }
+  case 0x7f: { *ch = term_key_backspace; break; }
+  default:
+  {
+   if(IN_RANGE(*ch, 0x01, 0x1D)) { *ch += 64; *mods |= key_ctrl; break; }
+   if(IN_RANGE(*ch, 'A', 'Z')) { *mods |= key_shift; break; }
+   if(IN_RANGE(*ch, 'a', 'z')) { *ch -= 32; break; }
+   if(IN_RANGE(*ch, ' ', '~')) break; // Remaining characters
+
+   return 1;
+  }
+ }
+ return 0;
 }
 
 // Arrow key + Home/End

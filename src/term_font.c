@@ -4,365 +4,86 @@
 #include <string.h>
 
 // Macro (cuz c don't allow using const in size)
-#define LOWER_LIMIT 0x20 // Exclamation mark
-#define UPPER_LIMIT 0x5A // Letter Z
+#define ATLAS_SIZE 69
+#define LOWER_LIMIT ' '
+#define UPPER_LIMIT '~'
 #define CHAR_WIDTH 3
 #define CHAR_HEIGHT 5
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
-u8 texture_atlas[UPPER_LIMIT - LOWER_LIMIT + 1][CHAR_PIXEL] =
+u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] =
 {
- {  /* Character space start */
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0  //
- }, /* character space end */
- {  /* Character exclamation mark start */
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 0, 0, //
-  0, 1, 0  //   ##
- }, /* Character exclamation mark end */
- {  /* Character quotation mark start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0  //
- }, /* Character quotation mark end */
- {  /* Character number sign start */
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1  // ##  ##
- }, /* Character number sign end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character asterisk start */
-  1, 0, 1, // ##  ##
-  0, 1, 0, //   ##
-  1, 1, 1, // ######
-  0, 1, 0, //   ##
-  1, 0, 1  // ##  ##
- }, /* Character asterisk end */
- {  /* Character plus sign start */
-  0, 0, 0, //
-  0, 1, 0, //   ##
-  1, 1, 1, // ######
-  0, 1, 0, //   ##
-  0, 0, 0  //
- }, /* Character plus sign end */
- {  /* Character comma start */
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 1, 0, //   ##
-  1, 0, 0  // ##
- }, /* Character comma end */
- {  /* Character hyphen start */
-  0, 0, 0, //
-  0, 0, 0, //
-  1, 1, 1, // ######
-  0, 0, 0, //
-  0, 0, 0  //
- }, /* Character hyphen end */
- {  /* Character period start */
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 0, 0, //
-  0, 1, 0  //   ##
- }, /* Character period end */
- {  /* Character slash start */
-  0, 0, 1, //     ##
-  0, 0, 1, //     ##
-  0, 1, 0, //   ##
-  1, 0, 0, // ##
-  1, 0, 0  // ##
- }, /* Character slash end */
- {  /* Digit zero start */
-  1, 1, 1, // ######
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1  // ######
- }, /* Digit zero end */
- {  /* Digit one start */
-  0, 1, 0, //   ##
-  1, 1, 0, // ####
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0  //   ##
- }, /* Digit one end */
- {  /* Digit two start */
-  1, 1, 0, // ####
-  0, 0, 1, //     ##
-  0, 1, 0, //   ##
-  1, 0, 0, // ##
-  1, 1, 1  // ######
- }, /* Digit two end */
- {  /* Digit three start */
-  1, 1, 0, // ####
-  0, 0, 1, //     ##
-  0, 1, 0, //   ##
-  0, 0, 1, //     ##
-  1, 1, 0  // ####
- }, /* Digit three end */
- {  /* Digit four start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  0, 0, 1, //     ##
-  0, 0, 1  //     ##
- }, /* Digit four end */
- {  /* Digita five start */
-  1, 1, 1, // ######
-  1, 0, 0, // ##
-  1, 1, 0, // ####
-  0, 0, 1, //     ##
-  1, 1, 0  // ####
- }, /* Digit five end */
- {  /* Digit six start */
-  0, 1, 1, //   ####
-  1, 0, 0, // ##
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Digit six end */
- {  /* Digit seven start */
-  1, 1, 1, // ######
-  0, 0, 1, //     ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0  //   ##
- }, /* Digit seven end */
- {  /* Digit eight start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Digit eight end */
- {  /* Digit nine start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  0, 1, 1, //   ####
-  0, 0, 1, //     ##
-  1, 1, 0, // ####
- }, /* Digit nine end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Character start */
- }, /* Character end */
- {  /* Letter A start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1, // ##  ##
-  1, 0, 1  // ##  ##
- }, /* Letter A end */
- {  /* Letter B start */
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 1, 0  // ####
- }, /* Letter B end */
- {  /* Letter C start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  1, 0, 0, // ##
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Letter C end */
- {  /* Letter D start */
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 0  // ####
- }, /* Letter D end */
- {  /* Letter E start */
-  1, 1, 1, // ######
-  1, 0, 0, // ##
-  1, 1, 1, // ######
-  1, 0, 0, // ##
-  1, 1, 1  // ######
- }, /* Letter E end */
- {  /* Letter F start */
-  1, 1, 1, // ######
-  1, 0, 0, // ##
-  1, 1, 1, // ######
-  1, 0, 0, // ##
-  1, 0, 0  // ##
- }, /* Letter F end */
- {  /* Letter G start */
-  0, 1, 1, //   ####
-  1, 0, 0, // ##
-  1, 0, 0, // ##
-  1, 0, 1, // ##  ##
-  0, 1, 1  //   ####
- }, /* Letter G end */
- {  /* Letter H start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1, // ##  ##
-  1, 0, 1  // ##  ##
- }, /* Letter H end */
- {  /* Letter I start */
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0  //   ##
- }, /* Letter I end */
- {  /* Letter J start */
-  0, 0, 1, //     ##
-  0, 0, 1, //     ##
-  0, 0, 1, //     ##
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Letter J end */
- {  /* Letter K start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 0, 1  // ##  ##
- }, /* Letter K end */
- {  /* Letter L start */
-  1, 0, 0, // ##
-  1, 0, 0, // ##
-  1, 0, 0, // ##
-  1, 0, 0, // ##
-  1, 1, 1  // ######
- }, /* Letter L end */
- {  /* Letter M start */
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
- }, /* Letter M end */
- {  /* Letter N start */
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1  // ##  ##
- }, /* Letter N end */
- {  /* Letter O start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Letter O end */
- {  /* Letter P start */
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 1, 0, // ####
-  1, 0, 0, // ##
-  1, 0, 0, // ##
- }, /* Letter P end */
- {  /* Letter Q start */
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  0, 1, 1  //   ####
- }, /* Letter Q end */
- {  /* Letter R start */
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 1, 0, // ####
-  1, 0, 1, // ##  ##
-  1, 0, 1  // ##  ##
- }, /* Letter R end */
- {  /* Letter S start */
-  0, 1, 1, //   ####
-  1, 0, 0, // ##
-  0, 1, 0, //   ##
-  0, 0, 1, //     ##
-  1, 1, 0  // ####
- }, /* Letter S end */
- {  /* Letter T start */
-  1, 1, 1, // ######
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0  //   ##
- }, /* Letter T end */
- {  /* Letter U start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1  // ######
- }, /* Letter U end */
- {  /* Letter V start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  0, 1, 0  //   ##
- }, /* Letter V end */
- {  /* Letter W start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  1, 1, 1, // ######
-  1, 0, 1  // ##  ##
- }, /* Letter W end */
- {  /* Letter X start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  0, 1, 0, //   ##
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
- }, /* Letter X end */
- {  /* Letter Y start */
-  1, 0, 1, // ##  ##
-  1, 0, 1, // ##  ##
-  0, 1, 0, //   ##
-  0, 1, 0, //   ##
-  0, 1, 0  //   ##
- }, /* Letter Y end */
- {  /* Letter Z start */
-  1, 1, 1, // ######
-  0, 0, 1, //     ##
-  0, 1, 0, //   ##
-  1, 0, 0, // ##
-  1, 1, 1  // ######
- }, /* Letter Z end */
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Space
+ { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 }, // Exclamation mark
+ { 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Quotation mark
+ { 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1 }, // Number sign
+ { 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0 }, // Dollar sign
+ { 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1 }, // Percent sign
+ { 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1 }, // Ampersand
+ { 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Astrophobe
+ { 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 }, // Left parenthesis
+ { 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0 }, // Right parenthesis
+ { 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1 }, // Asterisk
+ { 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0 }, // Plus sign
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0 }, // Comma
+ { 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0 }, // Hyphen
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 }, // Period
+ { 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0 }, // Slash
+ { 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 }, // Digit 0
+ { 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 }, // Digit 1
+ { 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 }, // Digit 2
+ { 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0 }, // Digit 3
+ { 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1 }, // Digit 4
+ { 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0 }, // Digit 5
+ { 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0 }, // Digit 6
+ { 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0 }, // Digit 7
+ { 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 }, // Digit 8
+ { 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0 }, // Digit 9
+ { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 }, // Colon
+ { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0 }, // Semicolon
+ { 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 }, // Less-than
+ { 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0 }, // Equals-to
+ { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0 }, // Greater-than
+ { 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0 }, // Question mark
+ { 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1 }, // At sign
+ { 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1 }, // Letter A
+ { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0 }, // Letter B
+ { 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0 }, // Letter C
+ { 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0 }, // Letter D
+ { 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1 }, // Letter E
+ { 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0 }, // Letter F
+ { 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1 }, // Letter G
+ { 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1 }, // Letter H
+ { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 }, // Letter I
+ { 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0 }, // Letter J
+ { 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1 }, // Letter K
+ { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1 }, // Letter L
+ { 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 }, // Letter M
+ { 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 }, // Letter N
+ { 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0 }, // Letter O
+ { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0 }, // Letter P
+ { 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1 }, // Letter Q
+ { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1 }, // Letter R
+ { 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0 }, // Letter S
+ { 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 }, // Letter T
+ { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 }, // Letter U
+ { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0 }, // Letter V
+ { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1 }, // Letter W
+ { 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1 }, // Letter X
+ { 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0 }, // Letter Y
+ { 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 }, // Letter Z
+ { 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0 }, // Left square bracket
+ { 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 }, // Backslash
+ { 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1 }, // Right square bracket
+ { 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Caret
+ { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 }, // Underscore 
+ { 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Grave accent
+ { 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1 }, // Left curly brace
+ { 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 }, // Vertical bar
+ { 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0 }, // Right curly brace
+ { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // Tilde 
 };
 
-/* Utils function start */
 u8 calculate_pad(u8 ch)
 {
  return (ch ? ch - 1 : 0);
@@ -436,12 +157,10 @@ u8 query_newline(
 
 i8 mapped_ch(i8 ch)
 {
- if(IN_RANGE(ch, 0x61, 0x7A))
-  return ch - 0x61 + 0x41; // To uppercase (how this font mapped)
+ if(IN_RANGE(ch, 'a', '~'))
+  return ch - 'a' + 'A'; // To uppercase (how this font mapped)
  return ch;
 }
-
-/* Utils function end */
 
 term_texture* display_char_texture(i8 ch, term_rgba color, term_rgba fg)
 {

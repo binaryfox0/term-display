@@ -21,6 +21,19 @@ typedef enum {
 
 typedef enum {
  term_key_space = 32,
+ term_key_astrophe = 39,
+ term_key_minus = 45,
+ term_key_0 = 48,
+ term_key_1,
+ term_key_2,
+ term_key_3,
+ term_key_4,
+ term_key_5,
+ term_key_6,
+ term_key_7,
+ term_key_8,
+ term_key_9,
+ term_key_equal = 61,
  term_key_a = 65,
  term_key_b,
  term_key_c,
@@ -47,10 +60,15 @@ typedef enum {
  term_key_x,
  term_key_y,
  term_key_z,
+ term_key_left_bracket = 91, /*[*/
+ term_key_backslash, /*\*/
+ term_key_right_bracket, /*]*/
+ term_key_grave_accent = 96, /*`*/
  term_key_escape = 256,
- term_key_enter = 257,
- term_key_backspace = 259,
- term_key_insert = 260,
+ term_key_enter,
+ term_key_tab,
+ term_key_backspace,
+ term_key_insert,
  term_key_delete,
  term_key_right,
  term_key_left,

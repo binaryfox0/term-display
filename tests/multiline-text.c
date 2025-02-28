@@ -10,15 +10,6 @@
 
 #include "test_utils.h"
 
-char* to_string(double number)
-{
- int len = snprintf(0, 0, "%f", number);
- char* string = (char*)malloc(len+1);
- string[len] = 0;
- snprintf(string, len+1, "%f", number);
- return string;
-}
-
 int main()
 {
  u8 enable = 1;
@@ -26,6 +17,7 @@ int main()
   return 1;
  display_option(auto_resize, 0, &enable);
  FILE* statics = fopen("statics.txt", "w");
+ if(!statics) return 0;
  setvbuf(statics, 0, _IONBF, 0);
  double delta_time = 1.0; // Remember dont divide by 0
  term_vec2 size = {0}; // Temporary
@@ -41,7 +33,7 @@ int main()
   display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
 
   double fps = 1.0 / delta_time;
-  char* string = to_string(fps);
+  char* string = to_string("%f", fps);
   fprintf(statics, "%s\n", string);
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
   display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
@@ -50,9 +42,7 @@ int main()
   texture = display_string_texture(text, strlen(text), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,127));
   display_copy_texture(texture, pos_init(-1.0f, 0.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
- /*
-  texture = display_char_texture('d', rgba_init(255,255,255,255), rgba_init(0,0,0,255));
-  display_copy_texture(texture, 4, vec2_init(3,5), pos_init(-1.0f, 0.0f));*/
+
   display_show();
 
   delta_time = get_time() - start_frame;
