@@ -3,7 +3,7 @@
 
 #include "term_def.h"
 
-#define LOG_INTERVAL 0.5
+#define LOG_INTERVAL 0.1
 
 double get_time();
 char* to_string(const char* format, ...);

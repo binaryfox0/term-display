@@ -18,17 +18,20 @@ int counter = 0;
 void key_callback(int key, int mods, key_state state)
 {
  memset(key_pressed, 0, 48);
+ static const struct { int mod; const char* text; } mods_lookup[] =
+ {
+  { key_ctrl, "Ctrl + " },
+  { key_alt,  "Alt + " },
+  { key_shift,"Shift + " }
+ };
  int index = 0;
- if(mods & key_ctrl)
- {
-  memcpy(&key_pressed[index], "Ctrl + ", 7);
-  index += 7;
- }
- if(mods & key_shift)
- {
-  memcpy(&key_pressed[index], "Shift + ", 8);
-  index += 8;
- }
+ for(int i = 0; i < sizeof(mods_lookup) / sizeof(mods_lookup[0]); i++)
+  if(mods & mods_lookup[i].mod)
+  {
+   int len = strlen(mods_lookup[i].text);
+   memcpy(&key_pressed[index], mods_lookup[i].text, len);
+   index += len;
+  }
  if(IN_RANGE(key, term_key_astrophe, term_key_grave_accent))
  {
   key_pressed[index] = key;
@@ -59,8 +62,6 @@ int main()
  {
   frame_count++;
   double start_frame = get_time();
-  delta_time = start_frame - last_frame;
-  last_frame = start_frame;
   double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
   display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
@@ -74,6 +75,14 @@ int main()
    display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
    texture_free(texture);
    
+   if(start_frame - last_log >= LOG_INTERVAL)
+   {
+    char* timestamp = to_timestamp(start_frame - program_start), *sf = to_timestamp(start_frame), *ll = to_timestamp(last_log);
+    fprintf(statics, "%s %s %s\n", timestamp, sf, ll);
+    free(timestamp); free(sf); free(ll);
+    last_log = get_time();
+   }
+
    free(string);
   }
   // The key pressed string
@@ -82,6 +91,8 @@ int main()
   texture_free(texture);
 
   display_show();
+
+  delta_time = get_time() - start_frame;
  }
  display_free();
  fclose(statics);
