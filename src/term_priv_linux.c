@@ -12,7 +12,7 @@ term_vec2 query_terminal_size()
 {
  struct winsize ws;
  if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
-  return vec2_init(ws.ws_col/2, ws.ws_row);
+  return vec2_init(ws.ws_col, ws.ws_row);
  return vec2_init(0, 0);
 }
 
@@ -120,9 +120,16 @@ void kbpoll_events(key_callback_func func)
     }
     case 3:
     {
-     getch_chk(0x5b);
+     _getch(bytes);
      _getch(ch);
-     if(handle_nav_key(&ch)) return;
+     if(bytes == '[') { if(handle_nav_key(&ch)) return; }
+     else if(bytes == 'O')
+     {
+      ch = ch - 'P' + term_key_f1;
+      if(ch < term_key_f1 || ch > term_key_f4)
+       return;
+     }
+     else return;
      break;
     }
     case 4: // PGUP/PGDN

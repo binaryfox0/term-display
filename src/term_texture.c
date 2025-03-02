@@ -85,7 +85,7 @@ term_texture* texture_create(
 )
 {
  if(
-  !IN_RANGE(channel, 1, 4) ||
+  OUT_RANGE(channel, 1, 4) ||
   !size.x || !size.y
  ) return 0;
  term_texture* out = 0;

@@ -18,27 +18,27 @@ term_vec2 size = (term_vec2) { .x = 0, .y = 0 },
  term_size = (term_vec2) { .x = 0, .y = 0 }, // The terminal size
  prev_size = (term_vec2) { .x = 0, .y = 0 };
 u32 pixel_count = 0; // width * height
-term_rgb clear_color = (term_rgb) { .r = 0, .g = 0, .b = 0 };
-u8 numeric_options[1] = {0};
+term_rgb clear_color = (term_rgb) { .r = 0, .g = 0, .b = 0 },
+ default_background = (term_rgb) { .r = 0, .g = 0, .b = 0 };
 volatile u8 internal_failure = 0;
 volatile u8 __display_is_running = 0;
+u8 numeric_options[3] =
+{
+ 0,
+ 2,
+ 1
+};
 /* Global variable end */
 
 /* Utlis function begin */
-
-
-
 // https://stackoverflow.com/questions/23369503/get-size-of-terminal-window-rows-columns
-void clear_screen(int nothing)
+static inline void clear_screen()
 {
- (void)nothing; // Just for plugging into sa_handler
- write(
-  STDOUT_FILENO,
+ printf(
   "\x1b[0m"  // Reset colors mode
   "\x1b[3J"  // Clear saved line (scrollbuffer)
   "\x1b[H"   // To position 0,0
-  "\x1b[2J", // Clear entire screen
-  16
+  "\x1b[2J" // Clear entire screen
  );
 }
 
@@ -62,13 +62,14 @@ static inline term_vec2 ndc_to_pos(term_pos pos)
 
 /* Utils function end */
 
-void resize_display(int signal)
+
+void resize_display()
 {
- (void)signal; // Disable unused paramater warning
+ size = vec2_init(size.x / numeric_options[pixel_width], size.y / numeric_options[pixel_height]);
  if((internal_failure = texture_resize_internal(display, size)))
   return; // Uhhhh, how to continue processing without the display
  texture_fill(display, to_rgba(clear_color));
- clear_screen(0);
+ clear_screen();
 }
 
 void stop_display(int signal) { (void)signal; __display_is_running = 0; }
@@ -77,8 +78,8 @@ u8 display_init()
 {
  if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
   return 1; // It's output can't seen by user (aka piped)
- size = query_terminal_size(); // Disable calling callback
- resize_display(0);
+ size = query_terminal_size(); // Disable calling callback on the first time
+ resize_display();
  if(internal_failure)
   return 1;
  printf("\x1b[?25l"); // Hide cursor
@@ -94,25 +95,29 @@ u8 display_init()
 }
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
-
+#define OPT_SET_GET(inside, type) OPT_GET_CASE(type, (inside)); (inside) = *(type*)option
 u8 display_option(display_settings_types type, u8 get, void* option)
 {
  switch(type)
  {
- case auto_resize:
+ case auto_resize: { OPT_SET_GET(numeric_options[type], u8); break; }
+ case pixel_width:
+ case pixel_height:
  {
   OPT_GET_CASE(u8, numeric_options[type]);
-  numeric_options[type] = 1;
+  u8 new_value = *(u8*)option;
+  if(type == pixel_width)
+   size.x = size.x * numeric_options[pixel_width] / new_value;
+  else
+   size.y = size.y * numeric_options[pixel_height] / new_value;
+  numeric_options[type] = new_value;
+  resize_display();
+  break;
  }
- case display_size:
- {
-  OPT_GET_CASE(term_vec2, size);
-  term_size = *(term_vec2*)option;
-  return 0;
+ case display_size:{ OPT_SET_GET(size, term_vec2); break; }
+ default: return 1;
  }
- default: break;
- }
- return 1;
+ return 0;
 }
 
 // Default callback
@@ -127,16 +132,14 @@ void display_poll_events()
  if(!compare_vec2((term_size = query_terminal_size()), prev_size))
  {
   private_resize_callback(term_size);
-  if(numeric_options[auto_resize]) { size = term_size; resize_display(0); }
-  else clear_screen(0);
+  if(numeric_options[auto_resize]) { size = term_size; resize_display(); }
+  else clear_screen();
   prev_size = term_size;
  }
 }
 
-void display_set_key_callback(key_callback_func callback)
-{
- private_key_callback = callback;
-}
+void display_set_key_callback(key_callback_func callback) { private_key_callback = callback; }
+void display_set_resize_callback(resize_callback_func callback) { private_resize_callback = callback; }
 
 void display_set_color(term_rgba color)
 {
@@ -179,7 +182,7 @@ u8 display_show()
     );
     memcpy(prev, ref, 3);
    }
-   printf("  ");
+   printf("%*s", numeric_options[pixel_width], "");
   }
   printf("\x1b[1E");
  }

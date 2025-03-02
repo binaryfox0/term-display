@@ -6,8 +6,11 @@
 
 typedef enum
 {
- // Boolean-related settings
+ // Numeric settings
  auto_resize = 0,
+ pixel_width,
+ pixel_height,
+ display_channel,
  // Other settings
  display_size
 } display_settings_types;

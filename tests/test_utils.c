@@ -16,10 +16,34 @@
 #else
  #include <time.h>
  double get_time() {
+ #ifdef CLOCK_MONOTONIC
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
+  return ts.tv_sec + (double)ts.tv_nsec / 1e9;
+ #else
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec + (double)tv.tv_usec / 1e6;
+ #endif
  }
+#endif
+
+#ifdef TESTS_LOGGING
+double program_start = 0;
+FILE* file = 0;
+u8 start_logging(const char* filename)
+{
+ if(!file = fopen(filename, "w")) return 1;
+ if(setvbuf(file, _IONBF, 0) != 0)
+ {
+  fclose(file);
+  return 1;
+ }
+ program_start = get_time();
+ return 0;
+}
+
+u8 stop_logging() { return fclose(file) == EOF; }
 #endif
 
 char* to_string(const char* format, ...)
@@ -40,5 +64,5 @@ char* to_string(const char* format, ...)
 char* to_timestamp(double time)
 {
  // Format: ...mm:ss.msx6
- return to_string("%d:%d.%d", (u32)time / 60, (u32)time % 60, (u32)(time * 1000000) % 1000000);
+ return to_string("%d:%d.%06d", (u32)time / 60, (u32)time % 60, (u32)(time * 1000000) % 1000000);
 }

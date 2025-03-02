@@ -6,7 +6,7 @@ term_vec2 query_terminal_size()
 { 
  CONSOLE_SCREEN_BUFFER_INFO csbi;
  if(GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),&csbi))
-  return vec2_init(csbi.dwSize.X / 2, csbi.dwSize.Y);
+  return vec2_init(csbi.dwSize.X, csbi.dwSize.Y);
  return vec2_init(0, 0);
 }
 
