@@ -8,7 +8,6 @@
 #include "term_display.h"
 #include "term_font.h"
 
-#define TESTS_LOGGING
 #include "test_utils.h"
 
 char key_pressed[48] = "No key is pressed";
@@ -71,41 +70,29 @@ int main()
  if(display_init())
   return 1;
  display_option(auto_resize, 0, &enable);
- start_logging("statics.txt");
- term_vec2 size = {0}; // Temporary
- u64 frame_count = 0;
+ if(start_logging("statics.txt")) return 0;
  display_set_key_callback(key_callback);
 
+ u64 frame_count = 0;
  term_texture* texture = 0;
- double delta_time = 0.0;
+ term_vec2 size = {0};
  const double program_start = get_time();
- double last_log = get_time();
+ double delta_time = 1.0, last_log = get_time();
  while(display_is_running())
  {
   frame_count++;
   double start_frame = get_time();
   double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
  
-
   display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
 
   display_poll_events();
 
   char* string = to_string("%f", fps);
-  if(string)
-  {
-   texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-   display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
-   texture_free(texture);
-   
-   if(start_frame - last_log >= LOG_INTERVAL)
-   {
-    write_log("FPS: %s", string);
-    last_log = get_time();
-   }
+  texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
+  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
+  texture_free(texture);
 
-   free(string);
-  }
   // The key pressed string
   texture = display_string_texture(key_pressed, strlen(key_pressed), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
   display_copy_texture(texture, pos_init(-1.0f, 0.0f), TEXTURE_MERGE_CROP);
@@ -114,6 +101,12 @@ int main()
   display_show();
 
   delta_time = get_time() - start_frame;
+  if(start_frame - last_log >= LOG_INTERVAL)
+  {
+   write_log("FPS: %s", string);
+   last_log = get_time();
+  }
+  free(string);
  }
  display_free();
  stop_logging();

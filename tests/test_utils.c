@@ -62,11 +62,13 @@ u8 stop_logging() { return fclose(file) == EOF; }
 
 char* to_string_v(const char* format, va_list args)
 {
+ va_list copy;
+ va_copy(copy, args);
  int len = vsnprintf(0, 0, format, args);
  if(len < 0) return 0;
  char* out = 0;
  if(!(out = (char*)malloc(len + 1))) return 0;
- vsnprintf(out, len + 1, format, args);
+ vsnprintf(out, len + 1, format, copy);
  return out;
 }
 

@@ -185,6 +185,7 @@ term_texture* display_string_texture(
  term_rgba fg
 )
 {
+ if(!str || !len) return 0;
  u32 lines_count = 0, longest_line = 0;
  u64* lines_length = 0; // Filling gaps
  query_newline(str, len, &lines_length, &lines_count, &longest_line);

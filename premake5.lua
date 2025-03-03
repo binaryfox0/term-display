@@ -46,5 +46,5 @@ end
 
 tests_project("rgb_scrolling", { "m" }, {})
 tests_project("noise", {}, { ["windows"] = {"Bcrypt"} })
-tests_project("multiline-text", {}, {})
+tests_project("multiline_text", {}, {})
 tests_project("kbinput", {}, {})
