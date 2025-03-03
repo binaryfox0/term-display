@@ -37,7 +37,6 @@ static const char* fkey_name[12] =
  "F12"
 };
 
-FILE* statics = 0;
 term_pos object_pos = (term_pos) { .x = 0.0f, .y = 0.0f };
 int counter = 0;
 void key_callback(int key, int mods, key_state state)
@@ -80,12 +79,13 @@ int main()
  term_texture* texture = 0;
  double delta_time = 0.0;
  const double program_start = get_time();
- double last_frame = get_time(), last_log = get_time();
+ double last_log = get_time();
  while(display_is_running())
  {
   frame_count++;
   double start_frame = get_time();
   double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
+ 
 
   display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
 
@@ -100,12 +100,7 @@ int main()
    
    if(start_frame - last_log >= LOG_INTERVAL)
    {
-    char* timestamp = to_timestamp(start_frame - program_start);
-    if(timestamp)
-    {
-     fprintf(statics, "[%s]: FPS: %s\n", timestamp, string);
-     free(timestamp);
-    }
+    write_log("FPS: %s", string);
     last_log = get_time();
    }
 

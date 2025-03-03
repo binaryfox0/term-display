@@ -3,8 +3,11 @@
 
 #include "term_def.h"
 
+#define TESTS_LOGGING
+
 #ifdef TESTS_LOGGING
 u8 start_logging(const char* filename);
+void write_log(const char* format, ...);
 u8 stop_logging();
 #else
  #define start_logging() 0
