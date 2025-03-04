@@ -9,6 +9,11 @@
  #define TERMINAL_WINDOWS
 #endif
 
+//https://stackoverflow.com/a/7063372/19703526
+#if defined(unix) || defined(__unix__) || defined(__unix)
+ #define TERMINAL_UNIX
+#endif
+
 typedef char i8;
 typedef unsigned char u8;
 typedef unsigned short u16;

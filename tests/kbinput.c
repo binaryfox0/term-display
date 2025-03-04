@@ -36,8 +36,6 @@ static const char* fkey_name[12] =
  "F12"
 };
 
-term_pos object_pos = (term_pos) { .x = 0.0f, .y = 0.0f };
-int counter = 0;
 void key_callback(int key, int mods, key_state state)
 {
  memset(key_pressed, 0, 48);
