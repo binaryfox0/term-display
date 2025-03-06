@@ -30,32 +30,31 @@ function tests_project(name, config)
   includedirs "include"
   files { "tests/%{prj.name}.c", "tests/test_utils.c" }
   links { "term-display" }
-
-  if config.libs then
-   links(libs)
-  end
-
-  if config.platform_libs then
-   for platform, libs in pairs(platform_libs) do
-    filter { "system:" .. platform }
-     links(libs)
+  if config then
+   if config.libs then
+    links(config.libs)
    end
-   filter {}
-  end
 
-  if config.include_dirs then
-   for dirs in config.include_dirs do
-    includedirs(dirs)
+   if config.platform_libs then
+    for platform, libs in pairs(config.platform_libs) do
+     filter { "system:" .. platform }
+      links(libs)
+    end
+    filter {}
    end
+
+    if config.include_dirs then
+     includedirs(config.include_dirs)
+    end
   end
 end
 
 tests_project("rgb_scrolling", { libs={"m"}})
-tests_project("noise", { platform_libs={windows={"Bcrypt"}}})
+tests_project("noise", { platform_libs={["windows"]={"Bcrypt"}}})
 tests_project("multiline_text")
 tests_project("kbinput")
 if os.isdir("tests/deps/stb") then
- tests_project("image_display", {include_dirs={"tests/deps/stb"}})
+ tests_project("image_display", {include_dirs={"tests/deps/stb"}, libs={"m"}})
 else
  print("Skip building image_display")
 end
