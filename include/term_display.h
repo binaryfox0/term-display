@@ -36,6 +36,7 @@ typedef enum {
  term_key_7,
  term_key_8,
  term_key_9,
+ term_key_semicolon = 59,
  term_key_equal = 61,
  term_key_a = 65,
  term_key_b,

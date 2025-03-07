@@ -11,7 +11,10 @@ term_vec2 query_terminal_size()
  return vec2_init(0, 0);
 }
 
-u8 setup_env() {}
+u8 setup_env(void* stop_handler)
+{
+ return !SetConsoleCtrlHandler((BOOL (*)(DWORD))stop_handler, 1);
+}
 u8 restore_env() {}
 
 void kbpoll_events(key_callback_func func)

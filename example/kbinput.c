@@ -56,6 +56,18 @@ void key_callback(int key, int mods, key_state state)
   const char* key_name = fkey_name[key - term_key_f1];
   memcpy(&key_pressed[index], key_name, strlen(key_name));
   index += strlen(key_name);
+ } else if(key == term_key_space)
+ {
+  memcpy(&key_pressed[index], "Space", 5);
+  index += 5;
+ } else if(key == term_key_backspace)
+ {
+  memcpy(&key_pressed[index], "Backspace", 9);
+  index += 9;
+ } else if(key == term_key_escape)
+ {
+  memcpy(&key_pressed[index], "Esc", 3);
+  index += 3;
  }
 
  memcpy(&key_pressed[index], " is pressed.", 13);

@@ -33,7 +33,7 @@ u8 set_handler(int type, void (*handler)(int))
 
 struct termios old, cur;
 struct pollfd pfd;
-u8 setup_env(void (*stop_handler)(int))
+u8 setup_env(void *stop_handler)
 {
  if(tcgetattr(STDIN_FILENO, &old) == -1)
   return 1;
@@ -41,10 +41,11 @@ u8 setup_env(void (*stop_handler)(int))
  cur.c_lflag &= ~(ICANON | ECHO);
  if(tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
   return 1;
+ void (*handler)(int) = (void (*)(int))stop_handler;
  if(
-  set_handler(SIGINT, stop_handler) ||
-  set_handler(SIGTERM, stop_handler) ||
-  set_handler(SIGQUIT, stop_handler)
+  set_handler(SIGINT, handler) ||
+  set_handler(SIGTERM, handler) ||
+  set_handler(SIGQUIT, handler)
  ) return 1;
  pfd.fd = STDIN_FILENO;
  pfd.events = POLLIN;
@@ -55,6 +56,11 @@ u8 restore_env()
 {
  if(tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1)
   return 1;
+ if(
+  set_handler(SIGINT, SIG_DFL) ||
+  set_handler(SIGTERM, SIG_DFL) ||
+  set_handler(SIGQUIT, SIG_DFL)
+ ) return 1;
  return 0;
 }
 
@@ -63,6 +69,8 @@ static inline u8 handle_single_byte(int *ch, int *mods)
  switch(*ch)
  {
   case '\0': { *ch = term_key_grave_accent; *mods |= key_ctrl; break; }
+  case 0x1b: { *ch = term_key_escape; break;}
+  case '\"': { *ch = term_key_space; *mods |= key_shift; break; }
   case '!':
   case '#':
   case '$':
@@ -72,9 +80,14 @@ static inline u8 handle_single_byte(int *ch, int *mods)
    *mods |= key_shift;
    break;
   }
+  case ':': { *ch = term_key_semicolon; *mods |= key_shift; break; }
+  case '>':
+  case '?':
+  case '<': { *ch -= 16; *mods |= key_shift; break; };
   case '+': { *ch = term_key_equal; *mods |= key_shift; break;}
   case '@': { *ch = term_key_2; *mods |= key_shift; break; }
   case '^': { *ch = term_key_6; *mods |= key_shift; break; }
+  case '_': { *ch = term_key_minus; *mods |= key_shift; break; }
   case '&':
   case '(': { *ch += 17; *mods |= key_shift; break; }
   case '*': { *ch = term_key_8; *mods |= key_shift; break; }
@@ -82,6 +95,7 @@ static inline u8 handle_single_byte(int *ch, int *mods)
   case '{':
   case '|':
   case '}': { *ch -= 32; *mods |=key_shift; break; }
+  case '~': { *ch = term_key_grave_accent; *mods |= key_shift; break; }
   case 0x7f: { *ch = term_key_backspace; break; }
   default:
   {

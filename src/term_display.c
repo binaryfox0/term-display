@@ -46,17 +46,16 @@ static inline void clear_screen()
 static inline term_vec2 ndc_to_pos(term_pos pos)
 {
  return vec2_init(
-  (u32)((pos.x + 1) * 0.5f * term_size.x),
-  (u32)((1 - pos.y) * 0.5f * term_size.y)
+  (u32)((pos.x + 1) * 0.5f * size.x),
+  (u32)((1 - pos.y) * 0.5f * size.y)
  );
 }
 
 /* Utils function end */
 
-
 void resize_display()
 {
- size = vec2_init(size.x / numeric_options[pixel_width], size.y / numeric_options[pixel_height]);
+ size = vec2_init(term_size.x / numeric_options[pixel_width], term_size.y / numeric_options[pixel_height]);
  if((internal_failure = texture_resize_internal(display, size)))
   return; // Uhhhh, how to continue processing without the display
  texture_fill(display, to_rgba(clear_color));
@@ -90,15 +89,20 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  {
   OPT_GET_CASE(u8, numeric_options[type]);
   u8 new_value = *(u8*)option;
-  if(type == pixel_width)
-   size.x = size.x * numeric_options[pixel_width] / new_value;
-  else
-   size.y = size.y * numeric_options[pixel_height] / new_value;
   numeric_options[type] = new_value;
   resize_display();
   break;
  }
- case display_size:{ OPT_SET_GET(size, term_vec2); break; }
+ case display_size:
+ {
+  OPT_SET_GET(size, term_vec2);
+  size = *(term_vec2*)option;
+  if((internal_failure = texture_resize_internal(display, size)))
+   return 1; // Uhhhh, how to continue processing without the display
+  texture_fill(display, to_rgba(clear_color));
+  clear_screen();
+  break;
+ }
  default: return 1;
  }
  return 0;
@@ -147,28 +151,32 @@ u8 display_show()
  if(internal_failure || !display)
   return 1;
  printf("\x1b[H");
- u8* ref = texture_get_location(vec2_init(0,0), display);
+ u8* ptr = texture_get_location(vec2_init(0,0), display);
  static u8 prev[3] = {0};
  for(u16 row = 0; row < size.y; row++)
  {
-  for(u16 col = 0; col < size.x; col++, ref += 3)
+  for(u8 i = 0; i < numeric_options[pixel_height]; i++)
   {
-   if(
-    prev[0] != ref[0] ||
-    prev[1] != ref[1] ||
-    prev[2] != ref[2]
-   )
+   u8* ref = &ptr[row * size.x * 3];
+   for(u16 col = 0; col < size.x; col++, ref += 3)
    {
-    printf("\x1b[48;2;%d;%d;%dm",
-     ref[0],
-     ref[1],
-     ref[2]
-    );
-    memcpy(prev, ref, 3);
+    if(
+     prev[0] != ref[0] ||
+     prev[1] != ref[1] ||
+     prev[2] != ref[2]
+    )
+    {
+     printf("\x1b[48;2;%d;%d;%dm",
+      ref[0],
+      ref[1],
+      ref[2]
+     );
+     memcpy(prev, ref, 3);
+    }
+    printf("%*s", numeric_options[pixel_width], "");
    }
-   printf("%*s", numeric_options[pixel_width], "");
+   printf("\x1b[1E");
   }
-  printf("\x1b[1E");
  }
  return 0;
 }
