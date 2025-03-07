@@ -42,15 +42,6 @@ static inline void clear_screen()
  );
 }
 
-u8 set_handler(int type, void (*handler)(int))
-{
- struct sigaction sa;
- sa.sa_flags = SA_SIGINFO;
- sigemptyset(&sa.sa_mask);
- sa.sa_handler = handler;
- return (sigaction(type, &sa, 0)!=0);
-}
-
 // https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-getting-started?redirectedfrom=MSDN
 static inline term_vec2 ndc_to_pos(term_pos pos)
 {
@@ -78,20 +69,13 @@ u8 display_init()
 {
  if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
   return 1; // It's output can't seen by user (aka piped)
- size = query_terminal_size(); // Disable calling callback on the first time
+ term_size = prev_size = size = query_terminal_size(); // Disable calling callback on the first time
  resize_display();
  if(internal_failure)
   return 1;
  printf("\x1b[?25l"); // Hide cursor
  __display_is_running = 1;
-#ifdef TERMINAL_WINDOWS
-#else
- if(setup_kb()) return 1;
-#endif
- return
-  set_handler(SIGINT, stop_display) ||
-  set_handler(SIGTERM, stop_display) ||
-  set_handler(SIGQUIT, stop_display);
+ if(setup_env(stop_display)) return 1;
 }
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
@@ -196,8 +180,6 @@ void display_free()
  write(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
  fflush(stdout); // Flush remaining data
  clear_screen(0);
- restore_kb();
- // https://stackoverflow.com/questions/5308758/can-a-call-to-free-in-c-ever-fail
- // Technically, it can still failed, but return type is void and have undefined behaviour in the docs
+ restore_env();
  texture_free(display);
 }

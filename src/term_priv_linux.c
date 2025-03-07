@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <poll.h>
+#include <signal.h>
+
 #include <stdio.h>
 
 term_vec2 query_terminal_size()
@@ -16,9 +18,22 @@ term_vec2 query_terminal_size()
  return vec2_init(0, 0);
 }
 
+u8 set_handler(int type, void (*handler)(int))
+{
+#ifdef _POSIX_VERSION
+ struct sigaction sa;
+ sa.sa_flags = SA_SIGINFO;
+ sigemptyset(&sa.sa_mask);
+ sa.sa_handler = handler;
+ return (sigaction(type, &sa, 0)!=0);
+#else
+ return signal(type, handler) == SIG_ERR;
+#endif
+}
+
 struct termios old, cur;
 struct pollfd pfd;
-u8 setup_kb()
+u8 setup_env(void (*stop_handler)(int))
 {
  if(tcgetattr(STDIN_FILENO, &old) == -1)
   return 1;
@@ -26,12 +41,17 @@ u8 setup_kb()
  cur.c_lflag &= ~(ICANON | ECHO);
  if(tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
   return 1;
+ if(
+  set_handler(SIGINT, stop_handler) ||
+  set_handler(SIGTERM, stop_handler) ||
+  set_handler(SIGQUIT, stop_handler)
+ ) return 1;
  pfd.fd = STDIN_FILENO;
  pfd.events = POLLIN;
  return 0;
 }
 
-u8 restore_kb()
+u8 restore_env()
 {
  if(tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1)
   return 1;

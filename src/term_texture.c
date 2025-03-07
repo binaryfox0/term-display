@@ -285,7 +285,7 @@ void texture_resize(term_texture* texture, const term_vec2 size)
  if(!tmp) return;
  free(texture->data);
  texture->data = tmp;
- texture->size = size;
+ texture->size = calculate_new_size(texture->size, size);
 }
 
 u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
