@@ -96,6 +96,8 @@ typedef enum {
  term_key_f12,
 } key_token;
 
+char* display_copyright_notice();
+
 u8 display_init();
 u8 display_option(display_settings_types type, u8 get, void* option);
 // Event-related functions
@@ -117,6 +119,9 @@ void display_copy_texture(
  const term_pos pos,
  const enum texture_merge_mode mode
 );
+
+void display_draw_line(term_pos p1, term_pos p2, term_rgba color);
+
 u8 display_show();
 void display_free();
 

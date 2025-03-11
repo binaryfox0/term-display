@@ -1,8 +1,5 @@
-#include <string.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <string.h> // strlen
+#include <stdlib.h> // free
 
 #include "term_display.h"
 #include "term_font.h"
@@ -76,10 +73,9 @@ void key_callback(int key, int mods, key_state state)
 int main()
 {
  u8 enable = 1;
- if(display_init())
+ if(display_init() || start_logging("statics.txt"))
   return 1;
  display_option(auto_resize, 0, &enable);
- if(start_logging("statics.txt")) return 0;
  display_set_key_callback(key_callback);
 
  u64 frame_count = 0;
@@ -93,7 +89,7 @@ int main()
   double start_frame = get_time();
   double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
  
-  display_set_color(rgba_init(109, 154, 140, frame_count/7)); // Approximtely patina
+  display_set_color(rgba_init(109, 154, 140, 255)); // Approximtely patina
 
   display_poll_events();
 

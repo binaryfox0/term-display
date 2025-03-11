@@ -25,3 +25,4 @@ set(EXTRA "")
 
 example_projects(multiline_text)
 example_projects(kbinput)
+example_projects(cube)

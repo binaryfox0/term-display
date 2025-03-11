@@ -48,9 +48,8 @@ term_texture* generate_noise(term_vec2 size)
 int main()
 {
  u8 enable = 1;
- if(display_init())
+ if(display_init() || start_logging("statics.txt"))
   return 1;
- if(start_logging("statics.txt")) return 0;
 
  term_vec2 size = {0}; // Temporary
  double delta_time = 1.0, last_log = get_time();

@@ -80,6 +80,7 @@ if __name__ == '__main__':
  args = parser.parse_args()
 
  timestamps, fps_values = parse_log(args.input_log)
+ average_fps = np.mean(fps_values)
 
  # Create the plot
  fig, ax = plt.subplots(figsize=(10, 5))
@@ -110,7 +111,7 @@ if __name__ == '__main__':
  # Labels and title
  ax.set_xlabel("Time (seconds)")
  ax.set_ylabel("FPS")
- ax.set_title("FPS Performance Graph")
+ ax.set_title(f"FPS Performance Graph (Average: {average_fps:.2f} FPS)")
 
  # Hover interaction
  annot = ax.annotate("", xy=(0, 0), xytext=(10, 10),

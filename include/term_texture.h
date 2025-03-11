@@ -23,7 +23,7 @@ u8* texture_get_location(
  const term_texture* texture
 );
 
-static inline term_vec2 texture_get_size(const term_texture* texture);
+term_vec2 texture_get_size(const term_texture* texture);
 
 /* Texture editing function start */
 void texture_fill(const term_texture* texture, const term_rgba color);
@@ -49,6 +49,8 @@ void texture_resize(term_texture* texture, const term_vec2 new_size);
 u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size);
 void texture_crop(term_texture* texture, const term_vec2 new_size);
 /* Texture editing function end */
+
+void texture_draw_line(term_texture* texture, const term_vec2 p1, const term_vec2 p2, const term_rgba color);
 
 void texture_free(term_texture* texture);
 

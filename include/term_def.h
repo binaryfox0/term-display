@@ -27,10 +27,10 @@ typedef unsigned int u32;
  typedef unsigned int u64;
 #endif
 
+#include "term_math.h"
+
 typedef struct { u8 r, g, b; } term_rgb;
 typedef struct { u8 r, g, b, a; } term_rgba;
-typedef struct { float x, y; } term_pos;
-typedef struct { u32 x, y; } term_vec2;
 
 /* Structure initializer begin */
 static inline term_rgb rgb_init(u8 r, u8 g, u8 b)
@@ -51,16 +51,6 @@ static inline term_rgba rgba_init(u8 r, u8 g, u8 b, u8 a)
 static inline term_rgb to_rgb(term_rgba c)
 {
  return (term_rgb) { .r = c.r, .g = c.g, .b = c.b };
-}
-
-static inline term_pos pos_init(float x, float y)
-{
- return (term_pos) { .x = x, .y = y };
-}
-
-static inline term_vec2 vec2_init(u32 x, u32 y)
-{
- return (term_vec2) { .x = x, .y = y };
 }
 
 static inline u8 compare_vec2(term_vec2 a, term_vec2 b) { return a.x == b.x && a.y == b.y; }

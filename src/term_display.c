@@ -42,16 +42,26 @@ static inline void clear_screen()
  );
 }
 
-// https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-rasterizer-stage-getting-started?redirectedfrom=MSDN
-static inline term_vec2 ndc_to_pos(term_pos pos)
+static inline void query_default_background()
 {
- return vec2_init(
-  (u32)((pos.x + 1) * 0.5f * size.x),
-  (u32)((1 - pos.y) * 0.5f * size.y)
- );
+ static const char* request = "\x1b]11;?\x1b\\";
+ write(STDOUT_FILENO, request, strlen(request));
 }
-
 /* Utils function end */
+
+char* display_copyright_notice()
+{
+ return
+ "--------Terminal renderer library\n--------"
+ "Copyright (c) 2025 binaryfox0 (Duy Pham Duc)\n"
+ "License under the MIT License (see LICENSE file)\n\n"
+ "Extremely Fast Line Algorithm Var D (Addition Fixed Point)\n"
+ "Copyright 2001, By Po-Han Lin\n"
+ "Freely usable in non-commercial applications as long as \n"
+ "credits to Po-Han Lin and a link to http://www.edepot.com \n"
+ "is provided in source code and can be seen in compiled executable.\n"
+ "Commercial applications please inquire about licensing the algorithms.";
+}
 
 void resize_display()
 {
@@ -68,13 +78,14 @@ u8 display_init()
 {
  if(!isatty(STDOUT_FILENO) || !(display = texture_create(0, 3, vec2_init(1,1), 0, 0)))
   return 1; // It's output can't seen by user (aka piped)
- term_size = prev_size = size = query_terminal_size(); // Disable calling callback on the first time
+ term_size = prev_size = query_terminal_size(); // Disable calling callback on the first time
  resize_display();
  if(internal_failure)
   return 1;
  printf("\x1b[?25l"); // Hide cursor
  __display_is_running = 1;
  if(setup_env(stop_display)) return 1;
+ return 0;
 }
 
 #define OPT_GET_CASE(type, value) if(get) { *(type*)option = value; return 0; }
@@ -96,7 +107,6 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  case display_size:
  {
   OPT_SET_GET(size, term_vec2);
-  size = *(term_vec2*)option;
   if((internal_failure = texture_resize_internal(display, size)))
    return 1; // Uhhhh, how to continue processing without the display
   texture_fill(display, to_rgba(clear_color));
@@ -119,8 +129,11 @@ void display_poll_events()
  kbpoll_events(private_key_callback);
  if(!compare_vec2((term_size = query_terminal_size()), prev_size))
  {
-  private_resize_callback(term_size);
-  if(numeric_options[auto_resize]) { size = term_size; resize_display(); }
+  if(numeric_options[auto_resize])
+  {
+   resize_display();
+   private_resize_callback(size);
+  }
   else clear_screen();
   prev_size = term_size;
  }
@@ -141,8 +154,13 @@ void display_copy_texture(
  const enum texture_merge_mode mode
 )
 {
- term_vec2 display_pos = ndc_to_pos(pos);
+ term_vec2 display_pos = ndc_to_pos(pos, size);
  texture_merge(display, texture, display_pos, mode, 0);
+}
+
+void display_draw_line(term_pos p1, term_pos p2, term_rgba color)
+{
+ texture_draw_line(display, ndc_to_pos(p1, size), ndc_to_pos(p2, size), color);
 }
 
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
@@ -178,6 +196,7 @@ u8 display_show()
    printf("\x1b[1E");
   }
  }
+ fflush(stdout);
  return 0;
 }
 

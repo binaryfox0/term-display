@@ -1,8 +1,5 @@
-#include <string.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <string.h> // strlen
+#include <stdlib.h> // free
 
 #include "term_display.h"
 #include "term_font.h"
@@ -12,10 +9,9 @@
 int main()
 {
  u8 enable = 1;
- if(display_init())
+ if(display_init() || start_logging("statics.txt"))
   return 1;
  display_option(auto_resize, 0, &enable);
- if(start_logging("statics.txt")) return 0;
 
  term_vec2 texture_size = {0};
  term_texture* text_texture = display_string_texture("\rHello\r\nWorld!\n", -1, &texture_size, rgba_init(255,255,255,255), rgba_init(0, 0, 0, 127));

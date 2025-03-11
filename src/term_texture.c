@@ -21,6 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
 #include "term_texture.h"
 
 #include <stdlib.h>
@@ -49,8 +50,9 @@ static inline u64 convert_pos(u32 x, u32 y, u32 width, u8 ch) {return (y*width+x
 // Singular line, y discarded from the formula
 static inline float lerp(u8 c0, u8 c1, float t) {return c0 + t * (c1 - c0);}
 static inline u8 bilerp(u8 c00, u8 c10, u8 c01, u8 c11, float xt, float yt){
-return lerp(lerp(c00, c10, xt),lerp(c01, c11, xt), yt);
+ return (u8)lerp(lerp(c00, c10, xt),lerp(c01, c11, xt), yt);
 }
+static inline u64 to_raw_pos(term_vec2 pos, int len, int channel) { return ((pos.y * len + pos.x) * channel); }
 /* Inline function end */
 
 // Convert b to have the same type as a
@@ -100,11 +102,11 @@ void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
 /* Helper utilities end   */
 
 term_texture* texture_create(
- u8* texture,
- const u8 channel,
- const term_vec2 size,
- const u8 freeable,
- const u8 copy
+  u8* texture,
+  const u8 channel,
+  const term_vec2 size,
+  const u8 freeable,
+  const u8 copy
 )
 {
  if(
@@ -148,7 +150,7 @@ term_texture* texture_create(
  out->channel = channel;
  return out;
 }
-
+ 
 term_texture* texture_copy(term_texture* texture)
 {
  term_texture* out = 0;
@@ -174,7 +176,7 @@ u8* texture_get_location(const term_vec2 pos, const term_texture* texture)
  return &(texture->data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-static inline term_vec2 texture_get_size(const term_texture* texture)
+term_vec2 texture_get_size(const term_texture* texture)
 {
  if(!texture)
   return vec2_init(0,0);
@@ -231,8 +233,8 @@ void texture_merge(
 {
  if(!texture_a || !texture_b) return;
  if(
-   placement_pos.x > texture_a->size.x - texture_b->size.x ||
-   placement_pos.y > texture_a->size.y - texture_b->size.y) return;
+   placement_pos.x > texture_a->size.x ||
+   placement_pos.y > texture_a->size.y) return;
  u8 cha = texture_a->channel, chb = texture_b->channel;
  term_vec2 sa = texture_a->size, sb = texture_b->size;
  u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data, *old = 0;
@@ -348,7 +350,47 @@ void texture_crop(term_texture *texture, const term_vec2 new_size)
  texture->size = new_size;
 }
 
-void texture_free(term_texture* texture)
+void texture_draw_line(term_texture *texture, const term_vec2 p1, const term_vec2 p2, const term_rgba color)
+{
+ u8* ta = texture->data, raw[4] = EXPAND_RGBA(color);
+ u8 ch = texture->channel;
+
+ int yLonger = 0;
+ int incrementVal, endVal;
+ int shortLen = p2.y-p1.y;
+ int longLen = p2.x-p1.x;
+ if(abs(shortLen) > abs(longLen))
+ {
+  int tmp = shortLen;
+  shortLen = longLen;
+  longLen = tmp;
+  yLonger = 1;
+ }
+ endVal = longLen;
+ if (longLen<0) {
+ incrementVal = -1;
+ longLen = -longLen;
+ } else incrementVal=1;
+ int decInc;
+ if (longLen==0) decInc=0;
+ else decInc = (shortLen << 16) / longLen;
+ int j=0;
+ if (yLonger) {	
+  for (int i=0;i!=endVal;i+=incrementVal)
+  {
+   alpha_blend(&ta[to_raw_pos(vec2_init(p1.x+(j>>16), p1.y+i), texture->size.x, ch)], raw, ch, 4);
+   j+=decInc;
+  }
+ } else {
+  for (int i=0;i!=endVal;i+=incrementVal)
+  {
+   alpha_blend(&ta[to_raw_pos(vec2_init(p1.x+i, p1.y+(j>>16)), texture->size.x, ch)], raw, ch, 4);
+   j += decInc;
+  }
+ }
+}
+
+void texture_free(term_texture *texture)
 {
  if(!texture)
   return;
