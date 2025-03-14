@@ -10,10 +10,18 @@ typedef enum
  auto_resize = 0,
  pixel_width,
  pixel_height,
- display_channel,
+ display_type,
+ display_rotate,
  // Other settings
  display_size
 } display_settings_types;
+typedef enum
+{
+ display_grayscale_24,
+ display_grayscale_256,
+ display_truecolor_216,
+ display_truecolor
+} display_types;
 
 typedef enum { key_release, key_press, key_hold } key_state;
 typedef enum {

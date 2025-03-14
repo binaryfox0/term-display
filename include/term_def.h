@@ -33,27 +33,27 @@ typedef struct { u8 r, g, b; } term_rgb;
 typedef struct { u8 r, g, b, a; } term_rgba;
 
 /* Structure initializer begin */
-static inline term_rgb rgb_init(u8 r, u8 g, u8 b)
+static inline term_rgb rgb_init(const u8 r, const u8 g, const u8 b)
 {
  return (term_rgb) { .r = r, .g = g, .b = b };
 }
 
-static inline term_rgba to_rgba(term_rgb c)
+static inline term_rgba to_rgba(const term_rgb c)
 {
  return (term_rgba) { .r = c.r, .g = c.g, .b = c.b, .a = 255 };
 }
 
-static inline term_rgba rgba_init(u8 r, u8 g, u8 b, u8 a)
+static inline term_rgba rgba_init(const u8 r, const u8 g, const u8 b, const u8 a)
 {
  return (term_rgba) { .r = r, .g = g, .b = b , .a = a };
 }
 
-static inline term_rgb to_rgb(term_rgba c)
+static inline term_rgb to_rgb(const term_rgba c)
 {
  return (term_rgb) { .r = c.r, .g = c.g, .b = c.b };
 }
 
-static inline u8 compare_vec2(term_vec2 a, term_vec2 b) { return a.x == b.x && a.y == b.y; }
+static inline u8 compare_vec2(const term_vec2 a, const term_vec2 b) { return a.x == b.x && a.y == b.y; }
 /* Structure initializer end */
 
 #endif

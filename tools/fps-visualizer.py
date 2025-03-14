@@ -127,4 +127,5 @@ if __name__ == '__main__':
  if args.output:
   plt.savefig(args.output, transparent=args.transparent, dpi=300)
  else:
+  fig.canvas.manager.set_window_title("FPS Visualizer")
   plt.show()

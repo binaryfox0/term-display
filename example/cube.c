@@ -1,4 +1,3 @@
-#include <math.h> // sin
 #include <string.h> // strlen
 #include <stdlib.h> // free
 
@@ -14,13 +13,12 @@ static inline double gen_rand()
 
 int main()
 {
- u8 enable = 1;
  if(display_init() || start_logging("statics.txt"))
   return 1;
 
  term_vec2 size = {0};
  double delta_time = 1.0, last_log = get_time();
- const double max_dt = 1.0 / 2;
+ const double max_dt = 1.0 / 60;
  while(display_is_running())
  {
   double start_frame = get_time();
@@ -36,9 +34,9 @@ int main()
   texture_free(texture);
 
   term_pos p1 = pos_init(gen_rand(), gen_rand()), p2 = pos_init(gen_rand(), gen_rand()), p3 = pos_init(gen_rand(), gen_rand());
-  display_draw_line(p1, p2, rgba_init(255,255,255,255));
-  display_draw_line(p2, p3, rgba_init(255,255,255,255));
-  display_draw_line(p3, p1, rgba_init(255,255,255,255));
+  display_draw_line(p1, p2, rgba_init(0,255,255,255));
+  display_draw_line(p2, p3, rgba_init(0,255,255,255));
+  display_draw_line(p3, p1, rgba_init(0,255,255,255));
 
   display_show();
 

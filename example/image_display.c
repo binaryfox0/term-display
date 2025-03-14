@@ -96,6 +96,8 @@ int main(int argc, char** argv)
 
  u8 enable = 1;
  display_option(auto_resize, 0, &enable);
+ enable = display_truecolor;
+ display_option(display_type, 0, &enable);
 
  term_vec2 current_size;
  display_option(display_size, 1, &current_size);

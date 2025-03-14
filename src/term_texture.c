@@ -44,15 +44,13 @@ struct term_texture_s
 #define fast_ceil(x) ((u32)(x) + ((x) > (u32)(x)))
 /* Inline function start */
 // Assuming texture have 24bpp (RGB) or 8bpp (Grayscale)
-static inline u64 calculate_size(term_vec2 size, u8 channel) {return size.x*size.y*channel; }
 static inline u8 to_grayscale(const u8* c) {return (77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8;}
-static inline u64 convert_pos(u32 x, u32 y, u32 width, u8 ch) {return (y*width+x)*ch;}
+static inline u64 calculate_pos(u32 x, u32 y, u32 width, u8 ch) {return (y*width+x)*ch;}
 // Singular line, y discarded from the formula
 static inline float lerp(u8 c0, u8 c1, float t) {return c0 + t * (c1 - c0);}
 static inline u8 bilerp(u8 c00, u8 c10, u8 c01, u8 c11, float xt, float yt){
  return (u8)lerp(lerp(c00, c10, xt),lerp(c01, c11, xt), yt);
 }
-static inline u64 to_raw_pos(term_vec2 pos, int len, int channel) { return ((pos.y * len + pos.x) * channel); }
 /* Inline function end */
 
 // Convert b to have the same type as a
@@ -94,8 +92,10 @@ void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
  if(ch_a < 5)
   a[0] = (a_b * b[0] + iva_b * a[0]) >> 8;
  if(ch_a > 2)
+ {
   a[1] = (a_b * b[1] + iva_b * a[1]) >> 8;
   a[2] = (a_b * b[2] + iva_b * a[2]) >> 8;
+ }
  if(out_a)
   a[a_i] = !iva_b ? 255 : a_b + ((iva_b + a[a_i]) >> 8);
 }
@@ -116,7 +116,7 @@ term_texture* texture_create(
  term_texture* out = 0;
  if(!(out = (term_texture*)malloc(sizeof(term_texture))))
   return 0;
- u64 alloc_size = calculate_size(size, channel);
+ u64 alloc_size = calculate_pos(0, size.y, size.x, channel);
  
  if (!texture || copy)
  {
@@ -279,7 +279,7 @@ u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_
  float
   x_ratio = (float)(old_size.x - 1) / (new_size.x - 1),
   y_ratio = (float)(old_size.y - 1) / (new_size.y - 1);
- u8 *raw = (u8*)malloc(calculate_size(new_size, channel)), *start = raw;
+ u8 *raw = (u8*)malloc(calculate_pos(0, new_size.y, new_size.x, channel)), *start = raw;
  if(!raw) return 0;
 
  for (u32 row = 0; row < new_size.y; row++)
@@ -295,10 +295,10 @@ u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_
        ixc = fast_ceil(tmp);
    float tx = tmp - ixf;
 
-   u32 i00 = convert_pos(ixf, iyf, old_size.x, channel),
-       i10 = convert_pos(ixc, iyf, old_size.x, channel),
-       i01 = convert_pos(ixf, iyc, old_size.x, channel),
-       i11 = convert_pos(ixc, iyc, old_size.x, channel);
+   u32 i00 = calculate_pos(ixf, iyf, old_size.x, channel),
+       i10 = calculate_pos(ixc, iyf, old_size.x, channel),
+       i01 = calculate_pos(ixf, iyc, old_size.x, channel),
+       i11 = calculate_pos(ixc, iyc, old_size.x, channel);
 
    for(u8 c = 0; c < channel; c++, raw++)
     raw[0] = bilerp(old[i00+c], old[i10+c], old[i01+c], old[i11+c], tx, ty);
@@ -321,7 +321,7 @@ void texture_resize(term_texture* texture, const term_vec2 size)
 u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
 {
  if(!texture) return 0;
- u8* tmp = (u8*)realloc(texture->data, calculate_size(new_size, texture->channel));
+ u8* tmp = (u8*)realloc(texture->data, calculate_pos(0, new_size.y, new_size.x, texture->channel));
  if(!tmp) return 1;
  texture->data = tmp;
  texture->size = new_size;
@@ -331,7 +331,7 @@ u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
 u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
 {
  u8* raw = 0;
- if(!(raw = (u8*)malloc(calculate_size(new_size, channel))))
+ if(!(raw = (u8*)malloc(calculate_pos(0, new_size.y, new_size.x, channel))))
   return 0;
  u8* ptr = old, *start = raw;
  u64 row_length = new_size.x * channel, old_length = old_size.x * channel;
@@ -350,10 +350,13 @@ void texture_crop(term_texture *texture, const term_vec2 new_size)
  texture->size = new_size;
 }
 
+// Special thanks to Po-Han Lin who makes this algorithm
+// This is EFLA-D (Extremely Fast Line Algorithm Version D (Fixed))
 void texture_draw_line(term_texture *texture, const term_vec2 p1, const term_vec2 p2, const term_rgba color)
 {
  u8* ta = texture->data, raw[4] = EXPAND_RGBA(color);
- u8 ch = texture->channel;
+ u8 ch = texture->channel, cch = 4;
+ convert(raw, raw, ch, &cch);
 
  int yLonger = 0;
  int incrementVal, endVal;
@@ -371,20 +374,18 @@ void texture_draw_line(term_texture *texture, const term_vec2 p1, const term_vec
  incrementVal = -1;
  longLen = -longLen;
  } else incrementVal=1;
- int decInc;
- if (longLen==0) decInc=0;
- else decInc = (shortLen << 16) / longLen;
+ int decInc = longLen ? (shortLen << 16) / longLen : 0;
  int j=0;
  if (yLonger) {	
   for (int i=0;i!=endVal;i+=incrementVal)
   {
-   alpha_blend(&ta[to_raw_pos(vec2_init(p1.x+(j>>16), p1.y+i), texture->size.x, ch)], raw, ch, 4);
+   alpha_blend(&ta[calculate_pos(p1.x+(j>>16), p1.y+i, texture->size.x, ch)], raw, ch, cch);
    j+=decInc;
   }
  } else {
   for (int i=0;i!=endVal;i+=incrementVal)
   {
-   alpha_blend(&ta[to_raw_pos(vec2_init(p1.x+i, p1.y+(j>>16)), texture->size.x, ch)], raw, ch, 4);
+   alpha_blend(&ta[calculate_pos(p1.x+i, p1.y+(j>>16), texture->size.x, ch)], raw, ch, cch);
    j += decInc;
   }
  }

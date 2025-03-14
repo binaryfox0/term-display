@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 static struct termios old, cur;
-static struct pollfd pfd;
+static struct pollfd pfd = {.events = POLLIN, .fd = STDIN_FILENO };
 
 term_vec2 query_terminal_size() {
  struct winsize ws;
@@ -35,13 +35,11 @@ u8 setup_env(void *stop_handler) {
  
  if (tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1) return 1;
 
+ // Seperate if for stopping it further continuing
  void (*handler)(int) = (void (*)(int))stop_handler;
- if (set_handler(SIGINT, handler) ||
-  set_handler(SIGTERM, handler) ||
-  set_handler(SIGQUIT, handler)) return 1;
-
- pfd.fd = STDIN_FILENO;
- pfd.events = POLLIN;
+ if(set_handler(SIGINT, handler)) return 1;
+ if(set_handler(SIGTERM, handler)) return 1;
+ if(set_handler(SIGQUIT, handler)) return 1;
  
  return 0;
 }
@@ -49,9 +47,10 @@ u8 setup_env(void *stop_handler) {
 u8 restore_env() {
  if (tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1) return 1;
 
- return (set_handler(SIGINT, SIG_DFL) ||
-   set_handler(SIGTERM, SIG_DFL) ||
-   set_handler(SIGQUIT, SIG_DFL));
+ if(set_handler(SIGINT, SIG_DFL)) return 1;
+ if(set_handler(SIGTERM, SIG_DFL)) return 1;
+ if(set_handler(SIGQUIT, SIG_DFL)) return 1;
+ return 0;
 }
 
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
@@ -102,20 +101,16 @@ static inline u8 handle_nav_key(int *ch) {
 
 static inline u8 handle_f5_below(int* ch)
 {
- *ch = *ch - 'P' + term_key_f1;
- if (OUT_RANGE(*ch, term_key_f1, term_key_f4)) return 1;
+ int tmp = *ch - 'P' + term_key_f1;
+ if (OUT_RANGE(tmp, term_key_f1, term_key_f4)) return 1;
+ *ch = tmp;
  return 0;
 }
 
-static inline u8 handle_f5_above(int *ch)
+static inline u8 handle_f5_above(const int first, int* ch)
 {
- int first, second;
- getch_chk('[') 1;
- _getch(first) 1;
- _getch(second) 1;
- getch_chk('~') 1;
  if (first == '1') {
-  switch (second) {
+  switch (*ch) {
    case '5': *ch = term_key_f5; break;
    case '7': *ch = term_key_f6; break;
    case '8': *ch = term_key_f7; break;
@@ -123,7 +118,7 @@ static inline u8 handle_f5_above(int *ch)
    default: return 1;
   }
  } else if (first == '2') {
-  switch (second) {
+  switch (*ch) {
    case '0': *ch = term_key_f9; break;
    case '1': *ch = term_key_f10; break;
    case '3': *ch = term_key_f11; break;
@@ -131,6 +126,34 @@ static inline u8 handle_f5_above(int *ch)
    default: return 1;
   }
  } else return 1;
+ return 0;
+}
+
+static inline u8 handle_special_combo(const int byte, int* mods)
+{
+ switch(byte)
+ {
+ case '8': *mods |= (key_ctrl | key_alt | key_shift); break;
+ case '7': *mods |= (key_ctrl | key_alt); break;
+ case '6': *mods |= (key_ctrl | key_shift); break;
+ case '5': *mods |= key_ctrl; break;
+ case '4': *mods |= (key_alt | key_shift); break;
+ case '3': *mods |= key_alt; break;
+ case '2': *mods |= key_shift; break;
+ default: return 1;
+ }
+ return 0;
+}
+
+static inline u8 handle_special_key(int *ch)
+{
+ switch (*ch) {
+  case '2': *ch = term_key_insert; break;
+  case '3': *ch = term_key_delete; break;
+  case '5': *ch = term_key_page_up; break;
+  case '6': *ch = term_key_page_down; break;
+  default: return 1;
+ }
  return 0;
 }
 
@@ -171,26 +194,48 @@ void kbpoll_events(key_callback_func func) {
       if(handle_f5_below(&ch)) return;
      }
     } else if(ch == '[') {
+     getch_chk('~');
      _getch(ch);
-     if(ch == '~') {
-       switch (bytes) {
-        case '2': ch = term_key_insert; break;
-        case '3': ch = term_key_delete; break;
-        case '5': ch = term_key_page_up; break;
-        case '6': ch = term_key_page_down; break;
-        default: return;
-       }
-      }
+     if(handle_special_key(&ch)) return;
     } else return;
     break;
    case 5: // Function keys F5 - F12
-    if(handle_f5_above(&ch)) return;
+    getch_chk('[');
+    _getch(bytes);
+    _getch(ch);
+    getch_chk('~');
+    if(handle_f5_above(bytes, &ch)) return;
+    break;
+   case 6: // Ctrl + (F1 - F4)
+    getch_chk('[');
+    getch_chk('1');
+    getch_chk(';');
+    _getch(bytes);
+    if(handle_special_combo(bytes, &mods)) return;
+    _getch(ch);
+    if(
+     !handle_f5_below(&ch) ||
+     !handle_nav_key(&ch)
+    ) break;
     break;
    case 7:
+    getch_chk('[');
+    _getch(bytes);
+    _getch(ch);
+    if(handle_f5_above(bytes, &ch)) return;
+    getch_chk(';');
+    _getch(bytes);
+    getch_chk('~');
+    if(handle_special_combo(bytes, &mods)) return;
     break;
    default: return;
   }
  } else // Single-byte characters
   if (handle_single_byte(&ch, &mods)) return;
  func(ch, mods, key_press);
+}
+
+u8 timeout(int ms)
+{
+ return poll(&pfd, 1, ms) > 0;
 }
