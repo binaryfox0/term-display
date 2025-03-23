@@ -16,10 +16,10 @@
 #endif
 
 const u8 desired_channel = 4;
-term_texture* generate_noise(term_vec2 size)
+term_texture* generate_noise(term_ivec2 size)
 {
  term_texture* out = texture_create(0, desired_channel, size, 0, 0);
- u8* raw = texture_get_location(vec2_init(0,0), out);
+ u8* raw = texture_get_location(ivec2_init(0,0), out);
  u64 byte = size.x * size.y * desired_channel;
 #ifdef TERMINAL_WINDOWS
  if(BCryptGenRandom(0, raw, byte, BCRYPT_USE_SYSTEM_PREFERED_RNG))
@@ -51,7 +51,7 @@ int main()
  if(display_init() || start_logging("statics.txt"))
   return 1;
 
- term_vec2 size = {0}; // Temporary
+ term_ivec2 size = {0}; // Temporary
  double delta_time = 1.0, last_log = get_time();
  while(display_is_running())
  {
@@ -62,12 +62,12 @@ int main()
 
   display_option(display_size, 1, &size);
   term_texture* noise = generate_noise(size);
-  display_copy_texture(noise, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
+  display_copy_texture(noise, vec2_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   texture_free(noise);
 
   char* string = to_string("%f", fps);
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(0,0,0,255), rgba_init(255,255,255,255));
-  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, vec2_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
 
   display_show();

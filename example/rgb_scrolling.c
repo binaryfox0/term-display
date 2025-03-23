@@ -24,7 +24,7 @@ int main()
  if(display_init() || start_logging("statics.txt"))
   return 1;
 
- term_vec2 size = {0};
+ term_ivec2 size = {0};
  double speed = 0.001, elapsed = 0.0;
  double delta_time = 1.0, last_log = get_time();
  while(display_is_running())
@@ -38,7 +38,7 @@ int main()
 
   char* string = to_string("%f", fps);
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, vec2_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
 
   display_show();

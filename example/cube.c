@@ -16,7 +16,7 @@ int main()
  if(display_init() || start_logging("statics.txt"))
   return 1;
 
- term_vec2 size = {0};
+ term_ivec2 size = {0};
  double delta_time = 1.0, last_log = get_time();
  const double max_dt = 1.0 / 60;
  while(display_is_running())
@@ -30,10 +30,10 @@ int main()
 
   char* string = to_string("%f", fps);
   term_texture* texture = display_string_texture(string, strlen(string), &size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
-  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, vec2_init(-1.0f, 1.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
 
-  term_pos p1 = pos_init(gen_rand(), gen_rand()), p2 = pos_init(gen_rand(), gen_rand()), p3 = pos_init(gen_rand(), gen_rand());
+  term_vec2 p1 = vec2_init(gen_rand(), gen_rand()), p2 = vec2_init(gen_rand(), gen_rand()), p3 = vec2_init(gen_rand(), gen_rand());
   display_draw_line(p1, p2, rgba_init(0,255,255,255));
   display_draw_line(p2, p3, rgba_init(0,255,255,255));
   display_draw_line(p3, p1, rgba_init(0,255,255,255));

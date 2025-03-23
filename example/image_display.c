@@ -24,29 +24,29 @@ char* get_program_name(char* in)
 int width, height;
 term_texture* original_image = 0, *displayed_image = 0;
 
-static inline u8 is_landscape(term_vec2 size)
+static inline u8 is_landscape(term_ivec2 size)
 {
  return size.x > size.y;
 }
 
-term_vec2 ratio_new_size(const term_vec2 old, const term_vec2 size)
+term_ivec2 ratio_new_size(const term_ivec2 old, const term_ivec2 size)
 {
- if(!size.x) return vec2_init((old.x * size.y) / old.y ,size.y);
- if(!size.y) return vec2_init(size.x, (old.y * size.x) / old.x);
+ if(!size.x) return ivec2_init((old.x * size.y) / old.y ,size.y);
+ if(!size.y) return ivec2_init(size.x, (old.y * size.x) / old.x);
  return size;
 }
 
-u8 vec2_larger(term_vec2 vec1, term_vec2 vec2)
+u8 vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
 {
  return vec1.x > vec2.x || vec1.y > vec2.y;
 }
 
-void resize_callback(term_vec2 new_size)
+void resize_callback(term_ivec2 new_size)
 {
  if(width) width = new_size.x;
  if(height) height = new_size.y;
 
- term_vec2 tmp = ratio_new_size(texture_get_size(original_image), vec2_init(width, height));
+ term_ivec2 tmp = ratio_new_size(texture_get_size(original_image), ivec2_init(width, height));
  if(vec2_larger(tmp, new_size))
  {
   if(width) { height = new_size.y; width = 0; }
@@ -55,7 +55,7 @@ void resize_callback(term_vec2 new_size)
 
  if(displayed_image) free(displayed_image);
  displayed_image = texture_copy(original_image);
- texture_resize(displayed_image, vec2_init(width, height));
+ texture_resize(displayed_image, ivec2_init(width, height));
 }
 
 int main(int argc, char** argv)
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
   printf("Error: %s: Unable to load image file.\n", program_name);
   return 1;
  }
- original_image = texture_create(tmp, channel, vec2_init(width, height), 1, 0);
+ original_image = texture_create(tmp, channel, ivec2_init(width, height), 1, 0);
  if(!original_image)
  {
   printf("Error: %s: Unable to load image file.\n", program_name);
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
  enable = display_truecolor;
  display_option(display_type, 0, &enable);
 
- term_vec2 current_size;
+ term_ivec2 current_size;
  display_option(display_size, 1, &current_size);
  resize_callback(current_size);
  display_set_resize_callback(resize_callback);
@@ -112,7 +112,7 @@ int main(int argc, char** argv)
 
   display_poll_events();
   display_set_color(rgba_init(0,0,0,255));
-  display_copy_texture(displayed_image, pos_init(-1.f, 1.f), TEXTURE_MERGE_CROP);
+  display_copy_texture(displayed_image, vec2_init(-1.f, 1.f), TEXTURE_MERGE_CROP);
   display_show();
 
   delta_time = get_time() - start_frame;

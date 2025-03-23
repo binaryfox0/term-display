@@ -115,7 +115,7 @@ static inline u8 display_is_running() { return __display_is_running; }
 void display_poll_events();
 
 typedef void (*key_callback_func)(int key, int mods, key_state actions);
-typedef void (*resize_callback_func)(term_vec2 new_size);
+typedef void (*resize_callback_func)(term_ivec2 new_size);
 
 void display_set_key_callback(key_callback_func callback);
 void display_set_resize_callback(resize_callback_func callback);
@@ -124,11 +124,11 @@ void display_set_resize_callback(resize_callback_func callback);
 void display_set_color(term_rgba color);
 void display_copy_texture(
  const term_texture* texture,
- const term_pos pos,
+ const term_vec2 pos,
  const enum texture_merge_mode mode
 );
 
-void display_draw_line(term_pos p1, term_pos p2, term_rgba color);
+void display_draw_line(term_vec2 p1, term_vec2 p2, term_rgba color);
 
 u8 display_show();
 void display_free();

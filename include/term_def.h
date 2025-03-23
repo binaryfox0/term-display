@@ -19,13 +19,8 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef int i32;
 typedef unsigned int u32;
-#if defined(_WIN64) || \
-    defined(__x86_64__) || \
-    defined(__aarch64__)
- typedef unsigned long long u64;
-#else
- typedef unsigned int u64;
-#endif
+typedef unsigned long long u64;
+typedef float f32;
 
 #include "term_math.h"
 
@@ -53,7 +48,6 @@ static inline term_rgb to_rgb(const term_rgba c)
  return (term_rgb) { .r = c.r, .g = c.g, .b = c.b };
 }
 
-static inline u8 compare_vec2(const term_vec2 a, const term_vec2 b) { return a.x == b.x && a.y == b.y; }
 /* Structure initializer end */
 
 #endif

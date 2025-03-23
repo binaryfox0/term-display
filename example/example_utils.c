@@ -49,9 +49,10 @@ void write_log(const char* format, ...)
  va_list args;
  va_start(args, format);
  char* str = to_string_v(format, args);
+ if(!str) return;
  va_end(args);
  char* timestamp = to_timestamp(get_time() - program_start);
- if(!str || !timestamp) return;
+ if(!timestamp) { free(str); return; }
  fprintf(file, "[%s]: %s\n", timestamp, str);
  free(timestamp);
  free(str);
@@ -65,7 +66,7 @@ char* to_string_v(const char* format, va_list args)
  va_list copy;
  va_copy(copy, args);
  int len = vsnprintf(0, 0, format, args);
- if(len < 0) return 0;
+ if(len <= 0) return 0;
  char* out = 0;
  if(!(out = (char*)malloc(len + 1))) return 0;
  vsnprintf(out, len + 1, format, copy);

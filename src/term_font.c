@@ -11,7 +11,7 @@
 #define CHAR_HEIGHT 5
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
-u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] =
+static const u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] =
 {
  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, // Space
  { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 }, // Exclamation mark
@@ -84,10 +84,7 @@ u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] =
  { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }  // Tilde 
 };
 
-u8 calculate_pad(u8 ch)
-{
- return (ch ? ch - 1 : 0);
-}
+static inline u8 calculate_pad(u8 ch) { return (ch ? ch - 1 : 0); }
 
 u8 is_newline(const i8* str, u64* current, u64 max)
 {
@@ -107,55 +104,50 @@ u8 query_newline(
  u64** lines_length, // Lines length info
  u32* line_count,
  u32* longest_line
-)
-{
+) {
  static const u32 min_realloc = 10;
 
  u64 line_len = 0, current_size = 0;
  *line_count = 0;
  *longest_line = 0;
- for(u64 i = 0; i < len && str[i]; i++)
- {
-  if(is_newline(str, &i, len))
-  {
-   if(current_size <= *line_count)
-   {
-    if(!(*lines_length = (u64*)realloc(
-     *lines_length,
-     (current_size = current_size + min_realloc)*sizeof(u64)))
-    )
-     return 1;
+
+ for (u64 i = 0; i < len && str[i]; i++) {
+  if (is_newline(str, &i, len)) {
+   if (*line_count >= current_size) {
+    u64 new_size = current_size + min_realloc;
+    u64* temp = (u64*)realloc(*lines_length, new_size * sizeof(u64));
+    if (!temp) return 1; // Allocation failed
+    *lines_length = temp;
+    current_size = new_size;
    }
-   *longest_line = *longest_line < line_len ? line_len : *longest_line;
+
    (*lines_length)[*line_count] = line_len;
-   line_len = 0;
+   if (line_len > *longest_line) *longest_line = line_len;
    (*line_count)++;
+   line_len = 0;
    continue;
   }
   line_len++;
  }
- // Final line without the newline character
- if(line_len > 0)
- {
-  if(current_size == *line_count) // cuz in the loop it have been alocated enough but not for this
-  {
-   if(!(*lines_length = (u64*)realloc(*lines_length, (current_size + 1)*sizeof(u64))))
-    return 1;
+
+ // Handle last line if it exists
+ if (line_len > 0) {
+  if (*line_count >= current_size) {
+   u64 new_size = current_size + 1; // Allocate just for the last line
+   u64* temp = (u64*)realloc(*lines_length, new_size * sizeof(u64));
+   if (!temp) return 1;
+   *lines_length = temp;
   }
   (*lines_length)[*line_count] = line_len;
-  *longest_line = (*longest_line < line_len) ? line_len : *longest_line;
+  if (line_len > *longest_line) *longest_line = line_len;
   (*line_count)++;
  }
- // Remove unused part
- if(*line_count < current_size)
- {
-  if(!(*lines_length = (u64*)realloc(*lines_length, *line_count*sizeof(u64))))
-   return 1;
- }
+
  return 0;
 }
 
-i8 mapped_ch(i8 ch)
+
+static inline i8 mapped_ch(i8 ch)
 {
  if(IN_RANGE(ch, 'a', '~'))
   return ch - 'a' + 'A'; // To uppercase (how this font mapped)
@@ -167,9 +159,9 @@ term_texture* display_char_texture(i8 ch, term_rgba color, term_rgba fg)
  ch = mapped_ch(ch);
  if(!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
   ch = LOWER_LIMIT; // Space (nothing)
- u8* ch_template = texture_atlas[ch - LOWER_LIMIT];
- term_texture* out = texture_create(0, 4, vec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
- u8* raw = texture_get_location(vec2_init(0, 0), out);
+ const u8* ch_template = texture_atlas[ch - LOWER_LIMIT];
+ term_texture* out = texture_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
+ u8* raw = texture_get_location(ivec2_init(0, 0), out);
  u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
  for(u8 i = 0; i < CHAR_PIXEL; i++)
   for(u8 j = 0; j < 4; j++, raw++)
@@ -180,20 +172,22 @@ term_texture* display_char_texture(i8 ch, term_rgba color, term_rgba fg)
 
 term_texture* display_string_texture(
  const i8* str, u64 len,
- term_vec2* s,
+ term_ivec2* s,
  term_rgba color,
  term_rgba fg
 )
 {
- if(!str || !len) return 0;
+ if(!str || !len || !s) return 0;
  u32 lines_count = 0, longest_line = 0;
  u64* lines_length = 0; // Filling gaps
- query_newline(str, len, &lines_length, &lines_count, &longest_line);
+ if(query_newline(str, len, &lines_length, &lines_count, &longest_line)) {
+  return 0;
+ }
  // s->x is maximum character in one line, s->y is the line in the input text
  s->x = longest_line * CHAR_WIDTH + calculate_pad(longest_line);
  s->y = lines_count * CHAR_HEIGHT + calculate_pad(lines_count);
  term_texture* out = texture_create(0, 4, *s, 0, 0);
- if(!out) return 0;
+ if(!out) { free(lines_length); return 0; }
  texture_fill(out, fg);
 
  // Placing character into place
@@ -206,7 +200,7 @@ term_texture* display_string_texture(
   {
    term_texture* ch_texture = display_char_texture(str[current_index+col], color, fg);
    u64 start_x = col * (CHAR_WIDTH + 1);
-   texture_merge(out, ch_texture, vec2_init(start_x, start_y), TEXTURE_MERGE_CROP, 1);
+   texture_merge(out, ch_texture, ivec2_init(start_x, start_y), TEXTURE_MERGE_CROP, 1);
    texture_free(ch_texture);
   }
   current_index += row_l; // Now at newline characater

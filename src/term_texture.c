@@ -31,7 +31,7 @@ struct term_texture_s
 {
  u8 *data;
  u8 channel;
- term_vec2 size;
+ term_ivec2 size;
  u8 freeable;
 };
 
@@ -87,7 +87,7 @@ void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
 {
  u8 out_a = IS_TRANSPARENT(ch_a);
  u8 a_i = ch_a - 1;
- u8 a_a = out_a ? a[ch_a - 1] : 255;
+ u8 a_a = out_a ? a[a_i] : 255;
  u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
  if(ch_a < 5)
   a[0] = (a_b * b[0] + iva_b * a[0]) >> 8;
@@ -97,14 +97,14 @@ void alpha_blend(u8* a, u8* b, u8 ch_a, u8 ch_b)
   a[2] = (a_b * b[2] + iva_b * a[2]) >> 8;
  }
  if(out_a)
-  a[a_i] = !iva_b ? 255 : a_b + ((iva_b + a[a_i]) >> 8);
+  a[a_i] = !iva_b ? 255 : a_b + ((iva_b + a_a) >> 8);
 }
 /* Helper utilities end   */
 
 term_texture* texture_create(
   u8* texture,
   const u8 channel,
-  const term_vec2 size,
+  const term_ivec2 size,
   const u8 freeable,
   const u8 copy
 )
@@ -169,17 +169,17 @@ term_texture* texture_copy(term_texture* texture)
  return out;
 }
 
-u8* texture_get_location(const term_vec2 pos, const term_texture* texture)
+u8* texture_get_location(const term_ivec2 pos, const term_texture* texture)
 {
  if(!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
   return 0;
  return &(texture->data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-term_vec2 texture_get_size(const term_texture* texture)
+term_ivec2 texture_get_size(const term_texture* texture)
 {
  if(!texture)
-  return vec2_init(0,0);
+  return ivec2_init(0,0);
  return texture->size;
 }
 
@@ -201,7 +201,7 @@ void texture_fill(const term_texture* texture, const term_rgba color)
  if(!texture || !color.a)
   return;
  u8 c[4] = EXPAND_RGBA(color), tmp = 4;
- term_vec2 size = texture->size;
+ term_ivec2 size = texture->size;
  u8* data = texture->data;
  u8 ch = texture->channel;
 
@@ -220,13 +220,13 @@ void texture_fill(const term_texture* texture, const term_rgba color)
 
 
 // Forward declaration section
-u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size);
-u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size);
+u8* crop_texture(u8* old, u8 channel, term_ivec2 old_size, term_ivec2 new_size);
+u8* resize_texture(const u8* old, u8 channel, term_ivec2 old_size, term_ivec2 new_size);
 
 void texture_merge(
  const term_texture* texture_a,
  const term_texture* texture_b,
- const term_vec2 placement_pos,
+ const term_ivec2 placement_pos,
  const enum texture_merge_mode mode,
  const u8 replace
 )
@@ -236,7 +236,7 @@ void texture_merge(
    placement_pos.x > texture_a->size.x ||
    placement_pos.y > texture_a->size.y) return;
  u8 cha = texture_a->channel, chb = texture_b->channel;
- term_vec2 sa = texture_a->size, sb = texture_b->size;
+ term_ivec2 sa = texture_a->size, sb = texture_b->size;
  u8 *ta = &texture_a->data[(placement_pos.y*sa.x+placement_pos.x)*cha], *tb = texture_b->data, *old = 0;
 
  // Apply size thersehold
@@ -244,7 +244,7 @@ void texture_merge(
  u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
  if(b_freeable)
  {
-  term_vec2 new_size = vec2_init(sb.x > max_space_x ? max_space_x : sb.x, sb.y > max_space_y ? max_space_y : sb.y);
+  term_ivec2 new_size = ivec2_init(sb.x > max_space_x ? max_space_x : sb.x, sb.y > max_space_y ? max_space_y : sb.y);
   if(mode == TEXTURE_MERGE_RESIZE)
    tb = resize_texture(tb, chb, sb, new_size);
   else
@@ -266,14 +266,14 @@ void texture_merge(
  if(b_freeable) free(old);
 }
 
-term_vec2 calculate_new_size(const term_vec2 old, const term_vec2 size)
+term_ivec2 calculate_new_size(const term_ivec2 old, const term_ivec2 size)
 {
- if(!size.x) return vec2_init((old.x * size.y) / old.y ,size.y);
- if(!size.y) return vec2_init(size.x, (old.y * size.x) / old.x);
+ if(!size.x) return ivec2_init((old.x * size.y) / old.y ,size.y);
+ if(!size.y) return ivec2_init(size.x, (old.y * size.x) / old.x);
  return size;
 }
 
-u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
+u8* resize_texture(const u8* old, u8 channel, term_ivec2 old_size, term_ivec2 new_size)
 {
  if(!new_size.x || !new_size.y) new_size = calculate_new_size(old_size, new_size);
  float
@@ -308,7 +308,7 @@ u8* resize_texture(const u8* old, u8 channel, term_vec2 old_size, term_vec2 new_
 }
 
 //https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716
-void texture_resize(term_texture* texture, const term_vec2 size)
+void texture_resize(term_texture* texture, const term_ivec2 size)
 {
  if(!texture) return;
  u8* tmp = resize_texture(texture->data, texture->channel, texture->size, size);
@@ -318,7 +318,7 @@ void texture_resize(term_texture* texture, const term_vec2 size)
  texture->size = calculate_new_size(texture->size, size);
 }
 
-u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
+u8 texture_resize_internal(term_texture* texture, const term_ivec2 new_size)
 {
  if(!texture) return 0;
  u8* tmp = (u8*)realloc(texture->data, calculate_pos(0, new_size.y, new_size.x, texture->channel));
@@ -328,7 +328,7 @@ u8 texture_resize_internal(term_texture* texture, const term_vec2 new_size)
  return 0;
 }
 
-u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
+u8* crop_texture(u8* old, u8 channel, term_ivec2 old_size, term_ivec2 new_size)
 {
  u8* raw = 0;
  if(!(raw = (u8*)malloc(calculate_pos(0, new_size.y, new_size.x, channel))))
@@ -340,7 +340,7 @@ u8* crop_texture(u8* old, u8 channel, term_vec2 old_size, term_vec2 new_size)
  return start;
 }
 
-void texture_crop(term_texture *texture, const term_vec2 new_size)
+void texture_crop(term_texture *texture, const term_ivec2 new_size)
 {
  if(!texture || new_size.x >= texture->size.x || new_size.y >= texture->size.y) return;
  u8* tmp = crop_texture(texture->data, texture->channel, texture->size, new_size);
@@ -352,7 +352,7 @@ void texture_crop(term_texture *texture, const term_vec2 new_size)
 
 // Special thanks to Po-Han Lin who makes this algorithm
 // This is EFLA-D (Extremely Fast Line Algorithm Version D (Fixed))
-void texture_draw_line(term_texture *texture, const term_vec2 p1, const term_vec2 p2, const term_rgba color)
+void texture_draw_line(term_texture *texture, const term_ivec2 p1, const term_ivec2 p2, const term_rgba color)
 {
  u8* ta = texture->data, raw[4] = EXPAND_RGBA(color);
  u8 ch = texture->channel, cch = 4;

@@ -1,21 +1,15 @@
 #include "term_priv.h"
 #include "term_display.h"
 
+#include <stdio.h>
+
+#if defined(TERMINAL_UNIX)
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <poll.h>
 #include <signal.h>
-#include <stdio.h>
-
-static struct termios old, cur;
-static struct pollfd pfd = {.events = POLLIN, .fd = STDIN_FILENO };
-
-term_vec2 query_terminal_size() {
- struct winsize ws;
- return (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1) ? vec2_init(ws.ws_col, ws.ws_row) : vec2_init(0, 0);
-}
 
 u8 set_handler(int type, void (*handler)(int)) {
 #ifdef _POSIX_VERSION
@@ -27,6 +21,7 @@ u8 set_handler(int type, void (*handler)(int)) {
 #endif
 }
 
+static struct termios old, cur;
 u8 setup_env(void *stop_handler) {
  if (tcgetattr(STDIN_FILENO, &old) == -1) return 1;
  
@@ -44,6 +39,13 @@ u8 setup_env(void *stop_handler) {
  return 0;
 }
 
+term_ivec2 query_terminal_size() {
+ struct winsize ws;
+ if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
+  return ivec2_init(ws.ws_col, ws.ws_row);
+ return ivec2_init(0, 0);
+}
+
 u8 restore_env() {
  if (tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1) return 1;
 
@@ -53,12 +55,56 @@ u8 restore_env() {
  return 0;
 }
 
+struct pollfd pfd = { .events = POLLIN, .fd = STDIN_FILENO };
+u8 timeout(int ms) { return poll(&pfd, 1, ms); }
+static inline int available() {
+ int out = 0;
+ ioctl(STDIN_FILENO, FIONREAD, &out);
+ return out;
+}
+#elif defined(TERMINAL_WINDOWS)
+#include <windows.h>
+HANDLE h_in = 0, h_out = 0;
+DWORD old_in_mode = 0, old_out_mode = 0;
+u8 setup_env(void* stop_handler)
+{
+ if((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE) return 1;
+ if(!GetConsoleMode(h_in, &old_in_mode)) return 1;
+ if(!SetConsoleMode(h_in, old_in_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_VIRTUAL_TERMINAL_INPUT))) return 1;
+ if((h_out = GetStdHandle(STD_OUTPUT_HANDLE)) == INVALID_HANDLE_VALUE) return 1;
+ if(!GetConsoleMode(h_out, &old_out_mode)) return 1;
+ if(!SetConsoleMode(h_out, old_out_mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING)) return 1;
+ return
+ !SetConsoleCtrlHandler((BOOL (*)(DWORD))stop_handler, 1);
+}
+
+term_ivec2 query_terminal_size() {
+ CONSOLE_SCREEN_BUFFER_INFO csbi;
+ if(GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE),&csbi))
+  return ivec2_init(csbi.dwSize.X, csbi.dwSize.Y);
+ return ivec2_init(0, 0);
+}
+
+u8 restore_env() {
+ return SetConsoleMode(h_in, old_in_mode) || SetConsoleMode(h_out, old_out_mode);
+}
+
+u8 timeout(int ms) {return WaitForSingleObject(h_in, ms) == WAIT_OBJECT_0;}
+static inline int available(){
+ DWORD out = 0;
+ PeekNamedPipe(h_in, 0, 0, 0, &out, 0);
+ return (int)out;
+}
+#else
+ #error "Unsupported OS"
+#endif
+ 
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define getch_chk(val) if (getchar() != val) return
 
 // Handle single-byte character input
-static inline u8 handle_single_byte(int *ch, int *mods) {
- switch (*ch) {
+static inline u8 handle_single_byte(const i8 byte, int *ch, int *mods) {
+ switch (byte) {
   case '\0':  *ch = term_key_space; *mods |= key_ctrl; break;
   case 0x08:  *ch = term_key_backspace; *mods |= key_ctrl; break;
   case 0x09:  *ch = term_key_tab; break;
@@ -76,18 +122,18 @@ static inline u8 handle_single_byte(int *ch, int *mods) {
   case '_':   *ch = term_key_minus; *mods |= key_shift; break;
   case 0x7F:  *ch = term_key_backspace; break;
   default:
-   if (IN_RANGE(*ch, 0x01, 0x1D)) { *ch += 64; *mods |= key_ctrl; break; }
-   if (IN_RANGE(*ch, 'A', 'Z')) { *mods |= key_shift; break; }
-   if (IN_RANGE(*ch, 'a', 'z')) { *ch -= 32; break; }
-   if (IN_RANGE(*ch, ' ', '~')) break; // Remaining characters
+   if (IN_RANGE(byte, 0x01, 0x1D)) { *ch = byte + 64; *mods |= key_ctrl; break; }
+   if (IN_RANGE(byte, 'A', 'Z')) { *ch = byte; *mods |= key_shift; break; }
+   if (IN_RANGE(byte, 'a', 'z')) { *ch = byte - 32; break; }
+   if (IN_RANGE(byte, ' ', '~')) { *ch = byte; break; } // Remaining characters
    return 1;
  }
  return 0;
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-static inline u8 handle_nav_key(int *ch) {
- switch (*ch) {
+static inline u8 handle_nav_key(const i8 byte, int *ch) {
+ switch (byte) {
   case 'A': *ch = term_key_up; break;
   case 'B': *ch = term_key_down; break;
   case 'C': *ch = term_key_right; break;
@@ -99,18 +145,18 @@ static inline u8 handle_nav_key(int *ch) {
  return 0;
 }
 
-static inline u8 handle_f5_below(int* ch)
+static inline u8 handle_f5_below(const i8 byte, int* ch)
 {
- int tmp = *ch - 'P' + term_key_f1;
- if (OUT_RANGE(tmp, term_key_f1, term_key_f4)) return 1;
+ int tmp = 0;
+ if (OUT_RANGE((tmp = byte - 'P' + term_key_f1), term_key_f1, term_key_f4)) return 1;
  *ch = tmp;
  return 0;
 }
 
-static inline u8 handle_f5_above(const int first, int* ch)
+static inline u8 handle_f5_above(const i8 first, const i8 second, int* ch)
 {
  if (first == '1') {
-  switch (*ch) {
+  switch (second) {
    case '5': *ch = term_key_f5; break;
    case '7': *ch = term_key_f6; break;
    case '8': *ch = term_key_f7; break;
@@ -118,7 +164,7 @@ static inline u8 handle_f5_above(const int first, int* ch)
    default: return 1;
   }
  } else if (first == '2') {
-  switch (*ch) {
+  switch (second) {
    case '0': *ch = term_key_f9; break;
    case '1': *ch = term_key_f10; break;
    case '3': *ch = term_key_f11; break;
@@ -157,85 +203,56 @@ static inline u8 handle_special_key(int *ch)
  return 0;
 }
 
+#define BUFFER_SIZE 12
 void kbpoll_events(key_callback_func func) {
- if (poll(&pfd, 1, 0) < 1) return;
-
+ if (!timeout(0)) return;
  int ch = 0, mods = 0, bytes = 0;
- if (ioctl(STDIN_FILENO, FIONREAD, &bytes) == -1 || bytes == 0) return;
+ if((bytes = available()) < 1) return;
 
- _getch(ch);
+ char buf[BUFFER_SIZE] = {0};
+ if(read(STDIN_FILENO, buf, bytes < BUFFER_SIZE ? bytes : BUFFER_SIZE) == -1) return;
 
- if (ch == 0x1B) {  // Escape sequence handling
+ if (buf[0] == 0x1B) {  // Escape sequence handling
   switch (bytes) {
    case 1: ch = term_key_escape; break;
    case 2: // Alt modifier
     mods |= key_alt;
-    _getch(ch);
-    handle_single_byte(&ch, &mods);
+    handle_single_byte(buf[1], &ch, &mods);
     break;
    case 3: // Navigation keys & F1-F4
-    _getch(bytes);
-    _getch(ch);
-    if (bytes == '[') {
-     if (handle_nav_key(&ch)) return;
-    } else if (bytes == 'O') {
-     if(handle_f5_below(&ch)) return;
+    if (buf[1] == '[') {
+     if (handle_nav_key(buf[2], &ch)) return;
+    } else if (buf[1] == 'O') {
+     if(handle_f5_below(buf[2], &ch)) return;
     } else return;
     break;
    case 4: // Page Up / Page Down / Insert / Delete
-    _getch(ch);
-    _getch(bytes);
-   // _getch(ch);
-    if(ch == 'O') {
-     if(bytes == '2')
-     {
-      _getch(ch);
-      mods |= key_shift;
-      if(handle_f5_below(&ch)) return;
-     }
-    } else if(ch == '[') {
-     getch_chk('~');
-     _getch(ch);
-     if(handle_special_key(&ch)) return;
+    if(buf[1] == '[' && buf[3] == '~') {
+     if(handle_nav_key(buf[2], &ch)) return;
+    } else if(buf[1] == 'O') { // Ctrl/Shift/Alt + (F1 - F4) (Konsole case)
+     if(handle_special_combo(buf[2], &mods) || handle_f5_below(buf[3], &ch)) return;
     } else return;
     break;
    case 5: // Function keys F5 - F12
-    getch_chk('[');
-    _getch(bytes);
-    _getch(ch);
-    getch_chk('~');
-    if(handle_f5_above(bytes, &ch)) return;
+    if(buf[1] != '[' || buf[4] != '~') return;
+    if(handle_f5_above(buf[2], buf[3], &ch)) return;
     break;
-   case 6: // Ctrl + (F1 - F4)
-    getch_chk('[');
-    getch_chk('1');
-    getch_chk(';');
-    _getch(bytes);
-    if(handle_special_combo(bytes, &mods)) return;
-    _getch(ch);
+   case 6: // Ctrl/Shift/Alt + (F1 - F4) (Vscode terminal case) and Navigation keys
+    if(buf[1] != '[' || buf[2] != '1' || buf[3] != ';') return;
+    if(handle_special_combo(buf[4], &mods)) return;
     if(
-     !handle_f5_below(&ch) ||
-     !handle_nav_key(&ch)
-    ) break;
+     !handle_f5_below(buf[5], &ch) ||
+     !handle_nav_key(buf[5], &ch)
+    ) return;
     break;
    case 7:
-    getch_chk('[');
-    _getch(bytes);
-    _getch(ch);
-    if(handle_f5_above(bytes, &ch)) return;
-    getch_chk(';');
-    _getch(bytes);
-    getch_chk('~');
-    if(handle_special_combo(bytes, &mods)) return;
+    if(buf[1] != '[' || buf[4] != ';' || buf[6] != '~') return;
+    if (handle_single_byte(buf[0], &ch, &mods)) return;
+    if(handle_special_combo(buf[5], &mods) || handle_f5_above(buf[2], buf[3], &ch)) return;
     break;
    default: return;
   }
  } else // Single-byte characters
-  if (handle_single_byte(&ch, &mods)) return;
+  if(handle_single_byte(buf[0], &ch, &mods)) return;
  func(ch, mods, key_press);
-}
-
-u8 timeout(int ms)
-{
- return poll(&pfd, 1, ms) > 0;
 }

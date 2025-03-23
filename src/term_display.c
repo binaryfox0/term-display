@@ -4,19 +4,13 @@
 #include <string.h>
 #include <stdio.h>
 
-// Platform-specific header
-#include <termios.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-
 #include "term_priv.h"
 
 /* Global variable begin */
 term_texture* display = 0;
-term_vec2 size = (term_vec2) { .x = 0, .y = 0 },
- term_size = (term_vec2) { .x = 0, .y = 0 }, // The terminal size
- prev_size = (term_vec2) { .x = 0, .y = 0 };
+term_ivec2 size = (term_ivec2) { .x = 0, .y = 0 },
+ term_size = (term_ivec2) { .x = 0, .y = 0 }, // The terminal size
+ prev_size = (term_ivec2) { .x = 0, .y = 0 };
 u32 pixel_count = 0; // width * height
 term_rgba default_background = (term_rgba) { .r = 0, .g = 0, .b = 0, .a = 255},
  clear_color = (term_rgba) { .r = 0, .g = 0, .b = 0, .a = 255 };
@@ -28,17 +22,16 @@ struct {
 } display_prop = { 1, 0, 0, 1, 0, 0 };
 u8 numeric_options[5] =
 {
- 0,
- 2,
- 1,
- display_truecolor,
- 0
+ [auto_resize] = 0,
+ [pixel_width] = 2,
+ [pixel_height] = 1,
+ [display_type] = display_truecolor,
+ [display_rotate] = 0
 };
 u8 display_channel = 3;
+
 /* Global variable end */
 
-/* Utlis function begin */
-// https://stackoverflow.com/questions/23369503/get-size-of-terminal-window-rows-columns
 static inline void clear_screen()
 {
  printf(
@@ -53,7 +46,7 @@ static inline void query_default_background()
 {
  static const char* request = "\x1b]11;?\x1b\\";
  _pwrite(STDOUT_FILENO, request, strlen(request));
- if(!timeout(100)) return;
+ if(!timeout(1)) return;
  char buffer[32] = {0};
  if(_pread(STDIN_FILENO, buffer, 32) == -1) return;
  char r[5] = {0}, b[5] = {0}, g[5] = {0};
@@ -84,7 +77,7 @@ char* display_copyright_notice()
 
 void resize_display()
 {
- size = vec2_init(term_size.x / numeric_options[pixel_width], term_size.y / numeric_options[pixel_height]);
+ size = ivec2_init(term_size.x / numeric_options[pixel_width], term_size.y / numeric_options[pixel_height]);
  if((internal_failure = texture_resize_internal(display, size)))
   return; // Uhhhh, how to continue processing without the display
  if(display_prop.y_inc < 0)
@@ -109,7 +102,7 @@ void reload_display()
   texture_free(display);
   display = 0; // Prevent free on freed memory section
  }
- if(!(display = texture_create(0, display_channel, vec2_init(1, 1), 0, 0)))
+ if(!(display = texture_create(0, display_channel, ivec2_init(1, 1), 0, 0)))
  {
   internal_failure = 1;
   return;
@@ -120,7 +113,7 @@ void reload_display()
 
 u8 display_init()
 {
- if(!isatty(STDOUT_FILENO)) return 1;
+ if(!_pisatty(STDOUT_FILENO)) return 1;
  if(setup_env(stop_display)) return 1;
  term_size = prev_size = query_terminal_size(); // Disable calling callback on the first time
  query_default_background();
@@ -128,7 +121,7 @@ u8 display_init()
  reload_display();
  if(internal_failure)
   return 1;
- printf("\x1b[?25l"); // Hide cursor
+ _pwrite(STDOUT_FILENO, "\x1b[?25l", 6); // Hide cursor
  __display_is_running = 1;
  return 0;
 }
@@ -151,7 +144,7 @@ u8 display_option(display_settings_types type, u8 get, void* option)
  }
  case display_size:
  {
-  OPT_SET_GET(size, term_vec2);
+  OPT_SET_GET(size, term_ivec2);
   if((internal_failure = texture_resize_internal(display, size)))
    return 1; // Uhhhh, how to continue processing without the display
   texture_fill(display, clear_color);
@@ -203,14 +196,14 @@ u8 display_option(display_settings_types type, u8 get, void* option)
 
 // Default callback
 void default_key_callback(int keys, int mods, key_state state) {}
-void default_resize_callback(term_vec2 new_size) {}
+void default_resize_callback(term_ivec2 new_size) {}
 
 key_callback_func private_key_callback = default_key_callback;
 resize_callback_func private_resize_callback = default_resize_callback;
 void display_poll_events()
 {
  kbpoll_events(private_key_callback);
- if(!compare_vec2((term_size = query_terminal_size()), prev_size))
+ if(!vec2_equal((term_size = query_terminal_size()), prev_size))
  {
   if(numeric_options[auto_resize])
   {
@@ -233,15 +226,15 @@ void display_set_color(term_rgba color)
 
 void display_copy_texture(
  const term_texture* texture,
- const term_pos pos,
+ const term_vec2 pos,
  const enum texture_merge_mode mode
 )
 {
- term_vec2 display_pos = ndc_to_pos(pos, size);
+ term_ivec2 display_pos = ndc_to_pos(pos, size);
  texture_merge(display, texture, display_pos, mode, 0);
 }
 
-void display_draw_line(term_pos p1, term_pos p2, term_rgba color)
+void display_draw_line(term_vec2 p1, term_vec2 p2, term_rgba color)
 {
  texture_draw_line(display, ndc_to_pos(p1, size), ndc_to_pos(p2, size), color);
 }
@@ -275,7 +268,7 @@ u8 display_show()
  if(internal_failure || !display)
   return 1;
  printf("\x1b[H");
- u8* ptr = texture_get_location(vec2_init(0,0), display);
+ u8* ptr = texture_get_location(ivec2_init(0,0), display);
  static u8 prev[3] = {0};
  for(i32 row = display_prop.y_start; row != display_prop.y_end; row += display_prop.y_inc)
  {
@@ -302,9 +295,9 @@ void display_free()
 {
  // Show the cursor again
  // Reset color / graphics mode
- write(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
+ _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m", 11);
  fflush(stdout); // Flush remaining data
- clear_screen(0);
+ clear_screen();
  restore_env();
  texture_free(display);
 }

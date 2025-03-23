@@ -11,9 +11,9 @@ if(UNIX)
  set(EXTRA "m")
 endif()
 example_projects(rgb_scrolling)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/stb")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/stb/stb_image.h")
  example_projects(image_display)
- target_include_directories(image_display PRIVATE deps/stb)
+ target_include_directories(image_display PRIVATE deps/stb/)
 endif()
 set(EXTRA "") # reset
 

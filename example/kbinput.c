@@ -26,7 +26,11 @@ static const char* fkey_name[] = {
 };
 
 // Key callback function
+int prev_key = 0, counter = 0;
 void key_callback(int key, int mods, key_state state) {
+ if(prev_key == key) counter++;
+ else { prev_key = key; counter = 1; }
+ write_log("Repeated key: %d", counter);
  int index = 0;
 
  // Add modifier keys if present
@@ -89,8 +93,7 @@ int main() {
 
  u64 frame_count = 0;
  term_texture* texture = NULL;
- term_vec2 size = {0};
- const double program_start = get_time();
+ term_ivec2 size = {0};
  double delta_time = 1.0, last_log = get_time();
 
  while (display_is_running()) {
@@ -105,13 +108,13 @@ int main() {
   char* fps_str = to_string("%f", fps);
   texture = display_string_texture(fps_str, strlen(fps_str), &size, 
            rgba_init(255, 255, 255, 255), rgba_init(0, 0, 0, 0));
-  display_copy_texture(texture, pos_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
+  display_copy_texture(texture, vec2_init(-1.0f, 1.0f), TEXTURE_MERGE_RESIZE);
   texture_free(texture);
 
   // Key Press Display
   texture = display_string_texture(key_pressed, strlen(key_pressed), &size, 
            rgba_init(255, 255, 255, 255), rgba_init(0, 0, 0, 0));
-  display_copy_texture(texture, pos_init(-1.0f, 0.0f), TEXTURE_MERGE_CROP);
+  display_copy_texture(texture, vec2_init(-1.0f, 0.0f), TEXTURE_MERGE_CROP);
   texture_free(texture);
 
   display_show();
