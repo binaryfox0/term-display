@@ -132,7 +132,7 @@ void display_copy_texture(const term_texture * texture,
 void display_draw_line(term_vec2 p1, term_vec2 p2, term_rgba color);
 void display_draw_triangle(term_vec2 p1, term_vec2 p2, term_vec2 p3, term_rgba color);
 
-void display_render_vertices(f32 * vertices, i32 component, i32 count);
+void display_render_vertices(const f32 * vertices, i32 component, i32 count);
 
 u8 display_show();
 void display_free();

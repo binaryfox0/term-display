@@ -6,8 +6,11 @@
 typedef struct {
     int x, y;
 } term_ivec2;
-typedef struct {
-    float x, y;
+typedef union {
+    struct {
+        float x, y;
+    };
+    float raw[2];
 } term_vec2;
 typedef union {
     struct {
@@ -18,9 +21,6 @@ typedef union {
 typedef struct {
     int x, y, z;
 } term_ivec3;
-
-typedef f32 term_vec4[4];
-typedef term_vec4 term_mat4[4];
 
 static inline term_ivec2 ivec2_init(int x, int y)
 {
@@ -34,6 +34,13 @@ static inline term_vec2 vec2_init(float x, float y)
     .x = x,.y = y};
 }
 
+static inline term_vec3 vec3_init(float x, float y, float z)
+{
+    return (term_vec3) {
+        .x = x, .y = y, .z = z
+    };
+}
+
 static inline term_ivec3 ivec3_init(int x, int y, int z)
 {
     return (term_ivec3) {
@@ -44,6 +51,12 @@ static inline term_ivec3 ivec2_ivec3(term_ivec2 ivec2, int last)
 {
     return (term_ivec3) {
     .x = ivec2.x,.y = ivec2.y,.z = last};
+}
+
+static inline term_vec2 vec3_vec2(term_vec3 ivec3)
+{
+    return (term_vec2) {
+    .x = ivec3.x,.y = ivec3.y};
 }
 
 static inline u8 vec2_equal(term_ivec2 a, term_ivec2 b)

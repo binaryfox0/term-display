@@ -333,8 +333,8 @@ void texture_crop(term_texture *texture, const term_ivec2 new_size)
 void texture_draw_line(term_texture *texture, const term_ivec2 p1,
                        const term_ivec2 p2, const term_rgba color)
 {
-    ptexture_draw_line(texture->data, texture->size.x, texture->channel,
-                       ivec2_ivec3(p1, 0.0f), ivec2_ivec3(p2, 0.0f), color,
+    ptexture_draw_line(texture->data, texture->size, texture->channel,
+                       p1, p2, vec2_init(0.0f, 0.0f), color,
                        0);
 }
 

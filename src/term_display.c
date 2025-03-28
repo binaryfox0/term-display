@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <float.h>
 
 #include "term_priv.h"
 #include "term_texture_priv.h"
@@ -85,17 +86,32 @@ char *display_copyright_notice()
         "Commercial applications please inquire about licensing the algorithms.";
 }
 
+static inline void reset_depth_buffer()
+{
+    u64 buf_size = size.x * size.y * sizeof(f32);
+    depth_buffer[0] = FLT_MAX;
+    char* ptr = (char*)depth_buffer;
+    u64 filled = sizeof(f32);
+    while (filled * 2 < buf_size) {
+        memcpy(&ptr[filled], ptr, filled);
+        filled *= 2;
+    }
+    memcpy(&ptr[filled], ptr, buf_size - filled);
+}
+
 void resize_depth_buffer()
 {
-    if (!depth_buffer || !numeric_options[settings_depth_buffer])
+    if (!numeric_options[settings_depth_buffer])
         return;
+    u64 buf_size = size.x * size.y * sizeof(f32);
     f32 *tmp =
-        (f32 *) realloc(depth_buffer, size.x * size.y * sizeof(f32));
+        (f32 *) realloc(depth_buffer, buf_size);
     if (!tmp) {
         internal_failure = 1;
         return;
     }
     depth_buffer = tmp;
+    reset_depth_buffer();
 }
 
 void resize_display()
@@ -281,6 +297,7 @@ void display_set_color(term_rgba color)
 {
     clear_color = pixel_blend(default_background, color);
     texture_fill(display, clear_color);
+    reset_depth_buffer();
 }
 
 void display_copy_texture(const term_texture *texture,
@@ -291,25 +308,42 @@ void display_copy_texture(const term_texture *texture,
     texture_merge(display, texture, display_pos, mode, 0);
 }
 
-void display_render_vertices(f32 *vertices, i32 component, i32 count)
+void display_render_vertices(const f32 *vertices, i32 component, i32 count)
 {
+    for(int i = 0; i < count / 3; i++)
+    {
+        const f32* start = &vertices[i*3*3];
+        term_ivec2 p1 = ndc_to_pos(vec2_init(start[0], start[1]), size),
+                   p2 = ndc_to_pos(vec2_init(start[3], start[4]), size),
+                   p3 = ndc_to_pos(vec2_init(start[6], start[7]), size);
+        float d1 = start[2], d2 = start[5], d3 = start[8];
+        ptexture_draw_triangle(display_raw, size, display_channel,
+            p1,
+            p2,
+            p3,
+            rgba_init(128, 128, 128, 255), vec3_init(d1, d2, d3), depth_buffer);
+        ptexture_draw_line(display_raw, size, display_channel, p1, p2, vec2_init(d1, d2), rgba_init(255,255,255,255), depth_buffer);
+        ptexture_draw_line(display_raw, size, display_channel, p2, p3, vec2_init(d2, d3), rgba_init(255,255,255,255), depth_buffer);
+        ptexture_draw_line(display_raw, size, display_channel, p1, p3, vec2_init(d1, d3), rgba_init(255,255,255,255), depth_buffer);
+    }
 }
 
 void display_draw_line(const term_vec2 p1, const term_vec2 p2,
                        const term_rgba color)
 {
-    ptexture_draw_line(display_raw, size.x, display_channel,
-                       ivec2_ivec3(ndc_to_pos(p1, size), 0),
-                       ivec2_ivec3(ndc_to_pos(p2, size), 0), color, 0);
+    ptexture_draw_line(display_raw, size, display_channel,
+                       ndc_to_pos(p1, size),
+                       ndc_to_pos(p2, size), 
+                       vec2_init(0.0f, 0.0f),color, 0);
 }
 
 void display_draw_triangle(const term_vec2 p1, const term_vec2 p2, const term_vec2 p3, const term_rgba color)
 {
-    ptexture_draw_triangle(display_raw, size.x, display_channel,
-                        ivec2_ivec3(ndc_to_pos(p1, size), 0),
-                        ivec2_ivec3(ndc_to_pos(p2, size), 0),
-                        ivec2_ivec3(ndc_to_pos(p3, size), 0),
-                        color, 0);
+    ptexture_draw_triangle(display_raw, size, display_channel,
+                        ndc_to_pos(p1, size),
+                        ndc_to_pos(p2, size),
+                        ndc_to_pos(p3, size),
+                        color, vec3_init(0, 0, 0), 0);
 }
 
 static inline u8 rgb_to_216(const u8 *c)
@@ -338,10 +372,10 @@ static inline void display_cell(u8 *c)
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
 u8 display_show()
 {
-    if (internal_failure || !display)
+    if (internal_failure)
         return 1;
     printf("\x1b[H");
-    u8 *ptr = texture_get_location(ivec2_init(0, 0), display);
+    u8 *ptr = display_raw;
     static u8 prev[3] = { 0 };
     for (i32 row = display_prop.y_start; row != display_prop.y_end;
          row += display_prop.y_inc) {
