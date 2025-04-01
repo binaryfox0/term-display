@@ -34,7 +34,7 @@ void ptexture_draw_line(u8 *texture,
                         const term_rgba color, f32 *depth_buffer)
 {
     u8 cch = 4, raw[4] = { 0 };
-    convert(raw, (u8[4]) EXPAND_RGBA(color), channel, &cch);
+    convert(raw, (u8[4]) EXPAND_RGBA(color), channel, 4, &cch);
 
     int yLonger = 0;
     int incrementVal, endVal;
@@ -79,43 +79,34 @@ void ptexture_draw_line(u8 *texture,
     }
 }
 
-void ptexture_draw_triangle(
-    u8 *texture,
+static inline f32 edge_function(term_ivec2 v0, term_ivec2 v1, term_ivec2 v2) {
+    return (f32)(v1.x - v0.x) * (v2.y - v0.y) - (f32)(v1.y - v0.y) * (v2.x - v0.x);
+}
+
+void ptexture_draw_triangle(u8 * texture,
     const term_ivec2 size,
     const u8 channel,
-    const term_ivec2 p1,
-    const term_ivec2 p2,
-    const term_ivec2 p3,
-    const term_rgba color,
-    const term_vec3 depth,
-    f32 *depth_buffer
-) {
-    term_ivec2 v1 = p1, v2 = p2, v3 = p3;
-    float d1 = depth.x, d2 = depth.y, d3 = depth.z;
+    const vertex v1,
+    const vertex v2,
+    const vertex v3,
+    f32 * depth_buffer)
+{
+    vertex pv1 = v1, pv2 = v2, pv3 = v3;
+    if(((pv2.pos.x - pv1.pos.x) * (pv3.pos.y - pv1.pos.y) - (pv2.pos.y - pv1.pos.y) * (pv3.pos.x - pv1.pos.x)) > 0)
+        SWAP(pv2, pv3);
 
-    // Ensure CCW winding order
-    int area = (v2.x - v1.x) * (v3.y - v1.y) - (v3.x - v1.x) * (v2.y - v1.y);
-    if (area < 0) {
-        SWAP(v2, v3);
-        SWAP(d2, d3);
-    }
+    
+    int minX = max(0, min(v1.pos.x, min(v2.pos.x, v3.pos.x)));
+    int minY = max(0, min(v1.pos.y, min(v2.pos.y, v3.pos.y)));
+    int maxX = min(size.x - 1, max(v1.pos.x, max(v2.pos.x, v3.pos.x)));
+    int maxY = min(size.y - 1, max(v1.pos.y, max(v2.pos.y, v3.pos.y)));
 
-    u8 cch = 4, raw[4] = {0};
-    convert(raw, (u8[4])EXPAND_RGBA(color), channel, &cch);
+    int A0 = pv2.pos.y - pv3.pos.y, B0 = pv3.pos.x - pv2.pos.x, C0 = pv2.pos.x * pv3.pos.y - pv3.pos.x * pv2.pos.y;
+    int A1 = pv3.pos.y - pv1.pos.y, B1 = pv1.pos.x - pv3.pos.x, C1 = pv3.pos.x * pv1.pos.y - pv1.pos.x * pv3.pos.y;
+    int A2 = pv1.pos.y - pv2.pos.y, B2 = pv2.pos.x - pv1.pos.x, C2 = pv1.pos.x * pv2.pos.y - pv2.pos.x * pv1.pos.y;
 
-    // Compute triangle bounding box
-    int minX = max(0, min(v1.x, min(v2.x, v3.x)));
-    int maxX = min(size.x - 1, max(v1.x, max(v2.x, v3.x)));
-    int minY = min(v1.y, min(v2.y, v3.y));
-    int maxY = max(v1.y, max(v2.y, v3.y));
-
-    int A0 = v2.y - v3.y, B0 = v3.x - v2.x, C0 = v2.x * v3.y - v3.x * v2.y;
-    int A1 = v3.y - v1.y, B1 = v1.x - v3.x, C1 = v3.x * v1.y - v1.x * v3.y;
-    int A2 = v1.y - v2.y, B2 = v2.x - v1.x, C2 = v1.x * v2.y - v2.x * v1.y;
-
-    float invSum = 1.0f / ((A0 * v1.x + B0 * v1.y + C0) + 
-                            (A1 * v2.x + B1 * v2.y + C1) + 
-                            (A2 * v3.x + B2 * v3.y + C2));
+    f32 inv_area = 1.0f / (B2 * A1 - (f32)(pv2.pos.y - pv1.pos.y) * (pv3.pos.x - pv1.pos.x));
+    // /if(area == 0) return;
 
     for (int y = minY; y <= maxY; y++) {
         int w0_row = A0 * minX + B0 * y + C0;
@@ -123,17 +114,24 @@ void ptexture_draw_triangle(
         int w2_row = A2 * minX + B2 * y + C2;
 
         for (int x = minX; x <= maxX; x++) {
-            if ((w0_row | w1_row | w2_row) >= 0) {
-                // Convert to barycentric coordinates
-                float alpha = w0_row * invSum;
-                float beta = w1_row * invSum;
-                float gamma = w2_row * invSum;
+            // Compute barycentric coordinates
+            float w0 = w0_row * inv_area;
+            float w1 = w1_row * inv_area;
+            float w2 = w2_row * inv_area;
 
-                float z = alpha * d1 + beta * d2 + gamma * d3;
-                
-                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), z, size.x, raw, channel, cch);
+            // Check if inside triangle
+            if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                f32 pixel_depth = w0 * pv1.depth + w1 * pv2.depth + w2 * pv3.depth;
+
+                // Interpolate color
+                float r = w0 * pv1.color.r + w1 * pv2.color.r + w2 * pv3.color.r;
+                float g = w0 * pv1.color.g + w1 * pv2.color.g + w2 * pv3.color.g;
+                float b = w0 * pv1.color.b + w1 * pv2.color.b + w2 * pv3.color.b;
+                float a = w0 * pv1.color.a + w1 * pv2.color.a + w2 * pv3.color.a;
+
+                // Set pixel
+                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), pixel_depth, size.x, (u8[4]){r, g, b, 255}, channel, 4);
             }
-            
             w0_row += A0;
             w1_row += A1;
             w2_row += A2;

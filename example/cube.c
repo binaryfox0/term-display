@@ -71,6 +71,8 @@ int main()
 
     u8 enable = 1;
     display_option(settings_depth_buffer, 0, &enable);
+    enable = display_grayscale_256;
+    display_option(settings_display_type, 0, &enable);
     display_set_key_callback(processInput);
 
     term_ivec2 size = { 0 };
@@ -124,20 +126,8 @@ int main()
             
             glm_mat4_mulv(mvp, transformed, transformed);  // Multiply by MVP matrix
 
-            // Perspective division (homogeneous normalization)
-            if (transformed[3] != 0.0f) {
-                transformed[0] /= transformed[3];
-                transformed[1] /= transformed[3];
-                transformed[2] /= transformed[3];
-            }
-
-            dest[0] = transformed[0];
-            dest[1] = transformed[1];
-            dest[2] = transformed[2];
-
+            display_render_add(transformed, 4);
         }
-
-        display_render_vertices(out, 3, sizeof(vertices)/ sizeof(vertices[0]) / 3);
 
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
         texture = display_string_texture(tmp, -1, &size, rgba_init(255,0,0,255), rgba_init(0,0,0,0));

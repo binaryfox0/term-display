@@ -88,6 +88,7 @@ char *display_copyright_notice()
 
 static inline void reset_depth_buffer()
 {
+    if(!depth_buffer) return;
     u64 buf_size = size.x * size.y * sizeof(f32);
     depth_buffer[0] = FLT_MAX;
     char* ptr = (char*)depth_buffer;
@@ -308,23 +309,33 @@ void display_copy_texture(const term_texture *texture,
     texture_merge(display, texture, display_pos, mode, 0);
 }
 
-void display_render_vertices(const f32 *vertices, i32 component, i32 count)
+#define VERTEX_BUF_SIZ 3
+
+static i32 vertex_count = 0;
+static const f32 vertex_default[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+static f32 vertex_buffer[4*VERTEX_BUF_SIZ] = {};
+static inline void clear_vertex_buffer()
 {
-    for(int i = 0; i < count / 3; i++)
+    for(i32 i = 0; i < VERTEX_BUF_SIZ; i++)
+        memcpy(vertex_buffer, vertex_default, VERTEX_BUF_SIZ * sizeof(f32));
+}
+
+void display_render_add(const f32* vertices, i32 component)
+{
+    memcpy(&vertex_buffer[vertex_count * 4], vertices, component * sizeof(f32));
+    vertex_count++;
+    if(vertex_count == 3)
     {
-        const f32* start = &vertices[i*3*3];
-        term_ivec2 p1 = ndc_to_pos(vec2_init(start[0], start[1]), size),
-                   p2 = ndc_to_pos(vec2_init(start[3], start[4]), size),
-                   p3 = ndc_to_pos(vec2_init(start[6], start[7]), size);
-        float d1 = start[2], d2 = start[5], d3 = start[8];
+        term_ivec2 p1 = ndc_to_pos(vec2_init(vertex_buffer[0] / vertex_buffer[3], vertex_buffer[1] / vertex_buffer[3]), size);
+        term_ivec2 p2 = ndc_to_pos(vec2_init(vertex_buffer[4] / vertex_buffer[7], vertex_buffer[5] / vertex_buffer[7]), size);
+        term_ivec2 p3 = ndc_to_pos(vec2_init(vertex_buffer[8] / vertex_buffer[11], vertex_buffer[9] / vertex_buffer[11]), size);
         ptexture_draw_triangle(display_raw, size, display_channel,
-            p1,
-            p2,
-            p3,
-            rgba_init(128, 128, 128, 255), vec3_init(d1, d2, d3), depth_buffer);
-        ptexture_draw_line(display_raw, size, display_channel, p1, p2, vec2_init(d1, d2), rgba_init(255,255,255,255), depth_buffer);
-        ptexture_draw_line(display_raw, size, display_channel, p2, p3, vec2_init(d2, d3), rgba_init(255,255,255,255), depth_buffer);
-        ptexture_draw_line(display_raw, size, display_channel, p1, p3, vec2_init(d1, d3), rgba_init(255,255,255,255), depth_buffer);
+            (vertex){p1, vertex_buffer[2], rgba_init(255,0,0, 255)},
+            (vertex){p2, vertex_buffer[6], rgba_init(255,0,0, 255)},
+            (vertex){p3, vertex_buffer[10], rgba_init(255,0,0, 255)},
+            depth_buffer);
+        vertex_count = 0;
+        clear_vertex_buffer();
     }
 }
 
@@ -339,11 +350,11 @@ void display_draw_line(const term_vec2 p1, const term_vec2 p2,
 
 void display_draw_triangle(const term_vec2 p1, const term_vec2 p2, const term_vec2 p3, const term_rgba color)
 {
-    ptexture_draw_triangle(display_raw, size, display_channel,
-                        ndc_to_pos(p1, size),
-                        ndc_to_pos(p2, size),
-                        ndc_to_pos(p3, size),
-                        color, vec3_init(0, 0, 0), 0);
+    //ptexture_draw_triangle(display_raw, size, display_channel,
+    //                    ndc_to_pos(p1, size),
+    //                    ndc_to_pos(p2, size),
+    //                    ndc_to_pos(p3, size),
+    //                    color, vec3_init(0, 0, 0), 0);
 }
 
 static inline u8 rgb_to_216(const u8 *c)

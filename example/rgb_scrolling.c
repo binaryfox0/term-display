@@ -23,6 +23,9 @@ int main()
     if (display_init() || start_logging("statics.txt"))
         return 1;
 
+    enable = display_truecolor_216;
+    display_option(settings_display_type, 0, &enable);
+
     term_ivec2 size = { 0 };
     double speed = 0.001, elapsed = 0.0;
     double delta_time = 1.0, last_log = get_time();

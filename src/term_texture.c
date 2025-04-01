@@ -158,7 +158,7 @@ void texture_fill(const term_texture *texture, const term_rgba color)
     u8 *data = texture->data;
     u8 ch = texture->channel;
 
-    convert(c, c, ch, &tmp);
+    convert(c, c, ch, 4, &tmp);
     if (IS_TRANSPARENT(ch) || color.a != 255) {
         for (u32 row = 0; row < size.y; row++) {
             for (u32 col = 0; col < size.x; col++, data += ch)
@@ -212,7 +212,7 @@ void texture_merge(const term_texture *texture_a,
     for (u32 row = 0; row < sb.y; row++, ta += space) {
         for (u32 col = 0; col < sb.x; col++, ta += cha, tb += chb) {
             u8 tmp[4] = { 0 }, tmp_1 = chb;
-            convert(tmp, tb, cha, &tmp_1);
+            convert(tmp, tb, cha, chb, &tmp_1);
             replace ? memcpy(ta, tmp, cha) : alpha_blend(ta, tmp, cha,
                                                          tmp_1);
         }

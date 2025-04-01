@@ -427,22 +427,23 @@ void kbpoll_events(key_callback_func func)
 
 
 // Convert b to have the same type as a
-void convert(u8 *b_out, const u8 *b_in, u8 ch_a, u8 *ch_b)
+void convert(u8 *b_out, const u8 *b_in, u8 ch_a, u8 ch_b, u8 *out_b)
 {
-    u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(*ch_b);
+    u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
     if (a_g && !b_g) {
         b_out[0] = to_grayscale(b_in);
-        b_out[1] = *ch_b - 3 ? b_out[3] : 255;
-        *ch_b = ch_a;
+        b_out[1] = ch_b - 3 ? b_out[3] : 255;
+        *out_b = ch_b - 2;
         return;
     } else if (!a_g && b_g) {
-        b_out[3] = *ch_b - 1 ? b_in[1] : 255;
+        b_out[3] = ch_b - 1 ? b_in[1] : 255;
         b_out[0] = b_out[1] = b_out[2] = b_in[0];
-        *ch_b = ch_a;
+        *out_b = ch_b + 2;
         return;
     }
-    for (u8 i = 0; i < *ch_b; i++)
-        b_out[i] = b_in[i];;
+    for (u8 i = 0; i < ch_b; i++)
+        b_out[i] = b_in[i];
+    *out_b = ch_b;
 }
 
 

@@ -55,7 +55,7 @@ u8 timeout(int ms);
 #define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
 
 
-void convert(u8 * b_out, const u8 * b_in, u8 ch_a, u8 * ch_b);
+void convert(u8 * b_out, const u8 * b_in, u8 ch_a, u8 ch_b, u8 *out_b);
 void alpha_blend(u8 * a, const u8 * b, u8 ch_a, u8 ch_b);
 
 #endif
