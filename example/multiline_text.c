@@ -6,47 +6,81 @@
 
 #include "example_utils.h"
 
+#define STR_BUF_SIZE 10
+
+char* buffer = 0;
+int current_size = 0, current_index = 0;
+
+term_texture* string_texture = 0;
+term_ivec2 texture_size;
+void refresh_str_texture()
+{
+    if(string_texture) texture_free(string_texture);
+    string_texture = tdf_string_texture(buffer, -1, &texture_size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
+}
+
+
+void process_input(int key, int mods, td_key_state_t actions)
+{
+    if(key == td_key_backspace)
+    {
+        if(current_index == 0) return;
+        buffer[(current_index = current_index - 1)] = 0;
+    }
+    else if(key == td_key_enter)
+    {
+        buffer[current_index++] = '\n';
+    }
+    else {
+        if(current_index + 1 >= current_size)
+        {
+            int new_size = current_size + STR_BUF_SIZE;
+            char* tmp = (char*)realloc(buffer, new_size);
+            if(!tmp) return;
+            buffer = tmp;
+            memset(&buffer[current_size], 0, STR_BUF_SIZE);
+            current_size = new_size;
+        }
+        buffer[current_index++] = (char)key;
+    }
+    refresh_str_texture();
+}
+
 int main()
 {
-    u8 enable = 1;
-    if (display_init() || start_logging("statics.txt"))
+    term_u8 enable = 1;
+    if (td_init() || start_logging("statics.txt"))
         return 1;
-    display_option(settings_auto_resize, 0, &enable);
+    td_option(td_opt_auto_resize, 0, &enable);
+    td_set_key_callback(process_input);
 
-    term_ivec2 texture_size = { 0 };
-    term_texture *text_texture =
-        display_string_texture("\rHello\r\nWorld!\n", -1, &texture_size,
-                               rgba_init(255, 255, 255, 255), rgba_init(0,
-                                                                        0,
-                                                                        0,
-                                                                        127));
     term_ivec2 size = { 0 };
-    u64 frame_count = 0;
+    term_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
-    while (display_is_running()) {
+    while (td_is_running()) {
         frame_count++;
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
-        display_poll_events();
+        td_poll_events();
 
-        display_set_color(rgba_init(109, 154, 140, frame_count / 7));   // Approximtely patina
+        td_set_color(rgba_init(109, 154, 140, frame_count / 7));   // Approximtely patina
 
         char *string = to_string("%f", fps);
         term_texture *texture =
-            display_string_texture(string, strlen(string), &size,
+            tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(0, 0, 0, 255), rgba_init(255,
                                                                       255,
                                                                       255,
                                                                       255));
-        display_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_RESIZE);
         texture_free(texture);
 
-        display_copy_texture(text_texture, vec2_init(-1.0f, 0.0f),
+        td_copy_texture(string_texture, vec2_init(-1.0f, 0.0f),
                              TEXTURE_MERGE_CROP);
 
-        display_show();
+        td_show();
 
         delta_time = get_time() - start_frame;
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -55,8 +89,8 @@ int main()
         }
         free(string);
     }
-    texture_free(text_texture);
-    display_free();
+    texture_free(string_texture);
+    td_free();
     stop_logging();
     return 0;
 }

@@ -33,7 +33,7 @@ double get_time()
 #ifdef TESTS_LOGGING
 double program_start = 0;
 FILE *file = 0;
-u8 start_logging(const char *filename)
+term_bool start_logging(const char *filename)
 {
     if (!(file = fopen(filename, "w")))
         return 1;
@@ -64,7 +64,7 @@ void write_log(const char *format, ...)
     free(str);
 }
 
-u8 stop_logging()
+term_bool stop_logging()
 {
     return fclose(file) == EOF;
 }
@@ -96,6 +96,6 @@ char *to_string(const char *format, ...)
 char *to_timestamp(double time)
 {
     // Format: ...mm:ss.msx6
-    return to_string("%d:%d.%06d", (u32) time / 60, (u32) time % 60,
-                     (u32) (time * 1000000) % 1000000);
+    return to_string("%d:%d.%06d", (term_u32) time / 60, (term_u32) time % 60,
+                     (term_u32) (time * 1000000) % 1000000);
 }

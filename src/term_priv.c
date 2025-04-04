@@ -11,7 +11,7 @@
 #include <poll.h>
 #include <signal.h>
 
-u8 set_handler(int type, void (*handler)(int))
+term_bool set_handler(int type, void (*handler)(int))
 {
 #ifdef _POSIX_VERSION
     struct sigaction sa = {.sa_flags = SA_SIGINFO,.sa_handler = handler };
@@ -23,7 +23,7 @@ u8 set_handler(int type, void (*handler)(int))
 }
 
 static struct termios old, cur;
-u8 setup_env(void *stop_handler)
+term_bool setup_env(void *stop_handler)
 {
     if (tcgetattr(STDIN_FILENO, &old) == -1)
         return 1;
@@ -35,7 +35,7 @@ u8 setup_env(void *stop_handler)
         return 1;
 
     // Seperate if for stopping it further continuing
-    void (*handler)(int) =(void(*)(int)) stop_handler;
+    void (*handler)(int) = *(void(**)(int))(&stop_handler);
     if (set_handler(SIGINT, handler))
         return 1;
     if (set_handler(SIGTERM, handler))
@@ -54,7 +54,7 @@ term_ivec2 query_terminal_size()
     return ivec2_init(0, 0);
 }
 
-u8 restore_env()
+term_bool restore_env()
 {
     if (tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1)
         return 1;
@@ -70,7 +70,7 @@ u8 restore_env()
 
 struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
 
-u8 timeout(int ms)
+term_bool timeout(int ms)
 {
     return poll(&pfd, 1, ms);
 }
@@ -85,7 +85,7 @@ static inline int available()
 #include <windows.h>
 HANDLE h_in = 0, h_out = 0;
 DWORD old_in_mode = 0, old_out_mode = 0;
-u8 setup_env(void *stop_handler)
+term_bool setup_env(void *stop_handler)
 {
     if ((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
         return 1;
@@ -114,13 +114,13 @@ term_ivec2 query_terminal_size()
     return ivec2_init(0, 0);
 }
 
-u8 restore_env()
+term_bool restore_env()
 {
     return SetConsoleMode(h_in, old_in_mode)
         || SetConsoleMode(h_out, old_out_mode);
 }
 
-u8 timeout(int ms)
+term_bool timeout(int ms)
 {
     return WaitForSingleObject(h_in, ms) == WAIT_OBJECT_0;
 }
@@ -139,69 +139,69 @@ static inline int available()
 #define getch_chk(val) if (getchar() != val) return
 
 // Handle single-byte character input
-static inline u8 handle_single_byte(const i8 byte, int *ch, int *mods)
+static inline term_bool handle_single_byte(const term_i8 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
-        *ch = term_key_space;
-        *mods |= key_ctrl;
+        *ch = td_key_space;
+        *mods |= td_key_ctrl;
         break;
     case 0x08:
-        *ch = term_key_backspace;
-        *mods |= key_ctrl;
+        *ch = td_key_backspace;
+        *mods |= td_key_ctrl;
         break;
     case 0x09:
-        *ch = term_key_tab;
+        *ch = td_key_tab;
         break;
     case 0x0A:
     case 0x0D:
-        *ch = term_key_enter;
+        *ch = td_key_enter;
         break;
     case 0x1B:
-        *ch = term_key_escape;
+        *ch = td_key_escape;
         break;
     case '\"':
-        *ch = term_key_space;
-        *mods |= key_shift;
+        *ch = td_key_space;
+        *mods |= td_key_shift;
         break;
     case ':':
-        *ch = term_key_semicolon;
-        *mods |= key_shift;
+        *ch = td_key_semicolon;
+        *mods |= td_key_shift;
         break;
     case '>':
     case '?':
     case '<':
         *ch -= 16;
-        *mods |= key_shift;
+        *mods |= td_key_shift;
         break;
     case '+':
-        *ch = term_key_equal;
-        *mods |= key_shift;
+        *ch = td_key_equal;
+        *mods |= td_key_shift;
         break;
     case '@':
-        *ch = term_key_2;
-        *mods |= key_shift;
+        *ch = td_key_2;
+        *mods |= td_key_shift;
         break;
     case '^':
-        *ch = term_key_6;
-        *mods |= key_shift;
+        *ch = td_key_6;
+        *mods |= td_key_shift;
         break;
     case '_':
-        *ch = term_key_minus;
-        *mods |= key_shift;
+        *ch = td_key_minus;
+        *mods |= td_key_shift;
         break;
     case 0x7F:
-        *ch = term_key_backspace;
+        *ch = td_key_backspace;
         break;
     default:
         if (IN_RANGE(byte, 0x01, 0x1D)) {
             *ch = byte + 64;
-            *mods |= key_ctrl;
+            *mods |= td_key_ctrl;
             break;
         }
         if (IN_RANGE(byte, 'A', 'Z')) {
             *ch = byte;
-            *mods |= key_shift;
+            *mods |= td_key_shift;
             break;
         }
         if (IN_RANGE(byte, 'a', 'z')) {
@@ -218,26 +218,26 @@ static inline u8 handle_single_byte(const i8 byte, int *ch, int *mods)
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-static inline u8 handle_nav_key(const i8 byte, int *ch)
+static inline term_bool handle_nav_key(const term_i8 byte, int *ch)
 {
     switch (byte) {
     case 'A':
-        *ch = term_key_up;
+        *ch = td_key_up;
         break;
     case 'B':
-        *ch = term_key_down;
+        *ch = td_key_down;
         break;
     case 'C':
-        *ch = term_key_right;
+        *ch = td_key_right;
         break;
     case 'D':
-        *ch = term_key_left;
+        *ch = td_key_left;
         break;
     case 'H':
-        *ch = term_key_home;
+        *ch = td_key_home;
         break;
     case 'F':
-        *ch = term_key_end;
+        *ch = td_key_end;
         break;
     default:
         return 1;
@@ -245,31 +245,31 @@ static inline u8 handle_nav_key(const i8 byte, int *ch)
     return 0;
 }
 
-static inline u8 handle_f5_below(const i8 byte, int *ch)
+static inline term_bool handle_f5_below(const term_i8 byte, int *ch)
 {
     int tmp = 0;
     if (OUT_RANGE
-        ((tmp = byte - 'P' + term_key_f1), term_key_f1, term_key_f4))
+        ((tmp = byte - 'P' + td_key_f1), td_key_f1, td_key_f4))
         return 1;
     *ch = tmp;
     return 0;
 }
 
-static inline u8 handle_f5_above(const i8 first, const i8 second, int *ch)
+static inline term_bool handle_f5_above(const term_i8 first, const term_i8 second, int *ch)
 {
     if (first == '1') {
         switch (second) {
         case '5':
-            *ch = term_key_f5;
+            *ch = td_key_f5;
             break;
         case '7':
-            *ch = term_key_f6;
+            *ch = td_key_f6;
             break;
         case '8':
-            *ch = term_key_f7;
+            *ch = td_key_f7;
             break;
         case '9':
-            *ch = term_key_f8;
+            *ch = td_key_f8;
             break;
         default:
             return 1;
@@ -277,16 +277,16 @@ static inline u8 handle_f5_above(const i8 first, const i8 second, int *ch)
     } else if (first == '2') {
         switch (second) {
         case '0':
-            *ch = term_key_f9;
+            *ch = td_key_f9;
             break;
         case '1':
-            *ch = term_key_f10;
+            *ch = td_key_f10;
             break;
         case '3':
-            *ch = term_key_f11;
+            *ch = td_key_f11;
             break;
         case '4':
-            *ch = term_key_f12;
+            *ch = td_key_f12;
             break;
         default:
             return 1;
@@ -296,29 +296,29 @@ static inline u8 handle_f5_above(const i8 first, const i8 second, int *ch)
     return 0;
 }
 
-static inline u8 handle_special_combo(const int byte, int *mods)
+static inline term_bool handle_special_combo(const int byte, int *mods)
 {
     switch (byte) {
     case '8':
-        *mods |= (key_ctrl | key_alt | key_shift);
+        *mods |= (td_key_ctrl | td_key_alt | td_key_shift);
         break;
     case '7':
-        *mods |= (key_ctrl | key_alt);
+        *mods |= (td_key_ctrl | td_key_alt);
         break;
     case '6':
-        *mods |= (key_ctrl | key_shift);
+        *mods |= (td_key_ctrl | td_key_shift);
         break;
     case '5':
-        *mods |= key_ctrl;
+        *mods |= td_key_ctrl;
         break;
     case '4':
-        *mods |= (key_alt | key_shift);
+        *mods |= (td_key_alt | td_key_shift);
         break;
     case '3':
-        *mods |= key_alt;
+        *mods |= td_key_alt;
         break;
     case '2':
-        *mods |= key_shift;
+        *mods |= td_key_shift;
         break;
     default:
         return 1;
@@ -326,20 +326,20 @@ static inline u8 handle_special_combo(const int byte, int *mods)
     return 0;
 }
 
-static inline u8 handle_special_key(int *ch)
+static inline term_bool handle_special_key(int *ch)
 {
     switch (*ch) {
     case '2':
-        *ch = term_key_insert;
+        *ch = td_key_insert;
         break;
     case '3':
-        *ch = term_key_delete;
+        *ch = td_key_delete;
         break;
     case '5':
-        *ch = term_key_page_up;
+        *ch = td_key_page_up;
         break;
     case '6':
-        *ch = term_key_page_down;
+        *ch = td_key_page_down;
         break;
     default:
         return 1;
@@ -357,17 +357,17 @@ void kbpoll_events(key_callback_func func)
         return;
 
     char buf[BUFFER_SIZE] = { 0 };
-    if (read(STDIN_FILENO, buf, bytes < BUFFER_SIZE ? bytes : BUFFER_SIZE)
+    if (read(STDIN_FILENO, buf, (size_t)(bytes < BUFFER_SIZE ? bytes : BUFFER_SIZE))
         == -1)
         return;
 
     if (buf[0] == 0x1B) {       // Escape sequence handling
         switch (bytes) {
         case 1:
-            ch = term_key_escape;
+            ch = td_key_escape;
             break;
         case 2:                // Alt modifier
-            mods |= key_alt;
+            mods |= td_key_alt;
             handle_single_byte(buf[1], &ch, &mods);
             break;
         case 3:                // Navigation keys & F1-F4
@@ -422,43 +422,50 @@ void kbpoll_events(key_callback_func func)
     } else                      // Single-byte characters
     if (handle_single_byte(buf[0], &ch, &mods))
         return;
-    func(ch, mods, key_press);
+    if(func)func(ch, mods, key_press);
 }
 
 
-// Convert b to have the same type as a
-void convert(u8 *b_out, const u8 *b_in, u8 ch_a, u8 ch_b, u8 *out_b)
+// // Convert b to have the same type as a
+void convert(term_u8 *b_out, const term_u8 *b_in, term_u8 ch_a, term_u8 ch_b, term_u8 *out_b)
 {
-    u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
-    if (a_g && !b_g) {
-        b_out[0] = to_grayscale(b_in);
-        b_out[1] = ch_b - 3 ? b_out[3] : 255;
+    term_u8 a_g = IS_GRAYSCALE(ch_a);
+    term_u8 b_g = IS_GRAYSCALE(ch_b);
+
+    if (a_g && !b_g) { // A is grayscale, B is truecolor
+        b_out[0] = to_grayscale(b_in); 
+        b_out[1] = ch_b - 3 ? b_in[3] : 255;
         *out_b = ch_b - 2;
         return;
-    } else if (!a_g && b_g) {
+    } 
+    else if (!a_g && b_g) { // A is truecolor, B is grayscale
+        b_out[0] = b_out[1] = b_out[2] = b_in[0]; 
         b_out[3] = ch_b - 1 ? b_in[1] : 255;
-        b_out[0] = b_out[1] = b_out[2] = b_in[0];
         *out_b = ch_b + 2;
         return;
     }
-    for (u8 i = 0; i < ch_b; i++)
+
+    // If both are already the same format, copy directly
+    for (term_u8 i = 0; i < ch_b; i++) {
         b_out[i] = b_in[i];
+    }
     *out_b = ch_b;
 }
 
 
-void alpha_blend(u8 *a, const u8 *b, u8 ch_a, u8 ch_b)
+// Color b (foreground) er color a (background)
+void alpha_blend(term_u8 *a, const term_u8 *b, const term_u8 ch_a, const term_u8 ch_b)
 {
-    u8 out_a = IS_TRANSPARENT(ch_a);
-    u8 a_i = ch_a - 1;
-    u8 a_a = out_a ? a[a_i] : 255;
-    u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
+    term_u8 out_a = IS_TRANSPARENT(ch_a);
+    term_u8 a_i = ch_a - 1;
+    term_u8 a_a = out_a ? a[a_i] : 255;
+    term_u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
     if (ch_a < 5)
-        a[0] = (a_b * b[0] + iva_b * a[0]) >> 8;
+        a[0] = (term_u8)((a_b * b[0] + iva_b * a[0]) >> 8);
     if (ch_a > 2) {
-        a[1] = (a_b * b[1] + iva_b * a[1]) >> 8;
-        a[2] = (a_b * b[2] + iva_b * a[2]) >> 8;
+        a[1] = (term_u8)((a_b * b[1] + iva_b * a[1]) >> 8);
+        a[2] = (term_u8)((a_b * b[2] + iva_b * a[2]) >> 8);
     }
     if (out_a)
-        a[a_i] = !iva_b ? 255 : a_b + ((iva_b + a_a) >> 8);
+        a[a_i] = (term_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
 }

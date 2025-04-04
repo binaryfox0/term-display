@@ -27,27 +27,27 @@
 #endif
 
 // Inline stuff
-static inline u64 calculate_pos(u32 x, u32 y, u32 width, u8 ch)
+static inline term_u64 calculate_pos(term_u32 x, term_u32 y, term_u32 width, term_u8 ch)
 {
     return (y * width + x) * ch;
 }
 
-static inline float lerp(u8 c0, u8 c1, float t)
+static inline float lerp(term_f32 c0, term_f32 c1, float t)
 {
     return c0 + t * (c1 - c0);
 }
 
-static inline u8 to_grayscale(const u8 *c)
+static inline term_u8 to_grayscale(const term_u8 *c)
 {
-    return (77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8;
+    return (term_u8)((77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8);
 }
 
 
 term_ivec2 query_terminal_size();
-u8 setup_env(void *stop_handler);
-u8 restore_env();
+term_bool setup_env(void *stop_handler);
+term_bool restore_env();
 void kbpoll_events(key_callback_func func);
-u8 timeout(int ms);
+term_bool timeout(int ms);
 
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
@@ -55,7 +55,7 @@ u8 timeout(int ms);
 #define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
 
 
-void convert(u8 * b_out, const u8 * b_in, u8 ch_a, u8 ch_b, u8 *out_b);
-void alpha_blend(u8 * a, const u8 * b, u8 ch_a, u8 ch_b);
+void convert(term_u8 * b_out, const term_u8 * b_in, term_u8 ch_a, term_u8 ch_b, term_u8 *out_b);
+void alpha_blend(term_u8 * a, const term_u8 * b, term_u8 ch_a, term_u8 ch_b);
 
 #endif

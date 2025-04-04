@@ -11,8 +11,8 @@
 #define CHAR_HEIGHT 5
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
-// Font atlas pattern, will populate later
-static const u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
+// Atlas of font character pattern, will be populated later
+static const term_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Space
     { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 },    // Exclamation mark
     { 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Quotation mark
@@ -84,14 +84,14 @@ static const u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
     { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }     // Tilde 
 };
 
-static inline u8 calculate_pad(u8 ch)
+static inline term_u32 calculate_pad(term_u32 ch)
 {
     return (ch ? ch - 1 : 0);
 }
 
-u8 is_newline(const i8 *str, u64 *current, u64 max)
+term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u64 max)
 {
-    u8 cr = 0;                  // CR LF detection
+    term_u8 cr = 0;                  // CR LF detection
     if (str[*current] == '\n' || (cr = (str[*current] == '\r'))) {
         if (cr && *current + 1 < max && str[*current + 1] == '\n')
             (*current)++;
@@ -100,21 +100,21 @@ u8 is_newline(const i8 *str, u64 *current, u64 max)
     return 0;
 }
 
-u8 query_newline(const i8 *str, u64 len, u64 **lines_length,    // Lines length info
-                 u32 *line_count, u32 *longest_line)
+term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,    // Lines length info
+                 term_u32 *line_count, term_u32 *longest_line)
 {
-    static const u32 min_realloc = 10;
+    static const term_u32 min_realloc = 10;
 
-    u64 line_len = 0, current_size = 0;
+    term_u32 line_len = 0, current_size = 0;
     *line_count = 0;
     *longest_line = 0;
 
-    for (u64 i = 0; i < len && str[i]; i++) {
+    for (term_u32 i = 0; i < len && str[i]; i++) {
         if (is_newline(str, &i, len)) {
             if (*line_count >= current_size) {
-                u64 new_size = current_size + min_realloc;
-                u64 *temp =
-                    (u64 *) realloc(*lines_length, new_size * sizeof(u64));
+                term_u32 new_size = current_size + min_realloc;
+                term_u32 *temp =
+                    (term_u32 *) realloc(*lines_length, new_size * sizeof(term_u32));
                 if (!temp)
                     return 1;   // Allocation failed
                 *lines_length = temp;
@@ -134,9 +134,9 @@ u8 query_newline(const i8 *str, u64 len, u64 **lines_length,    // Lines length 
     // Handle last line if it exists
     if (line_len > 0) {
         if (*line_count >= current_size) {
-            u64 new_size = current_size + 1;    // Allocate just for the last line
-            u64 *temp =
-                (u64 *) realloc(*lines_length, new_size * sizeof(u64));
+            term_u32 new_size = current_size + 1;    // Allocate just for the last line
+            term_u32 *temp =
+                (term_u32 *) realloc(*lines_length, new_size * sizeof(term_u64));
             if (!temp)
                 return 1;
             *lines_length = temp;
@@ -151,38 +151,38 @@ u8 query_newline(const i8 *str, u64 len, u64 **lines_length,    // Lines length 
 }
 
 
-static inline i8 mapped_ch(i8 ch)
+static inline term_i8 mapped_ch(term_i8 ch)
 {
-    if (IN_RANGE(ch, 'a', '~'))
+    if (ch > 'a')
         return ch - 'a' + 'A';  // To uppercase (how this font mapped)
     return ch;
 }
 
-term_texture *display_char_texture(i8 ch, term_rgba color, term_rgba fg)
+term_texture *tdf_char_texture(term_i8 ch, term_rgba color, term_rgba fg)
 {
     ch = mapped_ch(ch);
     if (!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
         ch = LOWER_LIMIT;       // Space (nothing)
-    const u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
+    const term_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
     term_texture *out =
         texture_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
-    u8 *raw = texture_get_location(ivec2_init(0, 0), out);
-    u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
-    for (u8 i = 0; i < CHAR_PIXEL; i++)
-        for (u8 j = 0; j < 4; j++, raw++)
+    term_u8 *raw = texture_get_location(ivec2_init(0, 0), out);
+    term_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
+    for (term_u8 i = 0; i < CHAR_PIXEL; i++)
+        for (term_u8 j = 0; j < 4; j++, raw++)
             raw[0] = ch_template[i] ? a[j] : b[j];
 
     return out;
 }
 
-term_texture *display_string_texture(const i8 *str, u64 len,
+term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
                                      term_ivec2 *s,
                                      term_rgba color, term_rgba fg)
 {
     if (!str || !len || !s)
         return 0;
-    u32 lines_count = 0, longest_line = 0;
-    u64 *lines_length = 0;      // Filling gaps
+    term_u32 lines_count = 0, longest_line = 0;
+    term_u32 *lines_length = 0;      // Filling gaps
     if (query_newline
         (str, len, &lines_length, &lines_count, &longest_line)) {
         return 0;
@@ -198,13 +198,13 @@ term_texture *display_string_texture(const i8 *str, u64 len,
     texture_fill(out, fg);
 
     // Placing character into place
-    u64 current_index = 0;
-    for (u32 row = 0; row < lines_count; row++) {
-        u64 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
-        for (u64 col = 0; col < row_l; col++) {
+    term_u32 current_index = 0;
+    for (term_u32 row = 0; row < lines_count; row++) {
+        term_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
+        for (term_u64 col = 0; col < row_l; col++) {
             term_texture *ch_texture =
-                display_char_texture(str[current_index + col], color, fg);
-            u64 start_x = col * (CHAR_WIDTH + 1);
+                tdf_char_texture(str[current_index + col], color, fg);
+            term_u64 start_x = col * (CHAR_WIDTH + 1);
             texture_merge(out, ch_texture, ivec2_init(start_x, start_y),
                           TEXTURE_MERGE_CROP, 1);
             texture_free(ch_texture);

@@ -14,45 +14,45 @@ static inline double gen_rand()
 
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f,
-    0.5f, 0.5f, -0.5f,
-    0.5f, 0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+     0.5f,  0.5f, -0.5f,
+    -0.5f,  0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,
+
+    -0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+    -0.5f, -0.5f,  0.5f,
+
+    -0.5f,  0.5f,  0.5f,
+    -0.5f,  0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f, -0.5f,
+    -0.5f, -0.5f,  0.5f,
+    -0.5f,  0.5f,  0.5f,
+
+     0.5f,  0.5f,  0.5f,
+     0.5f,  0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f,  0.5f,  0.5f,
+
+    -0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f, -0.5f,
+     0.5f, -0.5f,  0.5f,
+     0.5f, -0.5f,  0.5f,
+    -0.5f, -0.5f,  0.5f,
+    -0.5f, -0.5f, -0.5f,
+
     -0.5f, 0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-
-    -0.5f, -0.5f, 0.5f,
-    0.5f, -0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f,
-    -0.5f, 0.5f, 0.5f,
-    -0.5f, -0.5f, 0.5f,
-
-    -0.5f, 0.5f, 0.5f,
-    -0.5f, 0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, -0.5f,
-    -0.5f, -0.5f, 0.5f,
-    -0.5f, 0.5f, 0.5f,
-
-    0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f,
-
-    -0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, -0.5f,
-    0.5f, -0.5f, 0.5f,
-    0.5f, -0.5f, 0.5f,
-    -0.5f, -0.5f, 0.5f,
-    -0.5f, -0.5f, -0.5f,
-
-    -0.5f, 0.5f, -0.5f,
-    0.5f, 0.5f, -0.5f,
-    0.5f, 0.5f, 0.5f,
-    0.5f, 0.5f, 0.5f,
-    -0.5f, 0.5f, 0.5f,
+     0.5f, 0.5f, -0.5f,
+     0.5f, 0.5f,  0.5f,
+     0.5f, 0.5f,  0.5f,
+    -0.5f, 0.5f,  0.5f,
     -0.5f, 0.5f, -0.5f
 };
 
@@ -62,59 +62,59 @@ vec3 cameraUp    = (vec3){0.0f, 1.0f,  0.0f};
 
 double delta_time = 0.0f;
 
-void processInput(int key, int mods, key_state action);
+void processInput(int key, int mods, td_key_state_t action);
 
 int main()
 {
-    if (display_init() || start_logging("statics.txt"))
+    if (td_init() || start_logging("statics.txt"))
         return 1;
 
-    u8 enable = 1;
-    display_option(settings_depth_buffer, 0, &enable);
-    enable = display_grayscale_256;
-    display_option(settings_display_type, 0, &enable);
-    display_set_key_callback(processInput);
+    term_u8 enable = 1;
+    td_option(td_opt_depth_buffer, 0, &enable);
+    enable = 2;
+    td_option(td_opt_display_rotate, 0, &enable);
+    td_set_key_callback(processInput);
 
     term_ivec2 size = { 0 };
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     double last_log = get_time();
     const double max_dt = 1.0 / 60;
-    while (display_is_running()) {
+    while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
-        display_poll_events();
+        td_poll_events();
 
-        display_set_color(rgba_init(0, 0, 0, 255));
+        td_set_color(rgba_init(0, 0, 0, 255));
 
         char *string = to_string("%f", fps);
         term_texture *texture =
-            display_string_texture(string, strlen(string), &size,
+            tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(255, 255, 255, 255),
                                    rgba_init(0, 0, 0, 0));
-        display_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
         texture_free(texture);
 
         //term_vec2 p1 = vec2_init(gen_rand(), gen_rand()), p2 =
         //    vec2_init(gen_rand(), gen_rand()), p3 =
         //    vec2_init(gen_rand(), gen_rand());
-        //display_draw_line(p1, p2, rgba_init(0, 255, 255, 255));
-        //display_draw_line(p2, p3, rgba_init(0, 255, 255, 255));
-        //display_draw_line(p3, p1, rgba_init(0, 255, 255, 255));
-        //display_draw_triangle(p1, p2, p3, rgba_init(0, 255, 255, 255));
+        //td_draw_line(p1, p2, rgba_init(0, 255, 255, 255));
+        //td_draw_line(p2, p3, rgba_init(0, 255, 255, 255));
+        //td_draw_line(p3, p1, rgba_init(0, 255, 255, 255));
+        //td_draw_triangle(p1, p2, p3, rgba_init(0, 255, 255, 255));
 
-        display_option(settings_display_size, 1, &size);
+        td_option(td_opt_display_size, 1, &size);
             
         mat4 model, view, projection, mvp;
         glm_mat4_identity(model);
         glm_mat4_identity(view);
         glm_mat4_identity(projection);
-        glm_rotate(model, (f32)get_time(), (f32[3]){0.5f, 1.0, 0.0f});
+        glm_rotate(model, (term_f32)get_time(), (term_f32[3]){0.5f, 1.0, 0.0f});
         vec3 center;
         glm_vec3_add(cameraPos, cameraFront, center);  // center = cameraPos + cameraFront
         glm_lookat(cameraPos, center, cameraUp, view);
-        glm_perspective(glm_rad(45.0f), (f32)size.x/size.y, 0.1f, 100.0f, projection);
+        glm_perspective(glm_rad(45.0f), (term_f32)size.x/size.y, 0.1f, 100.0f, projection);
             
         glm_mat4_mul(projection, view, mvp);
         glm_mat4_mul(mvp, model, mvp);
@@ -126,53 +126,51 @@ int main()
             
             glm_mat4_mulv(mvp, transformed, transformed);  // Multiply by MVP matrix
 
-            display_render_add(transformed, 4);
+            td_render_add(transformed, 4);
         }
 
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
-        texture = display_string_texture(tmp, -1, &size, rgba_init(255,0,0,255), rgba_init(0,0,0,0));
-        display_copy_texture(texture, vec2_init(-1.0f, 0.0f), TEXTURE_MERGE_RESIZE);
+        texture = tdf_string_texture(tmp, -1, &size, rgba_init(255,0,0,255), rgba_init(0,0,0,0));
+        td_copy_texture(texture, vec2_init(-1.0f, 0.0f), TEXTURE_MERGE_RESIZE);
         texture_free(texture);
         free(tmp);
 
-        display_show();
+        td_show();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {
         }
         if (start_frame - last_log >= LOG_INTERVAL) {
             write_log("FPS: %s", string);
             last_log = get_time();
-            for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 3; i++)
-                write_log("Vertex %d: [%f, %f, %f]", i, out[i*3], out[i*3+1], out[i*3+2]);
 
         }
         free(string);
     }
-    display_free();
+    td_free();
     stop_logging();
     return 0;
 }
 
-void processInput(int key, int mods, key_state action)
+void processInput(int key, int mods, td_key_state_t action)
 {
     float cameraSpeed = 10.0f * delta_time;
     vec3 right, tmp;
 
-    if (key == term_key_w && action == key_press) {
+    if (key == td_key_w && action == key_press) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_add(cameraPos, tmp, cameraPos);
     }
-    if (key == term_key_s && action == key_press) {
+    if (key == td_key_s && action == key_press) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
-    if (key == term_key_a && action == key_press) {
+    if (key == td_key_a && action == key_press) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
-    if (key == term_key_d && action == key_press) {
+    if (key == td_key_d && action == key_press) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);

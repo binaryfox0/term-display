@@ -24,7 +24,7 @@ char *get_program_name(char *in)
 int width, height;
 term_texture *original_image = 0, *displayed_image = 0;
 
-static inline u8 is_landscape(term_ivec2 size)
+static inline term_bool is_landscape(term_ivec2 size)
 {
     return size.x > size.y;
 }
@@ -38,7 +38,7 @@ term_ivec2 ratio_new_size(const term_ivec2 old, const term_ivec2 size)
     return size;
 }
 
-u8 vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
+term_bool vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
 {
     return vec1.x > vec2.x || vec1.y > vec2.y;
 }
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
         return 1;
     }
     int channel;
-    u8 *tmp = stbi_load(argv[1], &width, &height, &channel, 0);
+    stbi_uc *tmp = stbi_load(argv[1], &width, &height, &channel, 0);
     if (!tmp) {
         printf("Error: %s: Unable to load image file.\n", program_name);
         return 1;
@@ -97,32 +97,32 @@ int main(int argc, char **argv)
     }
     width = 0;
 
-    if (display_init() || start_logging("statics.txt")) {
+    if (td_init() || start_logging("statics.txt")) {
         texture_free(original_image);
         texture_free(displayed_image);
         return 1;
     }
 
-    u8 enable = 1;
-    display_option(settings_auto_resize, 0, &enable);
+    term_u8 enable = 1;
+    td_option(td_opt_auto_resize, 0, &enable);
     enable = display_truecolor;
-    display_option(settings_display_type, 0, &enable);
+    td_option(td_opt_display_type, 0, &enable);
 
     term_ivec2 current_size;
-    display_option(settings_display_size, 1, &current_size);
+    td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
-    display_set_resize_callback(resize_callback);
+    td_set_resize_callback(resize_callback);
 
     double delta_time = 1.0, last_log = get_time();
-    while (display_is_running()) {
+    while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
-        display_poll_events();
-        display_set_color(rgba_init(0, 0, 0, 255));
-        display_copy_texture(displayed_image, vec2_init(-1.f, 1.f),
+        td_poll_events();
+        td_set_color(rgba_init(0, 0, 0, 255));
+        td_copy_texture(displayed_image, vec2_init(-1.f, 1.f),
                              TEXTURE_MERGE_CROP);
-        display_show();
+        td_show();
 
         delta_time = get_time() - start_frame;
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
     texture_free(original_image);
     texture_free(displayed_image);
-    display_free();
+    td_free();
     stop_logging();
 
     return 0;

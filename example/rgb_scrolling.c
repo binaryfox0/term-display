@@ -11,42 +11,42 @@
 
 static inline term_rgb calculate_rgb(double d)
 {
-    return rgb_init((u8) ((sin(d) + 1) * 127.5),
-                    (u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
-                    (u8) ((sin(d + (4 * M_PI / 3)) + 1) * 127.5)
+    return rgb_init((term_u8) ((sin(d) + 1) * 127.5),
+                    (term_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
+                    (term_u8) ((sin(d + (4 * M_PI / 3)) + 1) * 127.5)
         );
 }
 
 int main()
 {
-    u8 enable = 1;
-    if (display_init() || start_logging("statics.txt"))
+    term_u8 enable = 1;
+    if (td_init() || start_logging("statics.txt"))
         return 1;
 
     enable = display_truecolor_216;
-    display_option(settings_display_type, 0, &enable);
+    td_option(td_opt_display_type, 0, &enable);
 
     term_ivec2 size = { 0 };
     double speed = 0.001, elapsed = 0.0;
     double delta_time = 1.0, last_log = get_time();
-    while (display_is_running()) {
+    while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
-        display_poll_events();
+        td_poll_events();
 
-        display_set_color(to_rgba(calculate_rgb(elapsed)));
+        td_set_color(to_rgba(calculate_rgb(elapsed)));
 
         char *string = to_string("%f", fps);
         term_texture *texture =
-            display_string_texture(string, strlen(string), &size,
+            tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(255, 255, 255, 255),
                                    rgba_init(0, 0, 0, 0));
-        display_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
         texture_free(texture);
 
-        display_show();
+        td_show();
         elapsed += speed;
 
         delta_time = get_time() - start_frame;
@@ -56,7 +56,7 @@ int main()
         }
         free(string);
     }
-    display_free();
+    td_free();
     stop_logging();
     return 0;
 }

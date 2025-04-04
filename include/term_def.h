@@ -14,25 +14,26 @@
 #define TERMINAL_UNIX
 #endif
 
-typedef char i8;
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef int i32;
-typedef unsigned int u32;
-typedef unsigned long long u64;
-typedef float f32;
+typedef char term_i8;
+typedef unsigned char term_u8;
+typedef unsigned short term_u16;
+typedef int term_i32;
+typedef unsigned int term_u32;
+typedef unsigned long long term_u64;
+typedef float term_f32;
+typedef enum { term_false = 0, term_true } term_bool;
 
 #include "term_math.h"
 
 typedef struct {
-    u8 r, g, b;
+    term_u8 r, g, b;
 } term_rgb;
 typedef struct {
-    u8 r, g, b, a;
+    term_u8 r, g, b, a;
 } term_rgba;
 
 /* Structure initializer begin */
-static inline term_rgb rgb_init(const u8 r, const u8 g, const u8 b)
+static inline term_rgb rgb_init(const term_u8 r, const term_u8 g, const term_u8 b)
 {
     return (term_rgb) {
     .r = r,.g = g,.b = b};
@@ -44,8 +45,8 @@ static inline term_rgba to_rgba(const term_rgb c)
     .r = c.r,.g = c.g,.b = c.b,.a = 255};
 }
 
-static inline term_rgba rgba_init(const u8 r, const u8 g, const u8 b,
-                                  const u8 a)
+static inline term_rgba rgba_init(const term_u8 r, const term_u8 g, const term_u8 b,
+                                  const term_u8 a)
 {
     return (term_rgba) {
     .r = r,.g = g,.b = b,.a = a};
