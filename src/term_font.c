@@ -89,7 +89,7 @@ static inline term_u32 calculate_pad(term_u32 ch)
     return (ch ? ch - 1 : 0);
 }
 
-term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u64 max)
+term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u32 max)
 {
     term_u8 cr = 0;                  // CR LF detection
     if (str[*current] == '\n' || (cr = (str[*current] == '\r'))) {
@@ -103,7 +103,7 @@ term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u64 max)
 term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,    // Lines length info
                  term_u32 *line_count, term_u32 *longest_line)
 {
-    static const term_u32 min_realloc = 10;
+    static const size_t min_realloc = 10;
 
     term_u32 line_len = 0, current_size = 0;
     *line_count = 0;
@@ -112,13 +112,13 @@ term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,
     for (term_u32 i = 0; i < len && str[i]; i++) {
         if (is_newline(str, &i, len)) {
             if (*line_count >= current_size) {
-                term_u32 new_size = current_size + min_realloc;
+                size_t new_size = (size_t)current_size + min_realloc;
                 term_u32 *temp =
-                    (term_u32 *) realloc(*lines_length, new_size * sizeof(term_u32));
+                    (term_u32 *) realloc(*lines_length, new_size * sizeof(term_i32));
                 if (!temp)
                     return 1;   // Allocation failed
                 *lines_length = temp;
-                current_size = new_size;
+                current_size = (term_u32)new_size;
             }
 
             (*lines_length)[*line_count] = line_len;
@@ -134,9 +134,9 @@ term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,
     // Handle last line if it exists
     if (line_len > 0) {
         if (*line_count >= current_size) {
-            term_u32 new_size = current_size + 1;    // Allocate just for the last line
+            size_t new_size = (size_t)(current_size + 1);    // Allocate just for the last line
             term_u32 *temp =
-                (term_u32 *) realloc(*lines_length, new_size * sizeof(term_u64));
+                (term_u32 *) realloc(*lines_length, new_size * sizeof(term_i32));
             if (!temp)
                 return 1;
             *lines_length = temp;
@@ -181,15 +181,16 @@ term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
 {
     if (!str || !len || !s)
         return 0;
+    term_u32 plen = (term_u32)len;
     term_u32 lines_count = 0, longest_line = 0;
     term_u32 *lines_length = 0;      // Filling gaps
     if (query_newline
-        (str, len, &lines_length, &lines_count, &longest_line)) {
+        (str, plen, &lines_length, &lines_count, &longest_line)) {
         return 0;
     }
     // s->x is maximum character in one line, s->y is the line in the input text
-    s->x = longest_line * CHAR_WIDTH + calculate_pad(longest_line);
-    s->y = lines_count * CHAR_HEIGHT + calculate_pad(lines_count);
+    s->x = (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line));
+    s->y = (int)(lines_count * CHAR_HEIGHT + calculate_pad(lines_count));
     term_texture *out = texture_create(0, 4, *s, 0, 0);
     if (!out) {
         free(lines_length);
@@ -201,16 +202,16 @@ term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
     term_u32 current_index = 0;
     for (term_u32 row = 0; row < lines_count; row++) {
         term_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
-        for (term_u64 col = 0; col < row_l; col++) {
+        for (term_u32 col = 0; col < row_l; col++) {
             term_texture *ch_texture =
                 tdf_char_texture(str[current_index + col], color, fg);
-            term_u64 start_x = col * (CHAR_WIDTH + 1);
-            texture_merge(out, ch_texture, ivec2_init(start_x, start_y),
+            term_u32 start_x = col * (CHAR_WIDTH + 1);
+            texture_merge(out, ch_texture, ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);
             texture_free(ch_texture);
         }
         current_index += row_l; // Now at newline characater
-        if (is_newline(str, &current_index, len))
+        if (is_newline(str, &current_index, plen))
             current_index++;    // Skip newline now
     }
     free(lines_length);

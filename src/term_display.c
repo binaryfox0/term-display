@@ -12,26 +12,21 @@
 static term_texture *display = 0;
 term_u8 *display_raw = 0;            // For the drawing
 static term_u8 display_channel = 3;  // RGBA
-static term_ivec2 size = (term_ivec2) {.x = 0,.y = 0 },
+static term_ivec2 size = { 0, 0 },
 
 // Detect size change (cross-platform)
-    term_size = (term_ivec2) {
-.x = 0,.y = 0}, prev_size = (term_ivec2) {
-.x = 0,.y = 0};
+    term_size = { 0, 0 }, prev_size = { 0, 0 };
 
 // Display clear color
-term_rgba default_background = (term_rgba) {.r = 0,.g = 0,.b = 0,.a =
-        255 }, clear_color = (term_rgba) {
-.r = 0,.g = 0,.b = 0,.a = 255};
+term_rgba default_background = { 0, 0, 0, 255 }, 
+          clear_color = {0, 0, 0, 255};
 
 volatile term_u8 internal_failure = 0;
 volatile term_bool __display_is_running = 0;
 struct {
-    term_i32 x_inc;
-    term_i32 y_inc;
-    term_u32 x_start, x_end;
-    term_u32 y_start, y_end;
-} display_prop = { 1, 1, 0, 0, 0, 0 };
+    term_i32 x_start, x_end, x_inc;
+    term_i32 y_start, y_end, y_inc;
+} display_prop = { 0, 0, 1, 0, 0, 1 };
 
 term_f32 *depth_buffer = 0;
 
@@ -68,8 +63,8 @@ static inline void query_default_background()
     if (sscanf(buffer, "\x1B]11;rgb:%4[^/]/%4[^/]/%4[^;]", r, g, b) != 3)
         return;
     default_background =
-        rgba_init(strtol(r, 0, 16) / 257,
-                  strtol(g, 0, 16) / 257, strtol(b, 0, 16) / 257, 255);
+        rgba_init((term_u8)(strtol(r, 0, 16) / 257),
+                  (term_u8)(strtol(g, 0, 16) / 257), (term_u8)(strtol(b, 0, 16) / 257), 255);
 }
 
 /* Utils function end */
@@ -91,7 +86,7 @@ char *td_copyright_notice()
 static inline void reset_depth_buffer()
 {
     if(!depth_buffer) return;
-    term_u64 buf_size = size.x * size.y * sizeof(term_f32);
+    term_u64 buf_size = calculate_size(size.x, size.y, sizeof(term_f32));
     depth_buffer[0] = FLT_MAX;
     char* ptr = (char*)depth_buffer;
     term_u64 filled = sizeof(term_f32);
@@ -106,7 +101,7 @@ void resize_depth_buffer()
 {
     if (!numeric_options[td_opt_depth_buffer])
         return;
-    term_u64 buf_size = size.x * size.y * sizeof(term_f32);
+    term_u64 buf_size = calculate_size(size.x, size.y, sizeof(term_f32));
     term_f32 *tmp =
         (term_f32 *) realloc(depth_buffer, buf_size);
     if (!tmp) {
@@ -323,7 +318,7 @@ void td_render_flush()
 
 void td_render_add(const term_f32* vertices, term_i32 component)
 {
-    memcpy(&vertex_buffer[vertex_count * 4], vertices, component * sizeof(term_f32));
+    memcpy(&vertex_buffer[vertex_count * 4], vertices, (size_t)component * sizeof(term_f32));
     vertex_count++;
     if(vertex_count == 3)
     {

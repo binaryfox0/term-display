@@ -34,31 +34,6 @@ static inline term_vec2 vec2_init(float x, float y)
     .x = x,.y = y};
 }
 
-static inline term_vec3 vec3_init(float x, float y, float z)
-{
-    return (term_vec3) {
-        .x = x, .y = y, .z = z
-    };
-}
-
-static inline term_ivec3 ivec3_init(term_u32 x, term_u32 y, term_u32 z)
-{
-    return (term_ivec3) {
-    .x = x,.y = y,.z = z};
-}
-
-static inline term_ivec3 ivec2_ivec3(term_ivec2 ivec2, term_u32 last)
-{
-    return (term_ivec3) {
-    .x = ivec2.x,.y = ivec2.y,.z = last};
-}
-
-static inline term_vec2 vec3_vec2(term_vec3 ivec3)
-{
-    return (term_vec2) {
-    .x = ivec3.x,.y = ivec3.y};
-}
-
 static inline term_u8 vec2_equal(term_ivec2 a, term_ivec2 b)
 {
     return a.x == b.x && a.y == b.y;
@@ -66,8 +41,8 @@ static inline term_u8 vec2_equal(term_ivec2 a, term_ivec2 b)
 
 static inline term_ivec2 ndc_to_pos(term_vec2 pos, term_ivec2 size)
 {
-    return ivec2_init((term_u32) ((pos.x + 1.0) * 0.5f * size.x),
-                      (term_u32) ((1.0 - pos.y) * 0.5f * size.y)
+    return ivec2_init((term_i32) ((pos.x + 1.0) * 0.5f * size.x),
+                      (term_i32) ((1.0 - pos.y) * 0.5f * size.y)
         );
 }
 

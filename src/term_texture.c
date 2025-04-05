@@ -39,8 +39,8 @@ struct term_texture_s {
 
 /* Helper utilities start */
 
-#define fast_floor(x) ((term_u32)(x))
-#define fast_ceil(x) ((term_u32)(x) + ((x) > (term_u32)(x)))
+#define fast_floor(x) ((term_i32)(x))
+#define fast_ceil(x) ((term_i32)(x) + ((x) > (term_i32)(x)))
 /* Inline function start */
 // Assuming texture have 24bpp (RGB) or 8bpp (Grayscale)
 // Singular line, y discarded from the formula
@@ -110,7 +110,7 @@ term_texture *texture_copy(term_texture *texture)
     term_texture *out = 0;
     if (!(out = (term_texture *) malloc(sizeof(term_texture))))
         return 0;
-    term_u64 size = texture->size.x * texture->size.y * texture->channel;
+    term_u64 size = calculate_size(texture->size.x, texture->size.y, texture->channel);
     if (!(out->data = (term_u8 *) malloc(size))) {
         free(out);
         return 0;
@@ -160,13 +160,13 @@ void texture_fill(const term_texture *texture, const term_rgba color)
 
     convert(c, c, ch, 4, &tmp);
     if (IS_TRANSPARENT(ch) || color.a != 255) {
-        for (term_u32 row = 0; row < size.y; row++) {
-            for (term_u32 col = 0; col < size.x; col++, data += ch)
+        for (term_i32 row = 0; row < size.y; row++) {
+            for (term_i32 col = 0; col < size.x; col++, data += ch)
                 alpha_blend(data, c, ch, 4);
         }
         return;
     }
-    exponentially_fill(data, size.x * size.y * ch, c, ch);
+    exponentially_fill(data, calculate_size(size.x, size.y, ch), c, ch);
 }
 
 
@@ -193,7 +193,7 @@ void texture_merge(const term_texture *texture_a,
         *tb = texture_b->data, *old = 0;
 
     // Apply size thersehold
-    term_u32 max_space_x = sa.x - placement_pos.x, max_space_y =
+    term_i32 max_space_x = sa.x - placement_pos.x, max_space_y =
         sa.y - placement_pos.y;
     term_u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
     if (b_freeable) {
@@ -208,9 +208,9 @@ void texture_merge(const term_texture *texture_a,
         sb = new_size;
     }
 
-    term_u32 space = (sa.x - sb.x) * cha;
-    for (term_u32 row = 0; row < sb.y; row++, ta += space) {
-        for (term_u32 col = 0; col < sb.x; col++, ta += cha, tb += chb) {
+    term_i32 space = (sa.x - sb.x) * cha;
+    for (term_i32 row = 0; row < sb.y; row++, ta += space) {
+        for (term_i32 col = 0; col < sb.x; col++, ta += cha, tb += chb) {
             term_u8 tmp[4] = { 0 }, tmp_1 = chb;
             convert(tmp, tb, cha, chb, &tmp_1);
             if(replace) 
@@ -238,21 +238,21 @@ term_u8 *resize_texture(const term_u8 *old, term_u8 channel, term_ivec2 old_size
     if (!new_size.x || !new_size.y)
         new_size = calculate_new_size(old_size, new_size);
     float
-        x_ratio = (float) (old_size.x - 1) / (new_size.x - 1),
-        y_ratio = (float) (old_size.y - 1) / (new_size.y - 1);
+        x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
+        y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
     term_u8 *raw =
         (term_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel)),
         *start = raw;
     if (!raw)
         return 0;
 
-    for (term_u32 row = 0; row < new_size.y; row++) {
-        float tmp = row * y_ratio;
-        term_u32 iyf = fast_floor(tmp), iyc = fast_ceil(tmp);
+    for (term_i32 row = 0; row < new_size.y; row++) {
+        float tmp = (float)row * y_ratio;
+        term_i32 iyf = fast_floor(tmp), iyc = fast_ceil(tmp);
         float ty = tmp - (term_f32)iyf;
-        for (term_u32 col = 0; col < new_size.x; col++) {
-            tmp = col * x_ratio;
-            term_u32 ixf = fast_floor(tmp), ixc = fast_ceil(tmp);
+        for (term_i32 col = 0; col < new_size.x; col++) {
+            tmp = (float)col * x_ratio;
+            term_i32 ixf = fast_floor(tmp), ixc = fast_ceil(tmp);
             float tx = tmp - (term_f32)ixf;
 
             term_u64 i00 = calculate_pos(ixf, iyf, old_size.x, channel),
@@ -309,9 +309,9 @@ term_u8 *crop_texture(term_u8 *old, term_u8 channel, term_ivec2 old_size,
          (term_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel))))
         return 0;
     term_u8 *ptr = old, *start = raw;
-    term_u64 row_length = new_size.x * channel, old_length =
-        old_size.x * channel;
-    for (term_u32 row = 0; row < new_size.y;
+    term_u64 row_length = (term_u64)(new_size.x * channel), old_length =
+        (term_u64)(old_size.x * channel);
+    for (term_i32 row = 0; row < new_size.y;
          row++, raw += row_length, ptr += old_length)
         memcpy(raw, ptr, row_length);
     return start;

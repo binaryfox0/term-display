@@ -12,11 +12,11 @@ static inline void draw_pixel(term_u8 *texture,
                               term_f32 *depth_buffer,
                               const term_ivec2 pos,
                               const term_f32 depth,
-                              const term_u32 width,
+                              const term_i32 width,
                               const term_u8 color[4], const term_u8 ch, const term_u8 cch)
 {
     if(!IN_RANGE(pos.x, 0, size.x -1 ) || !IN_RANGE(pos.y, 0, size.y - 1)) return;
-    const term_u32 wpos = calculate_pos(pos.x, pos.y, width, 1);
+    const term_u64 wpos = calculate_pos(pos.x, pos.y, width, 1);
     if (depth_buffer) {
         if (depth_buffer[wpos] <= depth)
             return;
@@ -54,7 +54,7 @@ void ptexture_draw_line(term_u8 *texture,
         incrementVal = 1;
     int decInc = longLen ? (shortLen << 16) / longLen : 0;
     int j = 0;
-    float zStep = longLen ? (depth.y - depth.x) / longLen : 0;        // Depth interpolation step
+    float zStep = longLen ? ((float)(depth.y - depth.x) / (float)longLen) : 0;        // Depth interpolation step
     float z = depth.x;
     if (yLonger) {
         for (int i = 0; i != endVal; i += incrementVal) {
@@ -80,7 +80,7 @@ void ptexture_draw_line(term_u8 *texture,
 }
 
 static inline term_f32 edge_function(term_ivec2 v0, term_ivec2 v1, term_ivec2 v2) {
-    return (term_f32)(v1.x - v0.x) * (v2.y - v0.y) - (term_f32)(v1.y - v0.y) * (v2.x - v0.x);
+    return (term_f32)((v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x));
 }
 
 void ptexture_draw_triangle(term_u8 * texture,
@@ -105,7 +105,7 @@ void ptexture_draw_triangle(term_u8 * texture,
     int A1 = pv3.pos.y - pv1.pos.y, B1 = pv1.pos.x - pv3.pos.x, C1 = pv3.pos.x * pv1.pos.y - pv1.pos.x * pv3.pos.y;
     int A2 = pv1.pos.y - pv2.pos.y, B2 = pv2.pos.x - pv1.pos.x, C2 = pv1.pos.x * pv2.pos.y - pv2.pos.x * pv1.pos.y;
 
-    term_f32 inv_area = 1.0f / (B2 * A1 - (term_f32)(pv2.pos.y - pv1.pos.y) * (pv3.pos.x - pv1.pos.x));
+    term_f32 inv_area = 1.0f / (float)(B2 * A1 - (pv2.pos.y - pv1.pos.y) * (pv3.pos.x - pv1.pos.x));
     // /if(area == 0) return;
 
     for (int y = minY; y <= maxY; y++) {
@@ -115,22 +115,24 @@ void ptexture_draw_triangle(term_u8 * texture,
 
         for (int x = minX; x <= maxX; x++) {
             // Compute barycentric coordinates
-            float w0 = w0_row * inv_area;
-            float w1 = w1_row * inv_area;
-            float w2 = w2_row * inv_area;
+            float w0 = (float)w0_row * inv_area;
+            float w1 = (float)w1_row * inv_area;
+            float w2 = (float)w2_row * inv_area;
 
             // Check if inside triangle
             if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
                 term_f32 pixel_depth = w0 * pv1.depth + w1 * pv2.depth + w2 * pv3.depth;
 
                 // Interpolate color
-                float r = w0 * pv1.color.r + w1 * pv2.color.r + w2 * pv3.color.r;
-                float g = w0 * pv1.color.g + w1 * pv2.color.g + w2 * pv3.color.g;
-                float b = w0 * pv1.color.b + w1 * pv2.color.b + w2 * pv3.color.b;
-                float a = w0 * pv1.color.a + w1 * pv2.color.a + w2 * pv3.color.a;
+                term_u8 color[4] = {
+                    (term_u8)(w0 * pv1.color.r + w1 * pv2.color.r + w2 * pv3.color.r),
+                    (term_u8)(w0 * pv1.color.g + w1 * pv2.color.g + w2 * pv3.color.g),
+                    (term_u8)(w0 * pv1.color.b + w1 * pv2.color.b + w2 * pv3.color.b),
+                    (term_u8)(w0 * pv1.color.a + w1 * pv2.color.a + w2 * pv3.color.a)
+                };
 
                 // Set pixel
-                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), pixel_depth, size.x, (term_u8[4]){r, g, b, 255}, channel, 4);
+                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), pixel_depth, size.x, color, channel, 4);
             }
             w0_row += A0;
             w1_row += A1;

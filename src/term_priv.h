@@ -27,9 +27,14 @@
 #endif
 
 // Inline stuff
-static inline term_u64 calculate_pos(term_u32 x, term_u32 y, term_u32 width, term_u8 ch)
+static inline term_u64 calculate_pos(int x, int y, term_i32 width, term_u8 ch)
 {
-    return (y * width + x) * ch;
+    return (term_u64)((y * width + x) * ch);
+}
+
+static inline term_u64 calculate_size(int x, int y, term_u8 ch)
+{
+    return calculate_pos(0, x, y, ch);
 }
 
 static inline float lerp(term_f32 c0, term_f32 c1, float t)
@@ -43,12 +48,17 @@ static inline term_u8 to_grayscale(const term_u8 *c)
 }
 
 
+#ifdef TERMINAL_UNIX
+term_bool setup_env(void (*handler)(int));
+#else
+term_bool setup_env(int (*handler)(unsigned int));
+#endif
+
 term_ivec2 query_terminal_size();
-term_bool setup_env(void *stop_handler);
 term_bool restore_env();
 void kbpoll_events(key_callback_func func);
 term_bool timeout(int ms);
-
+int available();
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)
