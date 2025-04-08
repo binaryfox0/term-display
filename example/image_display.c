@@ -8,10 +8,10 @@
 
 char *get_program_name(char *in)
 {
-#ifdef TERMINAL_UNIX
+#ifdef TD_PLATFORM_UNIX
 #include <libgen.h>
     return basename(in);
-#elif TERMINAL_WINDOWS
+#elif TD_PLATFORM_WINDOWS
     static char out[_MAX_FNAME] = { 0 };
     _splitpath_s(in, 0, 0, 0, 0, out, _MAX_FNAME, 0, 0);
     _splitpath_s(in, 0, 0, 0, 0, 0, 0, &out[strlen(out)], _MAX_EXT);
@@ -24,7 +24,7 @@ char *get_program_name(char *in)
 int width, height;
 term_texture *original_image = 0, *displayed_image = 0;
 
-static inline term_bool is_landscape(term_ivec2 size)
+TD_INLINE term_bool is_landscape(term_ivec2 size)
 {
     return size.x > size.y;
 }
@@ -105,8 +105,8 @@ int main(int argc, char **argv)
 
     term_u8 enable = 1;
     td_option(td_opt_auto_resize, 0, &enable);
-    enable = display_truecolor;
-    td_option(td_opt_display_type, 0, &enable);
+    enable = 3;
+    td_option(td_opt_pixel_width, 0, &enable);
 
     term_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);

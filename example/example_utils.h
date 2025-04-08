@@ -15,7 +15,7 @@ term_bool stop_logging();
 #define write_log(tmp1, ...)
 #endif
 
-#define LOG_INTERVAL 1 // In seconds
+#define LOG_INTERVAL 0.1 // In seconds
 
 double get_time();
 char *to_string(const char *format, ...);

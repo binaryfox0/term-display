@@ -1,5 +1,5 @@
-#ifndef TERMINAL_TEXTURE_H
-#define TERMINAL_TEXTURE_H
+#ifndef TD_PLATFORM_TEXTURE_H
+#define TD_PLATFORM_TEXTURE_H
 
 #include "term_def.h"
 

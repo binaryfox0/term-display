@@ -6,8 +6,47 @@
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define getch_chk(val) if (getchar() != val) return
 
+term_bool key_shift_translate(const term_i8 byte, int* ch, int* mods)
+{
+    switch(byte)
+    {
+    case '~': *ch = '`'; break;
+    case '!': *ch = '1'; break;
+    case '@': *ch = '2'; break;
+    case '#': *ch = '3'; break;
+    case '$': *ch = '4'; break;
+    case '%': *ch = '5'; break;
+    case '^': *ch = '6'; break;
+    case '&': *ch = '7'; break;
+    case '*': *ch = '8'; break;
+    case '(': *ch = '9'; break;
+    case ')': *ch = '0'; break;
+    case '_': *ch = '-'; break;
+    case '+': *ch = '='; break;
+    case '{': *ch = '['; break;
+    case '}': *ch = ']'; break;
+    case '|': *ch = '\\'; break;
+    case ':': *ch = ';'; break;
+    case '\"': *ch = '\''; break;
+    case '<': *ch = ','; break;
+    case '>': *ch = '.'; break;
+    case '?': *ch = '/'; break;
+    default:
+    {
+        if (IN_RANGE(byte, 'A', 'Z')) {
+            *ch = byte;
+            break;
+        }
+        return 1;
+    }
+    }
+    *mods |= td_key_shift;
+    return 0;
+}
+
 // Handle single-byte character input
-static inline term_bool handle_single_byte(const term_i8 byte, int *ch, int *mods)
+term_bool shift_translate = term_false;
+TD_INLINE term_bool handle_single_byte(const term_i8 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
@@ -28,36 +67,6 @@ static inline term_bool handle_single_byte(const term_i8 byte, int *ch, int *mod
     case 0x1B:
         *ch = td_key_escape;
         break;
-    case '\"':
-        *ch = td_key_space;
-        *mods |= td_key_shift;
-        break;
-    case ':':
-        *ch = td_key_semicolon;
-        *mods |= td_key_shift;
-        break;
-    case '>':
-    case '?':
-    case '<':
-        *ch -= 16;
-        *mods |= td_key_shift;
-        break;
-    case '+':
-        *ch = td_key_equal;
-        *mods |= td_key_shift;
-        break;
-    case '@':
-        *ch = td_key_2;
-        *mods |= td_key_shift;
-        break;
-    case '^':
-        *ch = td_key_6;
-        *mods |= td_key_shift;
-        break;
-    case '_':
-        *ch = td_key_minus;
-        *mods |= td_key_shift;
-        break;
     case 0x7F:
         *ch = td_key_backspace;
         break;
@@ -67,14 +76,13 @@ static inline term_bool handle_single_byte(const term_i8 byte, int *ch, int *mod
             *mods |= td_key_ctrl;
             break;
         }
-        if (IN_RANGE(byte, 'A', 'Z')) {
-            *ch = byte;
-            *mods |= td_key_shift;
-            break;
-        }
-        if (IN_RANGE(byte, 'a', 'z')) {
-            *ch = byte - 32;
-            break;
+        if(shift_translate) {
+            if(!key_shift_translate(byte, ch, mods))
+                break;
+            if (IN_RANGE(byte, 'a', 'z')) {
+                *ch = byte - 32;
+                break;
+            }
         }
         if (IN_RANGE(byte, ' ', '~')) {
             *ch = byte;
@@ -86,34 +94,22 @@ static inline term_bool handle_single_byte(const term_i8 byte, int *ch, int *mod
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-static inline term_bool handle_nav_key(const term_i8 byte, int *ch)
+TD_INLINE term_bool handle_nav_key(const term_i8 byte, int *ch)
 {
     switch (byte) {
-    case 'A':
-        *ch = td_key_up;
-        break;
-    case 'B':
-        *ch = td_key_down;
-        break;
-    case 'C':
-        *ch = td_key_right;
-        break;
-    case 'D':
-        *ch = td_key_left;
-        break;
-    case 'H':
-        *ch = td_key_home;
-        break;
-    case 'F':
-        *ch = td_key_end;
-        break;
+    case 'A': *ch = td_key_up; break;
+    case 'B': *ch = td_key_down; break;
+    case 'C': *ch = td_key_right; break;
+    case 'D': *ch = td_key_left; break;
+    case 'H': *ch = td_key_home; break;
+    case 'F': *ch = td_key_end; break;
     default:
         return 1;
     }
     return 0;
 }
 
-static inline term_bool handle_f5_below(const term_i8 byte, int *ch)
+TD_INLINE term_bool handle_f5_below(const term_i8 byte, int *ch)
 {
     int tmp = 0;
     if (OUT_RANGE
@@ -123,92 +119,52 @@ static inline term_bool handle_f5_below(const term_i8 byte, int *ch)
     return 0;
 }
 
-static inline term_bool handle_f5_above(const term_i8 first, const term_i8 second, int *ch)
+TD_INLINE term_bool handle_f5_above(const term_i8 first, const term_i8 second, int *ch)
 {
     if (first == '1') {
         switch (second) {
-        case '5':
-            *ch = td_key_f5;
-            break;
-        case '7':
-            *ch = td_key_f6;
-            break;
-        case '8':
-            *ch = td_key_f7;
-            break;
-        case '9':
-            *ch = td_key_f8;
-            break;
-        default:
-            return 1;
+        case '5': *ch = td_key_f5; break;
+        case '7': *ch = td_key_f6; break;
+        case '8': *ch = td_key_f7; break;
+        case '9': *ch = td_key_f8; break;
+        default: return 1;
         }
     } else if (first == '2') {
         switch (second) {
-        case '0':
-            *ch = td_key_f9;
-            break;
-        case '1':
-            *ch = td_key_f10;
-            break;
-        case '3':
-            *ch = td_key_f11;
-            break;
-        case '4':
-            *ch = td_key_f12;
-            break;
-        default:
-            return 1;
+        case '0': *ch = td_key_f9;  break;
+        case '1': *ch = td_key_f10; break;
+        case '3': *ch = td_key_f11; break;
+        case '4': *ch = td_key_f12; break;
+        default: return 1;
         }
     } else
         return 1;
     return 0;
 }
 
-static inline term_bool handle_special_combo(const int byte, int *mods)
+TD_INLINE term_bool handle_special_combo(const int byte, int *mods)
 {
     switch (byte) {
-    case '8':
-        *mods |= (td_key_ctrl | td_key_alt | td_key_shift);
-        break;
-    case '7':
-        *mods |= (td_key_ctrl | td_key_alt);
-        break;
-    case '6':
-        *mods |= (td_key_ctrl | td_key_shift);
-        break;
-    case '5':
-        *mods |= td_key_ctrl;
-        break;
-    case '4':
-        *mods |= (td_key_alt | td_key_shift);
-        break;
-    case '3':
-        *mods |= td_key_alt;
-        break;
-    case '2':
-        *mods |= td_key_shift;
-        break;
+    case '8': *mods |= (td_key_ctrl | td_key_alt | td_key_shift); break;
+    case '7': *mods |= (td_key_ctrl | td_key_alt); break;
+    case '6': *mods |= (td_key_ctrl | td_key_shift); break;
+    case '5': *mods |= td_key_ctrl; break;
+    case '4': *mods |= (td_key_alt | td_key_shift); break;
+    case '3': *mods |= td_key_alt; break;
+    case '2': *mods |= td_key_shift; break;
     default:
         return 1;
     }
     return 0;
 }
 
-static inline term_bool handle_special_key(int *ch)
+TD_INLINE term_bool handle_special_key(int *ch)
 {
     switch (*ch) {
-    case '2':
-        *ch = td_key_insert;
-        break;
-    case '3':
-        *ch = td_key_delete;
-        break;
-    case '5':
-        *ch = td_key_page_up;
-        break;
-    case '6':
-        *ch = td_key_page_down;
-        break;
+    case '2': *ch = td_key_insert; break;
+    case '3': *ch = td_key_delete; break;
+    case '5': *ch = td_key_page_up; break;
+    case '6': *ch = td_key_page_down; break;
     default:
         return 1;
     }

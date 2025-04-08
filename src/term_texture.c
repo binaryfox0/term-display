@@ -37,22 +37,6 @@ struct term_texture_s {
     term_u8 freeable;
 };
 
-/* Helper utilities start */
-
-#define fast_floor(x) ((term_i32)(x))
-#define fast_ceil(x) ((term_i32)(x) + ((x) > (term_i32)(x)))
-/* Inline function start */
-// Assuming texture have 24bpp (RGB) or 8bpp (Grayscale)
-// Singular line, y discarded from the formula
-static inline term_u8 bilerp(term_u8 c00, term_u8 c10, term_u8 c01, term_u8 c11, float xt, float yt)
-{
-    return (term_u8) lerp(lerp(c00, c10, xt), lerp(c01, c11, xt), yt);
-}
-
-/* Inline function end */
-
-
-
 term_u8 convert_ch(term_u8 ch_a, term_u8 ch_b)
 {
     term_u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
@@ -237,36 +221,7 @@ term_u8 *resize_texture(const term_u8 *old, term_u8 channel, term_ivec2 old_size
 {
     if (!new_size.x || !new_size.y)
         new_size = calculate_new_size(old_size, new_size);
-    float
-        x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
-        y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
-    term_u8 *raw =
-        (term_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel)),
-        *start = raw;
-    if (!raw)
-        return 0;
-
-    for (term_i32 row = 0; row < new_size.y; row++) {
-        float tmp = (float)row * y_ratio;
-        term_i32 iyf = fast_floor(tmp), iyc = fast_ceil(tmp);
-        float ty = tmp - (term_f32)iyf;
-        for (term_i32 col = 0; col < new_size.x; col++) {
-            tmp = (float)col * x_ratio;
-            term_i32 ixf = fast_floor(tmp), ixc = fast_ceil(tmp);
-            float tx = tmp - (term_f32)ixf;
-
-            term_u64 i00 = calculate_pos(ixf, iyf, old_size.x, channel),
-                i10 = calculate_pos(ixc, iyf, old_size.x, channel),
-                i01 = calculate_pos(ixf, iyc, old_size.x, channel),
-                i11 = calculate_pos(ixc, iyc, old_size.x, channel);
-
-            for (term_u8 c = 0; c < channel; c++, raw++)
-                raw[0] =
-                    bilerp(old[i00 + c], old[i10 + c], old[i01 + c],
-                           old[i11 + c], tx, ty);
-        }
-    }
-    return start;
+    return ptexture_resize(old, channel, old_size, new_size);
 }
 
 //https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716

@@ -1,10 +1,18 @@
 #include "term_priv.h"
 
-#include <windows.h>
+#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
+#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
+#endif
+
+#ifndef ENABLE_VIRTUAL_TERMINAL_INPUT
+#define ENABLE_VIRTUAL_TERMINAL_INPUT 0x0002
+#endif
 
 HANDLE h_in = 0, h_out = 0;
 DWORD old_in_mode = 0, old_out_mode = 0;
-term_bool setup_env(int (*handler)(unsigned int))
+BOOL (*handle)(DWORD) = 0;
+
+term_bool setup_env(BOOL (*handler)(DWORD))
 {
     if ((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
         return 1;
@@ -22,7 +30,8 @@ term_bool setup_env(int (*handler)(unsigned int))
     if (!SetConsoleMode
         (h_out, old_out_mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING))
         return 1;
-    return !SetConsoleCtrlHandler(handler, 1);
+    handle = handler;
+    return enable_stop_sig();
 }
 
 term_ivec2 query_terminal_size()
@@ -50,4 +59,12 @@ int available()
     DWORD out = 0;
     PeekNamedPipe(h_in, 0, 0, 0, &out, 0);
     return (int) out;
+}
+
+term_bool disable_stop_sig() {
+    return !SetConsoleCtrlHandler(NULL, TRUE);
+}
+
+term_bool enable_stop_sig() {
+    return !SetConsoleCtrlHandler(handle, TRUE);
 }

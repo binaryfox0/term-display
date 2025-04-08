@@ -7,6 +7,8 @@
 #include <poll.h>
 #include <signal.h>
 
+static struct termios old, cur;
+
 term_bool set_handler(int type, void (*handler)(int))
 {
 #ifdef _POSIX_VERSION
@@ -18,7 +20,6 @@ term_bool set_handler(int type, void (*handler)(int))
 #endif
 }
 
-static struct termios old, cur;
 term_bool setup_env(void(*handler)(int))
 {
     if (tcgetattr(STDIN_FILENO, &old) == -1)
@@ -75,4 +76,14 @@ int available()
     int out = 0;
     ioctl(STDIN_FILENO, FIONREAD, &out);
     return out;
+}
+
+term_bool disable_stop_sig() {
+    cur.c_lflag &= (term_u32)(~ISIG);
+    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1;
+}
+
+term_bool enable_stop_sig() {
+    cur.c_lflag |= ISIG;
+    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1;
 }

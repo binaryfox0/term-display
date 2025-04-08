@@ -7,11 +7,6 @@
 
 #include "example_utils.h"
 
-static inline double gen_rand()
-{
-    return -1.0 + (1.0 - -1.0) * ((double) rand() / RAND_MAX);
-}
-
 float vertices[] = {
     -0.5f, -0.5f, -0.5f,
      0.5f, -0.5f, -0.5f,
@@ -71,8 +66,7 @@ int main()
 
     term_u8 enable = 1;
     td_option(td_opt_depth_buffer, 0, &enable);
-    enable = 2;
-    td_option(td_opt_display_rotate, 0, &enable);
+    td_option(td_opt_shift_translate, 0, &enable);
     td_set_key_callback(processInput);
 
     term_ivec2 size = { 0 };

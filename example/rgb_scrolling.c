@@ -9,7 +9,7 @@
 
 #define M_PI 3.14159265358979323846
 
-static inline term_rgb calculate_rgb(double d)
+TD_INLINE term_rgb calculate_rgb(double d)
 {
     return rgb_init((term_u8) ((sin(d) + 1) * 127.5),
                     (term_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),

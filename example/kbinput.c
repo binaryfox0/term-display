@@ -49,7 +49,7 @@ void key_callback(int key, int mods, td_key_state_t state)
     }
 
     // Identify the pressed key
-    if (IN_RANGE(key, td_key_astrophe, td_key_grave_accent)) {
+    if (IN_RANGE(key, '!', '~')) {
         key_pressed[index++] = key;
     } else if (IN_RANGE(key, td_key_f1, td_key_f12)) {
         const char *key_name = fkey_name[key - td_key_f1];
@@ -127,8 +127,7 @@ int main()
         return 1;
 
     td_option(td_opt_auto_resize, 0, &enable);
-    enable = display_grayscale_256;
-    td_option(td_opt_display_type, 0, &enable);
+    td_option(td_opt_shift_translate, 0, &enable);
     td_set_key_callback(key_callback);
 
     term_u64 frame_count = 0;

@@ -7,7 +7,10 @@
 #define max(x, y) (((x) > (y)) ? (x) : (y))
 #define SWAP(a, b) do { __typeof__(a) temp = a; a = b; b = temp; } while (0)
 
-static inline void draw_pixel(term_u8 *texture,
+#define fast_floor(x) ((term_i32)(x))
+#define fast_ceil(x) ((term_i32)(x) + ((x) > (term_i32)(x)))
+
+TD_INLINE void draw_pixel(term_u8 *texture,
                               const term_ivec2 size,
                               term_f32 *depth_buffer,
                               const term_ivec2 pos,
@@ -23,6 +26,45 @@ static inline void draw_pixel(term_u8 *texture,
         depth_buffer[wpos] = depth;
     }
     alpha_blend(&texture[wpos * ch], color, ch, cch);
+}
+
+TD_INLINE term_u8 bilerp(term_u8 c00, term_u8 c10, term_u8 c01, term_u8 c11, float xt, float yt)
+{
+    return (term_u8) lerp(lerp(c00, c10, xt), lerp(c01, c11, xt), yt);
+}
+
+term_u8* ptexture_resize(const term_u8 *old, const term_u8 channel, const term_ivec2 old_size, const term_ivec2 new_size)
+{
+    float
+        x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
+        y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
+    term_u8 *raw =
+        (term_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel)),
+        *start = raw;
+    if (!raw)
+        return 0;
+
+    for (term_i32 row = 0; row < new_size.y; row++) {
+        float tmp = (float)row * y_ratio;
+        term_i32 iyf = fast_floor(tmp), iyc = fast_ceil(tmp);
+        float ty = tmp - (term_f32)iyf;
+        for (term_i32 col = 0; col < new_size.x; col++) {
+            tmp = (float)col * x_ratio;
+            term_i32 ixf = fast_floor(tmp), ixc = fast_ceil(tmp);
+            float tx = tmp - (term_f32)ixf;
+
+            term_u64 i00 = calculate_pos(ixf, iyf, old_size.x, channel),
+                i10 = calculate_pos(ixc, iyf, old_size.x, channel),
+                i01 = calculate_pos(ixf, iyc, old_size.x, channel),
+                i11 = calculate_pos(ixc, iyc, old_size.x, channel);
+
+            for (term_u8 c = 0; c < channel; c++, raw++)
+                raw[0] =
+                    bilerp(old[i00 + c], old[i10 + c], old[i01 + c],
+                           old[i11 + c], tx, ty);
+        }
+    }
+    return start;
 }
 
 void ptexture_draw_line(term_u8 *texture,
@@ -79,7 +121,7 @@ void ptexture_draw_line(term_u8 *texture,
     }
 }
 
-static inline term_f32 edge_function(term_ivec2 v0, term_ivec2 v1, term_ivec2 v2) {
+TD_INLINE term_f32 edge_function(term_ivec2 v0, term_ivec2 v1, term_ivec2 v2) {
     return (term_f32)((v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x));
 }
 
@@ -114,6 +156,8 @@ void ptexture_draw_triangle(term_u8 * texture,
         int w2_row = A2 * minX + B2 * y + C2;
 
         for (int x = minX; x <= maxX; x++) {
+            int covered = 0;
+            term_f32 acc_r = 0.0f, acc_g = 0.0f, acc_b = 0.0f;
             // Compute barycentric coordinates
             float w0 = (float)w0_row * inv_area;
             float w1 = (float)w1_row * inv_area;

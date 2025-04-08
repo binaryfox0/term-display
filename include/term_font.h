@@ -1,5 +1,5 @@
-#ifndef TERMINAL_FONT_H
-#define TERMINAL_FONT_H
+#ifndef TD_FONT_H
+#define TD_FONT_H
 
 #include "term_def.h"
 #include "term_texture.h"

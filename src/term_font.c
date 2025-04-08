@@ -84,7 +84,7 @@ static const term_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
     { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }     // Tilde 
 };
 
-static inline term_u32 calculate_pad(term_u32 ch)
+TD_INLINE term_u32 calculate_pad(term_u32 ch)
 {
     return (ch ? ch - 1 : 0);
 }
@@ -151,9 +151,9 @@ term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,
 }
 
 
-static inline term_i8 mapped_ch(term_i8 ch)
+TD_INLINE term_i8 mapped_ch(term_i8 ch)
 {
-    if (ch > 'a')
+    if (ch >= 'a')
         return ch - 'a' + 'A';  // To uppercase (how this font mapped)
     return ch;
 }

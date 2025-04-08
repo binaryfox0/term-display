@@ -6,6 +6,7 @@ term-display
 Minimal dependencies requirements make it ideal for small, experimental projects.
 
 - Render a pixel-based screen into your terminal.
+- A built-in 3D rasterizer for 3D rendering
 - Compatible with third-party image loaders such as `stb_image`.
 
 ## Building
@@ -26,5 +27,5 @@ If you are considering using `term-display` in a **serious project**, it's bette
 Currently known issues with `term-display`
  * **Bad Performance**:
    - Rendering complex or large pixel grids in the terminal using `term-display` can be slower compared to alternatives. It is especially worse on virtual environments such as `termux` on mobile, which isn't fully optimized.
-   - Completely CPU dependent: means they almost can't leverage anything from GPU, which is heckin' fast, except `wezterm`
+   - Completely CPU dependent: means they almost can't leverage anything from GPU, which is heckin' fast.
  - **Low Resolution**: Terminal-based output is limited by the size, resolution of the terminal window.

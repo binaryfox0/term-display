@@ -1,5 +1,5 @@
-#ifndef TERMINAL_TEXTURE_PRIVATE_H
-#define TERMINAL_TEXTURE_PRIVATE_H
+#ifndef TD_PLATFORM_TEXTURE_PRIVATE_H
+#define TD_PLATFORM_TEXTURE_PRIVATE_H
 
 #include "term_def.h"
 
@@ -9,6 +9,13 @@ typedef struct
     term_f32 depth;
     term_rgba color;
 } vertex;
+
+__td_priv_create_constructor(vertex_init, vertex, pos, depth, color)
+
+term_u8* ptexture_resize(const term_u8* old,
+                     const term_u8 channel,
+                     const term_ivec2 old_size,
+                     const term_ivec2 new_size);
 
 void ptexture_draw_line(term_u8 * texture,
                         const term_ivec2 size,

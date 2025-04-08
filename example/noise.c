@@ -11,7 +11,7 @@
 
 #include "example_utils.h"
 
-#ifdef TERMINAL_WINDOWS
+#ifdef TD_PLATFORM_WINDOWS
 #include <bcrypt.h>
 #endif
 
@@ -21,7 +21,7 @@ term_texture *generate_noise(term_ivec2 size)
     term_texture *out = texture_create(0, desired_channel, size, 0, 0);
     term_u8 *raw = texture_get_location(ivec2_init(0, 0), out);
     term_u64 byte = size.x * size.y * desired_channel;
-#ifdef TERMINAL_WINDOWS
+#ifdef TD_PLATFORM_WINDOWS
     if (BCryptGenRandom(0, raw, byte, BCRYPT_USE_SYSTEM_PREFERED_RNG)) {
         texture_free(out);
         return 0;
