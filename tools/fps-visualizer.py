@@ -1,131 +1,199 @@
-import re
-import argparse
-import numpy as np
-import matplotlib.pyplot as plt
+import sys
 import os
+import re
 import platform
-
-# Display style only
-def detect_os_theme():
- if platform.system() == "Windows":
-  import ctypes
-  try:
-   is_dark_mode = ctypes.windll.dwmapi.DwmGetColorizationColor() & 0xFFFFFF < 0x808080
-  except AttributeError:
-   is_dark_mode = False
- elif platform.system() == "Darwin":
-  from subprocess import Popen, PIPE
-  p = Popen(["defaults", "read", "-g", "AppleInterfaceStyle"], stdout=PIPE, stderr=PIPE)
-  is_dark_mode = p.communicate()[0].strip() == b"Dark"
- else:
-  is_dark_mode = os.getenv("XDG_CURRENT_DESKTOP", "").lower() in ["gnome", "kde", "xfce"]
-
- return is_dark_mode
-
+import numpy as np
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QTabWidget, QWidget,
+    QVBoxLayout, QFileDialog, QTableWidget, QTableWidgetItem,
+    QLabel
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import (QAction, QBrush, QColor)
+import pyqtgraph as pg
+import pyqtgraph.exporters
 
 def parse_log(path):
- timestamps, fps_values = [], []
- with open(path, "r") as f:
-  # Log format: [%d:%02d.%06d]: FPS: %d.%06d
-  pattern = re.compile(r"\[(\d+):(\d+)\.(\d+)\]: FPS: (\d+)\.(\d+)")
-  for line in f:
-   match = pattern.match(line)
-   if match:
-    minutes, seconds, microseconds, fps_int, fps_frac = map(int, match.groups())
-    time_in_seconds = minutes * 60 + seconds + microseconds / 1e6
-    fps = fps_int + fps_frac / 1e6
-    timestamps.append(time_in_seconds)
-    fps_values.append(fps)
- 
- return np.array(timestamps), np.array(fps_values)
+    timestamps, fps_values = [], []
+    with open(path, "r") as f:
+        pattern = re.compile(r"\[(\d+):(\d+)\.(\d+)\]: FPS: (\d+)\.(\d+)")
+        for line in f:
+            match = pattern.match(line)
+            if match:
+                minutes, seconds, microseconds, fps_int, fps_frac = map(int, match.groups())
+                time_in_seconds = minutes * 60 + seconds + microseconds / 1e6
+                fps = fps_int + fps_frac / 1e6
+                timestamps.append(time_in_seconds)
+                fps_values.append(fps)
+    return np.array(timestamps), np.array(fps_values)
 
-# Event handling
-def update_annot(event):
- """ Update annotation when cursor is near a line """
- if event.inaxes == ax:
-  xdata, ydata = line.get_xdata(), line.get_ydata()
-  idx = np.argmin(np.abs(xdata - event.xdata))  # Find nearest x-point
-  x_nearest, y_nearest = xdata[idx], ydata[idx]
-  
-  annot.xy = (x_nearest, y_nearest)
-  annot.set_text(f"{y_nearest:.2f} FPS")
-  annot.set_visible(True)
-  fig.canvas.draw_idle()
+def detect_os_theme():
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            return ctypes.windll.dwmapi.DwmGetColorizationColor() & 0xFFFFFF < 0x808080
+        except Exception:
+            return False
+    elif platform.system() == "Darwin":
+        from subprocess import Popen, PIPE
+        p = Popen(["defaults", "read", "-g", "AppleInterfaceStyle"], stdout=PIPE, stderr=PIPE)
+        return p.communicate()[0].strip() == b"Dark"
+    else:
+        return os.getenv("XDG_CURRENT_DESKTOP", "").lower() in ["gnome", "kde", "xfce"]
 
-def hover(event):
- """ Hide annotation when cursor leaves the plot """
- if event.inaxes != ax:
-  annot.set_visible(False)
-  fig.canvas.draw_idle()
+class FPSGraph():
+    def __init__(self, timestamps, fps_values):
+        self.timestamps = timestamps
+        self.fps_values = fps_values
+        self.setup_color()
+        self.plot_widget = pg.PlotWidget()
+        self.setup_style()
+        self.add_hover()
 
-def setup_plot(bg_color, text_color):
- ax.set_facecolor(bg_color)
- fig.patch.set_facecolor(bg_color)
- ax.spines["top"].set_visible(False)
- ax.spines["right"].set_visible(False)
- ax.spines["left"].set_color(text_color)
- ax.spines["bottom"].set_color(text_color)
- ax.tick_params(axis="x", colors=text_color)
- ax.tick_params(axis="y", colors=text_color)
- ax.xaxis.label.set_color(text_color)
- ax.yaxis.label.set_color(text_color)
- ax.title.set_color(text_color)
+    def setup_color(self):
+        self.dark_mode = detect_os_theme()
+        self.bg_color = "#1E1E1E" if self.dark_mode else "#FFFFFF"
+        self.fg_color = "#FFFFFF" if self.dark_mode else "#000000"
+        self.line_color = "#00FF00"
+
+    def setup_style(self):
+        self.plot_widget.setBackground(self.bg_color)
+        self.plot_widget.getAxis("left").setTextPen(self.fg_color)
+        self.plot_widget.getAxis("bottom").setTextPen(self.fg_color)
+
+        self.plot_widget.setLabel("bottom", "Time (seconds)", color=self.fg_color)
+        self.plot_widget.setLabel("left", "FPS", color=self.fg_color)
+        self.plot_widget.setTitle(f"FPS Performance Graph (Average: {np.mean(self.fps_values):.2f} FPS)", color=self.fg_color)
+
+        self.plot = self.plot_widget.plot(self.timestamps, self.fps_values, pen=pg.mkPen(self.line_color, width=1))
+
+    def add_hover(self):
+        self.vLine = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen("#888", style=pg.QtCore.Qt.PenStyle.DashLine))
+        self.hLine = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen((150, 150, 150, 80), style=pg.QtCore.Qt.PenStyle.DashLine))
+        self.plot_widget.addItem(self.vLine, ignoreBounds=True)
+        self.plot_widget.addItem(self.hLine, ignoreBounds=True)
+
+        self.label = pg.TextItem("", anchor=(0, 1), color="#FF0", fill=QBrush(QColor(self.bg_color)))
+        self.plot_widget.addItem(self.label)
+
+        self.plot_widget.scene().sigMouseMoved.connect(self.mouse_moved)
+
+    def mouse_moved(self, pos):
+        vb = self.plot_widget.getViewBox()
+        if vb.sceneBoundingRect().contains(pos):
+            mousePoint = vb.mapSceneToView(pos)
+            x, y = mousePoint.x(), mousePoint.y()
+            idx = np.abs(self.timestamps - x).argmin()
+            if 0 <= idx < len(self.timestamps):
+                closest_x = self.timestamps[idx]
+                closest_y = self.fps_values[idx]
+                self.vLine.setPos(closest_x)
+                self.hLine.setPos(closest_y)
+                self.label.setText(f"{closest_y:.2f} FPS", color="#FF0")
+                self.label.setPos(closest_x, closest_y)
+
+class FPSViewer(QWidget):
+    def __init__(self, timestamps, fps_values, log_file):
+        super().__init__()
+        self.timestamps = timestamps
+        self.fps_values = fps_values
+        self.log_file = log_file
+        self.graph = FPSGraph(timestamps, fps_values)
+
+    def get_tabs(self):
+        return [
+            ("FPS &Graph", self.create_graph_tab()),
+            ("&Summary", self.create_summary_tab())
+        ]
+
+    def create_graph_tab(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        layout.addWidget(self.graph.plot_widget)
+        return container
+
+    def create_summary_tab(self):
+        container = QWidget()
+        layout = QVBoxLayout(container)
+        table = QTableWidget(6, 2)
+        table.setHorizontalHeaderLabels(["Metric", "Value"])
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        duration = self.timestamps[-1] - self.timestamps[0] if len(self.timestamps) > 1 else 0
+        data = [
+            ("Min FPS", f"{np.min(self.fps_values):.2f}"),
+            ("Max FPS", f"{np.max(self.fps_values):.2f}"),
+            ("Avg FPS", f"{np.mean(self.fps_values):.2f}"),
+            ("Duration", f"{duration:.2f} s"),
+            ("Data Points", str(len(self.fps_values))),
+            ("Log File", os.path.basename(self.log_file))
+        ]
+
+        for row, (key, value) in enumerate(data):
+            table.setItem(row, 0, QTableWidgetItem(key))
+            table.setItem(row, 1, QTableWidgetItem(value))
+
+        layout.addWidget(table)
+        return container
+
+    
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("FPS Viewer")
+        self.setGeometry(100, 100, 800, 500)
+
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
+
+        # Initial tab with message
+        self.placeholder_tab = QWidget()
+        placeholder_layout = QVBoxLayout()
+        self.placeholder_tab.setLayout(placeholder_layout)
+
+        label = QLabel("Please go to File → Load to load program log")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("font-size: 16pt;")
+        placeholder_layout.addWidget(label)
+
+        self.tabs.addTab(self.placeholder_tab, "Welcome")
+
+        # Setup menu bar
+        self.setup_menu()
+
+    def setup_menu(self):
+        menubar = self.menuBar()
+        file_menu = menubar.addMenu("&File")
+
+        load_action = QAction("L&oad", self)
+        load_action.setShortcut("Ctrl+O")
+        load_action.triggered.connect(self.load_log_file)
+
+        file_menu.addAction(load_action)
+
+    def load_log_file(self):
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle("Select FPS Log File")
+        dialog.setNameFilter("Text files (*.txt);;All files (*)")
+
+        if dialog.exec():
+            log_file = dialog.selectedFiles()[0]
+            timestamps, fps_values = parse_log(log_file)
+
+            # Clear the existing tabs and load new ones
+            self.tabs.clear()
+
+            self.viewer = FPSViewer(timestamps, fps_values, log_file)
+            for title, widget in self.viewer.get_tabs():
+                self.tabs.addTab(widget, title)
+
+            self.setWindowTitle(os.path.relpath(log_file))
+
+
 
 if __name__ == '__main__':
- # Argument parsing
- parser = argparse.ArgumentParser(description="Visualizing FPS over time.")
- parser.add_argument("input_log", type=str, help="Path to the log file")
- parser.add_argument("--transparent", action="store_true", help="Enable transparent background")
- parser.add_argument("--output", "-o", nargs="?", metavar="FILE", help="Output line graph into picture")
- args = parser.parse_args()
-
- timestamps, fps_values = parse_log(args.input_log)
- average_fps = np.mean(fps_values)
-
- # Create the plot
- fig, ax = plt.subplots(figsize=(10, 5))
-
- # Detect OS theme (dark mode or light mode)
-
- dark_mode = detect_os_theme()
- color_table = [
-  ["#FFFFFF", "#1E1E1E"],
-  ["#00FF00", "#00FF00"],
-  ["#DDDDDD", "#444444"],
-  ["#000000", "#FFFFFF"]
- ]
- bg_color = color_table[0][dark_mode]
- line_color = color_table[1][dark_mode]
- grid_color = color_table[2][dark_mode]
- text_color = color_table[3][dark_mode]
- annot_outline_color = color_table[0][not dark_mode]
-
- setup_plot(bg_color, "None" if args.transparent else text_color)
-
- # Plot FPS line
- line, = ax.plot(timestamps, fps_values, color=line_color, linewidth=0.5)
-
- # Grid settings
- ax.grid(True, linestyle="--", linewidth=0.5, color=grid_color)
-
- # Labels and title
- ax.set_xlabel("Time (seconds)")
- ax.set_ylabel("FPS")
- ax.set_title(f"FPS Performance Graph (Average: {average_fps:.2f} FPS)")
-
- # Hover interaction
- annot = ax.annotate("", xy=(0, 0), xytext=(10, 10),
-  textcoords="offset points", color=text_color,
-  bbox=dict(fc=bg_color, edgecolor=annot_outline_color),
-  arrowprops=dict(arrowstyle="->", color=annot_outline_color))
- annot.set_visible(False)
-
- fig.canvas.mpl_connect("motion_notify_event", update_annot)
- fig.canvas.mpl_connect("figure_leave_event", hover)
-
- # Save or show the graph
- if args.output:
-  plt.savefig(args.output, transparent=args.transparent, dpi=300)
- else:
-  fig.canvas.manager.set_window_title("FPS Visualizer")
-  plt.show()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
