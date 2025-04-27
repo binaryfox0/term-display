@@ -6,12 +6,12 @@ import numpy as np
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget,
     QVBoxLayout, QFileDialog, QTableWidget, QTableWidgetItem,
-    QLabel
+    QLabel, QMessageBox
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import (QAction, QBrush, QColor)
 import pyqtgraph as pg
-import pyqtgraph.exporters
+from pyqtgraph.exporters import ImageExporter
 
 def parse_log(path):
     timestamps, fps_values = [], []
@@ -170,7 +170,18 @@ class MainWindow(QMainWindow):
         load_action.setShortcut("Ctrl+O")
         load_action.triggered.connect(self.load_log_file)
 
+        export_action = QAction("&Export", self)
+        export_action.setShortcut("Ctrl+E")
+        export_action.triggered.connect(self.export_image)
+
+        exit_action = QAction("E&xit", self)
+        exit_action.setShortcut("Ctrl+Q")
+        exit_action.triggered.connect(QApplication.quit)
+
         file_menu.addAction(load_action)
+        file_menu.addAction(export_action)
+        file_menu.addSeparator()
+        file_menu.addAction(exit_action)
 
     def load_log_file(self):
         dialog = QFileDialog(self)
@@ -190,6 +201,21 @@ class MainWindow(QMainWindow):
 
             self.setWindowTitle(os.path.relpath(log_file))
 
+    def export_image(self):
+        if not hasattr(self, "viewer"):
+            QMessageBox.warning(self, "No graph", "Please load a log file before exporting.")
+            return
+            
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        file_dialog.setNameFilter("PNG Image (*.png);;SVG Image (*.svg)")
+        file_dialog.setDefaultSuffix("png")
+        file_dialog.setWindowTitle("Export Graph as Image")
+
+        if file_dialog.exec():
+            output_file = file_dialog.selectedFiles()[0]
+            exporter = ImageExporter(self.viewer.graph.plot_widget.plotItem)
+            exporter.export(output_file)
 
 
 if __name__ == '__main__':

@@ -2,8 +2,8 @@
 #include <stdlib.h>             // free
 #include <cglm/cglm.h>
 
-#include "term_display.h"
-#include "term_font.h"
+#include "td_main.h"
+#include "td_font.h"
 
 #include "example_utils.h"
 
@@ -59,8 +59,9 @@ double delta_time = 0.0f;
 
 void processInput(int key, int mods, td_key_state_t action);
 
-int main()
+int main(int argc, char** argv)
 {
+    example_tdopt(argc, argv);
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
@@ -88,7 +89,7 @@ int main()
                                    rgba_init(0, 0, 0, 0));
         td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
-        texture_free(texture);
+        tdt_free(texture);
 
         //term_vec2 p1 = vec2_init(gen_rand(), gen_rand()), p2 =
         //    vec2_init(gen_rand(), gen_rand()), p3 =
@@ -114,6 +115,7 @@ int main()
         glm_mat4_mul(mvp, model, mvp);
             
         for (int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 3; i++)
+        //for(int i = 0; i < 3; i++)
         {
             float *dest = &out[i * 3];
             vec4 transformed = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
@@ -126,7 +128,7 @@ int main()
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
         texture = tdf_string_texture(tmp, -1, &size, rgba_init(255,0,0,255), rgba_init(0,0,0,0));
         td_copy_texture(texture, vec2_init(-1.0f, 0.0f), TEXTURE_MERGE_RESIZE);
-        texture_free(texture);
+        tdt_free(texture);
         free(tmp);
 
         td_show();

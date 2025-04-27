@@ -1,16 +1,17 @@
-#ifndef TD_PLATFORM_TEXTURE_PRIVATE_H
-#define TD_PLATFORM_TEXTURE_PRIVATE_H
+#ifndef TD_TEXTURE_PRIVATE_H
+#define TD_TEXTURE_PRIVATE_H
 
-#include "term_def.h"
+#include "td_def.h"
 
 typedef struct
 {
     term_ivec2 pos;
     term_f32 depth;
     term_rgba color;
+    term_vec2 uv;
 } vertex;
 
-__td_priv_create_constructor(vertex_init, vertex, pos, depth, color)
+__td_priv_create_constructor(vertex_init, vertex, pos, depth, color, uv)
 
 term_u8* ptexture_resize(const term_u8* old,
                      const term_u8 channel,
@@ -31,6 +32,7 @@ void ptexture_draw_triangle(term_u8 * texture,
                             const vertex v1,
                             const vertex v2,
                             const vertex v3,
-                            term_f32 * depth_buffer);
+                            term_f32 * depth_buffer,
+                            const term_u8* texture_data);
 
 #endif

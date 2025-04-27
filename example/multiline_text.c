@@ -1,8 +1,8 @@
 #include <string.h>             // strlen
 #include <stdlib.h>             // free
 
-#include "term_display.h"
-#include "term_font.h"
+#include "td_main.h"
+#include "td_font.h"
 
 #include "example_utils.h"
 
@@ -15,7 +15,7 @@ term_texture* string_texture = 0;
 term_ivec2 texture_size;
 void refresh_str_texture()
 {
-    if(string_texture) texture_free(string_texture);
+    if(string_texture) tdt_free(string_texture);
     string_texture = tdf_string_texture(buffer, -1, &texture_size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
 }
 
@@ -75,7 +75,7 @@ int main()
                                                                       255));
         td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_RESIZE);
-        texture_free(texture);
+        tdt_free(texture);
 
         td_copy_texture(string_texture, vec2_init(-1.0f, 0.0f),
                              TEXTURE_MERGE_CROP);
@@ -89,7 +89,7 @@ int main()
         }
         free(string);
     }
-    texture_free(string_texture);
+    tdt_free(string_texture);
     td_free();
     stop_logging();
     return 0;

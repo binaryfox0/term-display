@@ -1,7 +1,7 @@
-#ifndef TD_PLATFORM_MATH_H
-#define TD_PLATFORM_MATH_H
+#ifndef TD_MATH_H
+#define TD_MATH_H
 
-#include "term_def.h"
+#include "td_def.h"
 
 typedef struct {
     int x, y;

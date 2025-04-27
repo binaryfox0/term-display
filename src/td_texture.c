@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "term_texture.h"
+#include "td_texture.h"
 
 #include "term_priv.h"
 #include "term_texture_priv.h"
@@ -49,7 +49,7 @@ term_u8 convert_ch(term_u8 ch_a, term_u8 ch_b)
 
 /* Helper utilities end   */
 
-term_texture *texture_create(term_u8 *texture,
+term_texture *tdt_create(term_u8 *texture,
                              const term_u8 channel,
                              const term_ivec2 size,
                              const term_u8 freeable, const term_u8 copy)
@@ -89,7 +89,7 @@ term_texture *texture_create(term_u8 *texture,
     return out;
 }
 
-term_texture *texture_copy(term_texture *texture)
+term_texture *tdt_copy(term_texture *texture)
 {
     term_texture *out = 0;
     if (!(out = (term_texture *) malloc(sizeof(term_texture))))
@@ -106,7 +106,7 @@ term_texture *texture_copy(term_texture *texture)
     return out;
 }
 
-term_u8 *texture_get_location(const term_ivec2 pos, const term_texture *texture)
+term_u8 *tdt_get_location(const term_ivec2 pos, const term_texture *texture)
 {
     if (!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
         return 0;
@@ -114,26 +114,14 @@ term_u8 *texture_get_location(const term_ivec2 pos, const term_texture *texture)
              data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-term_ivec2 texture_get_size(const term_texture *texture)
+term_ivec2 tdt_get_size(const term_texture *texture)
 {
     if (!texture)
         return ivec2_init(0, 0);
     return texture->size;
 }
 
-// Only support for the same color type as texture
-void exponentially_fill(term_u8 *data, term_u64 size, term_u8 *c, term_u8 ch)
-{
-    memcpy(data, c, ch);
-    term_u64 filled = ch;
-    while (filled * 2 < size) {
-        memcpy(&data[filled], data, filled);
-        filled *= 2;
-    }
-    memcpy(&data[filled], data, size - filled);
-}
-
-void texture_fill(const term_texture *texture, const term_rgba color)
+void tdt_fill(const term_texture *texture, const term_rgba color)
 {
     if (!texture || !color.a)
         return;
@@ -150,9 +138,38 @@ void texture_fill(const term_texture *texture, const term_rgba color)
         }
         return;
     }
-    exponentially_fill(data, calculate_size(size.x, size.y, ch), c, ch);
+    fill_buffer(data, c, calculate_size(size.x, size.y, ch), ch);
 }
 
+void tdt_set_channel(term_texture* texture, term_u8 channel)
+{
+    term_u64 pix_count = calculate_size(texture->size.x, texture->size.y, 1);
+
+    term_u8* old_ptr = texture->data;
+    term_u8* tmp = (term_u8*)malloc(calculate_size(texture->size.x, texture->size.y, channel));
+    if(!tmp) return;
+    texture->data = tmp;
+    term_u8 old_channel = texture->channel;
+    texture->channel = channel;
+
+    if(IS_GRAYSCALE(texture->channel) == IS_GRAYSCALE(channel)) // Same type
+    {
+        if(!IS_TRANSPARENT(texture->channel) && IS_TRANSPARENT(channel)) {
+            term_u8 a_i = channel - 1;
+            for(term_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel) {
+                memcpy(tmp, old_ptr, old_channel);
+                tmp[a_i] = 255;
+            }
+        } else if (IS_TRANSPARENT(texture->channel) && !IS_TRANSPARENT(channel)) {
+            for(term_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
+                memcpy(tmp, old_ptr, channel);
+        }
+    } else {
+        for(term_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
+            convert(tmp, old_ptr, channel, old_channel, 0);
+    }
+    free(old_ptr);
+}
 
 // Forward declaration section
 term_u8 *crop_texture(term_u8 * old, term_u8 channel, term_ivec2 old_size,
@@ -160,10 +177,10 @@ term_u8 *crop_texture(term_u8 * old, term_u8 channel, term_ivec2 old_size,
 term_u8 *resize_texture(const term_u8 * old, term_u8 channel, term_ivec2 old_size,
                    term_ivec2 new_size);
 
-void texture_merge(const term_texture *texture_a,
+void tdt_merge(const term_texture *texture_a,
                    const term_texture *texture_b,
                    const term_ivec2 placement_pos,
-                   const enum texture_merge_mode mode, const term_bool replace)
+                   const enum tdt_merge_mode mode, const term_bool replace)
 {
     if (!texture_a || !texture_b)
         return;
@@ -224,8 +241,7 @@ term_u8 *resize_texture(const term_u8 *old, term_u8 channel, term_ivec2 old_size
     return ptexture_resize(old, channel, old_size, new_size);
 }
 
-//https://gist.github.com/folkertdev/6b930c7a7856e36dcad0a72a03e66716
-void texture_resize(term_texture *texture, const term_ivec2 size)
+void tdt_resize(term_texture *texture, const term_ivec2 size)
 {
     if (!texture)
         return;
@@ -239,7 +255,7 @@ void texture_resize(term_texture *texture, const term_ivec2 size)
     texture->size = calculate_new_size(texture->size, size);
 }
 
-term_bool texture_resize_internal(term_texture *texture,
+term_bool tdt_resize_internal(term_texture *texture,
                            const term_ivec2 new_size)
 {
     if (!texture)
@@ -272,7 +288,7 @@ term_u8 *crop_texture(term_u8 *old, term_u8 channel, term_ivec2 old_size,
     return start;
 }
 
-void texture_crop(term_texture *texture, const term_ivec2 new_size)
+void tdt_crop(term_texture *texture, const term_ivec2 new_size)
 {
     if (!texture || new_size.x >= texture->size.x
         || new_size.y >= texture->size.y)
@@ -287,7 +303,7 @@ void texture_crop(term_texture *texture, const term_ivec2 new_size)
     texture->size = new_size;
 }
 
-void texture_draw_line(term_texture *texture, const term_ivec2 p1,
+void tdt_draw_line(term_texture *texture, const term_ivec2 p1,
                        const term_ivec2 p2, const term_rgba color)
 {
     ptexture_draw_line(texture->data, texture->size, texture->channel,
@@ -295,7 +311,7 @@ void texture_draw_line(term_texture *texture, const term_ivec2 p1,
                        0);
 }
 
-void texture_free(term_texture *texture)
+void tdt_free(term_texture *texture)
 {
     if (!texture)
         return;

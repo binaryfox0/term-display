@@ -131,13 +131,19 @@ void ptexture_draw_triangle(term_u8 * texture,
     const vertex v1,
     const vertex v2,
     const vertex v3,
-    term_f32 * depth_buffer)
+    term_f32 * depth_buffer,
+    const term_u8* texture_data)
 {
     vertex pv1 = v1, pv2 = v2, pv3 = v3;
     if(((pv2.pos.x - pv1.pos.x) * (pv3.pos.y - pv1.pos.y) - (pv2.pos.y - pv1.pos.y) * (pv3.pos.x - pv1.pos.x)) > 0)
         SWAP(pv2, pv3);
-
     
+    term_u8 c_ch = 0;
+    convert(pv1.color.raw, pv1.color.raw, channel, 4, &c_ch);
+    convert(pv2.color.raw, pv2.color.raw, channel, 4, &c_ch);
+    convert(pv3.color.raw, pv3.color.raw, channel, 4, &c_ch);
+
+    // The bounding box
     int minX = max(0, min(v1.pos.x, min(v2.pos.x, v3.pos.x)));
     int minY = max(0, min(v1.pos.y, min(v2.pos.y, v3.pos.y)));
     int maxX = min(size.x - 1, max(v1.pos.x, max(v2.pos.x, v3.pos.x)));
@@ -176,7 +182,7 @@ void ptexture_draw_triangle(term_u8 * texture,
                 };
 
                 // Set pixel
-                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), pixel_depth, size.x, color, channel, 4);
+                draw_pixel(texture, size, depth_buffer, ivec2_init(x, y), pixel_depth, size.x, color, channel, c_ch);
             }
             w0_row += A0;
             w1_row += A1;

@@ -1,5 +1,5 @@
-#include "term_display.h"
-#include "term_font.h"
+#include "td_main.h"
+#include "td_font.h"
 
 #include "example_utils.h"
 
@@ -51,14 +51,14 @@ void resize_callback(term_ivec2 new_size)
         height = new_size.y;
 
     term_ivec2 tmp =
-        ratio_new_size(texture_get_size(original_image),
+        ratio_new_size(tdt_get_size(original_image),
                        ivec2_init(width, height));
     if (vec2_larger(tmp, new_size)) {
         if (width) {
             height = new_size.y;
             width = 0;
         }
-        if (height) {
+        else if (height) {
             width = new_size.x;
             height = 0;
         }
@@ -66,8 +66,8 @@ void resize_callback(term_ivec2 new_size)
 
     if (displayed_image)
         free(displayed_image);
-    displayed_image = texture_copy(original_image);
-    texture_resize(displayed_image, ivec2_init(width, height));
+    displayed_image = tdt_copy(original_image);
+    tdt_resize(displayed_image, ivec2_init(width, height));
 }
 
 int main(int argc, char **argv)
@@ -89,7 +89,7 @@ int main(int argc, char **argv)
         return 1;
     }
     original_image =
-        texture_create(tmp, channel, ivec2_init(width, height), 1, 0);
+        tdt_create(tmp, channel, ivec2_init(width, height), 1, 0);
     if (!original_image) {
         printf("Error: %s: Unable to load image file.\n", program_name);
         free(tmp);
@@ -98,15 +98,13 @@ int main(int argc, char **argv)
     width = 0;
 
     if (td_init() || start_logging("statics.txt")) {
-        texture_free(original_image);
-        texture_free(displayed_image);
+        tdt_free(original_image);
+        tdt_free(displayed_image);
         return 1;
     }
 
     term_u8 enable = 1;
     td_option(td_opt_auto_resize, 0, &enable);
-    enable = 3;
-    td_option(td_opt_pixel_width, 0, &enable);
 
     term_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
@@ -135,8 +133,8 @@ int main(int argc, char **argv)
         }
     }
 
-    texture_free(original_image);
-    texture_free(displayed_image);
+    tdt_free(original_image);
+    tdt_free(displayed_image);
     td_free();
     stop_logging();
 

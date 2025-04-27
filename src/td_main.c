@@ -1,4 +1,4 @@
-#include "term_display.h"
+#include "td_main.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -10,19 +10,18 @@
 
 /* Global variable begin */
 static term_texture *display = 0;
-term_u8 *display_raw = 0;            // For the drawing
+static term_u8 *display_raw = 0;            // For the drawing
 static term_u8 display_channel = 3;  // RGBA
 static term_ivec2 size = { 0, 0 },
-
-// Detect size change (cross-platform)
     term_size = { 0, 0 }, prev_size = { 0, 0 };
 
 // Display clear color
-term_rgba default_background = { 0, 0, 0, 255 }, 
-          clear_color = {0, 0, 0, 255};
+term_rgba default_background = { .r = 0, .g = 0, .b = 0, .a = 255 }, 
+          clear_color = { .r = 0, .g = 0, .b = 0, .a = 255};
 
 volatile term_u8 internal_failure = 0;
-volatile term_bool __display_is_running = 0;
+volatile term_bool __display_is_running = term_false,
+    td_initialized = term_false;
 struct {
     term_i32 x_start, x_end, x_inc;
     term_i32 y_start, y_end, y_inc;
@@ -30,13 +29,16 @@ struct {
 
 term_f32 *depth_buffer = 0;
 
-term_u8 numeric_options[__td_opt_numeric_end__] = {
+term_i32 numeric_options[__td_opt_numeric_end__] = {
     [td_opt_auto_resize] = 0,
     [td_opt_pixel_width] = 2,
     [td_opt_pixel_height] = 1,
-    [td_opt_display_type] = display_truecolor,
+    [td_opt_display_type] = td_display_truecolor,
     [td_opt_display_rotate] = 0,
-    [td_opt_depth_buffer] = 0
+    [td_opt_depth_buffer] = 0,
+    [td_opt_shift_translate] = 1,
+    [td_opt_enable_downscaling] = 0,
+    [td_opt_original_scailing_ratio] = 1
 };
 
 /* Global variable end */
@@ -88,13 +90,7 @@ TD_INLINE void reset_depth_buffer()
     if(!depth_buffer) return;
     term_u64 buf_size = calculate_size(size.x, size.y, sizeof(term_f32));
     depth_buffer[0] = FLT_MAX;
-    char* ptr = (char*)depth_buffer;
-    term_u64 filled = sizeof(term_f32);
-    while (filled * 2 < buf_size) {
-        memcpy(&ptr[filled], ptr, filled);
-        filled *= 2;
-    }
-    memcpy(&ptr[filled], ptr, buf_size - filled);
+    fill_buffer(depth_buffer + 1, depth_buffer, buf_size - sizeof(float), sizeof(float));
 }
 
 void resize_depth_buffer()
@@ -117,9 +113,9 @@ void resize_display()
     size =
         ivec2_init(term_size.x / numeric_options[td_opt_pixel_width],
                    term_size.y / numeric_options[td_opt_pixel_height]);
-    if ((internal_failure = texture_resize_internal(display, size)))
+    if ((internal_failure = tdt_resize_internal(display, size)))
         return;                 // Uhhhh, how to continue processing without the display
-    display_raw = texture_get_location(ivec2_init(0, 0), display);
+    display_raw = tdt_get_location(ivec2_init(0, 0), display);
     if (display_prop.y_inc < 0)
         display_prop.y_start = size.y - 1;
     else
@@ -128,7 +124,7 @@ void resize_display()
         display_prop.x_start = size.x - 1;
     else
         display_prop.x_end = size.x - 1;
-    texture_fill(display, clear_color);
+    tdt_fill(display, clear_color);
     clear_screen();
     resize_depth_buffer();
 }
@@ -158,12 +154,12 @@ void stop_display(int signal)
 void reload_display()
 {
     if (display) {
-        texture_free(display);
+        tdt_free(display);
         display = 0;            // Prevent free on freed memory section
     }
     if (!
         (display =
-         texture_create(0, display_channel, ivec2_init(1, 1), 0, 0))) {
+         tdt_create(0, display_channel, ivec2_init(1, 1), 0, 0))) {
         internal_failure = 1;
         return;
     }
@@ -173,10 +169,12 @@ void reload_display()
 
 term_bool td_init()
 {
+    if(td_initialized) return term_true;
     if (!_pisatty(STDOUT_FILENO))
         return 1;
     if (setup_env(stop_display))
         return 1;
+    
     term_size = prev_size = query_terminal_size();      // Disable calling callback on the first time
     query_default_background();
     clear_color = default_background;   // Look like the background
@@ -184,7 +182,8 @@ term_bool td_init()
     reload_display();
     if (internal_failure)
         return 1;
-    __display_is_running = 1;
+    __display_is_running = term_true;
+    td_initialized = term_true;
     return 0;
 }
 
@@ -220,25 +219,28 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
 
     case td_opt_display_size: {
         OPT_GET(term_ivec2, size);
-        OPT_SET(term_ivec2, size);
-        if ((internal_failure = texture_resize_internal(display, size)))
+        term_ivec2 tmp = *(term_ivec2*)option;
+        if(!tmp.x || !tmp.y) return term_true;
+        size = tmp;
+        if(!td_initialized) return term_true;
+        if ((internal_failure = tdt_resize_internal(display, size)))
             return 1;
-        texture_fill(display, clear_color);
+        tdt_fill(display, clear_color);
         clear_screen();
         break;
     }
 
     case td_opt_display_type: {
-        OPT_GET(display_types, numeric_options[type]);
-        switch(OPT_SET(display_types, numeric_options[type])) {
-        case display_grayscale_24:
-        case display_grayscale_256: display_channel = 1; break;
-        case display_truecolor_216:
-        case display_truecolor: display_channel = 3; break;
+        OPT_GET(td_display_types, numeric_options[type]);
+        switch(OPT_SET(td_display_types, numeric_options[type])) {
+        case td_display_grayscale_24:
+        case td_display_grayscale_256: display_channel = 1; break;
+        case td_display_truecolor_216:
+        case td_display_truecolor: display_channel = 3; break;
         default:
             return 1;
         }
-        reload_display();
+        tdt_set_channel(display, display_channel);
         break;
     }
 
@@ -265,7 +267,7 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
 
     case td_opt_depth_buffer: {
         OPT_GET(term_u8, numeric_options[type]);
-        if(OPT_SET(term_u8, numeric_options[type])){
+        if((OPT_SET(term_u8, numeric_options[type]))){
             resize_depth_buffer();
         } else {
             if(depth_buffer) free(depth_buffer);
@@ -277,11 +279,8 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
     case td_opt_disable_stop_sig:
     {
         term_bool tmp = *(term_bool*)option;
-        if(tmp) {
-            if(disable_stop_sig()) return 1;
-        } else {
-            if(enable_stop_sig()) return 1;
-        }
+        if((tmp ? disable_stop_sig() : enable_stop_sig()))
+            return 1;
         numeric_options[type] = tmp;
         break;
     }
@@ -289,6 +288,18 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
     case td_opt_shift_translate: {
         OPT_GET(term_bool, shift_translate);
         OPT_SET(term_bool, shift_translate);
+        break;
+    }
+
+    case td_opt_enable_downscaling: {
+        OPT_GET(term_bool, numeric_options[type]);
+        OPT_SET(term_bool, numeric_options[type]);
+        break;
+    }
+
+    case td_opt_original_scailing_ratio: {
+        OPT_GET(term_bool, numeric_options[type]);
+        OPT_SET(term_bool, numeric_options[type]);
         break;
     }
 
@@ -316,29 +327,27 @@ void td_poll_events()
     }
 }
 
-void td_set_key_callback(key_callback_func callback)
-{
+void td_set_key_callback(key_callback_func callback) {
     private_key_callback = callback;
 }
 
-void td_set_resize_callback(resize_callback_func callback)
-{
+void td_set_resize_callback(resize_callback_func callback) {
     private_resize_callback = callback;
 }
 
 void td_set_color(term_rgba color)
 {
     clear_color = pixel_blend(default_background, color);
-    texture_fill(display, clear_color);
+    tdt_fill(display, clear_color);
     reset_depth_buffer();
 }
 
 void td_copy_texture(const term_texture *texture,
                           const term_vec2 pos,
-                          const enum texture_merge_mode mode)
+                          const enum tdt_merge_mode mode)
 {
     term_ivec2 display_pos = ndc_to_pos(pos, size);
-    texture_merge(display, texture, display_pos, mode, 0);
+    tdt_merge(display, texture, display_pos, mode, 0);
 }
 
 #define VERTEX_BUF_SIZ 3
@@ -363,10 +372,10 @@ void td_render_add(const term_f32* vertices, term_i32 component)
         term_ivec2 p2 = ndc_to_pos(vec2_init(vertex_buffer[4] / vertex_buffer[7], vertex_buffer[5] / vertex_buffer[7]), size);
         term_ivec2 p3 = ndc_to_pos(vec2_init(vertex_buffer[8] / vertex_buffer[11], vertex_buffer[9] / vertex_buffer[11]), size);
         ptexture_draw_triangle(display_raw, size, display_channel,
-            vertex_init(p1, vertex_buffer[2],  rgba_init(255,0,  0,   255)),
-            vertex_init(p2, vertex_buffer[6],  rgba_init(0,  255,0,   255)),
-            vertex_init(p3, vertex_buffer[10], rgba_init(0,  0,  255, 255)),
-            depth_buffer);
+            vertex_init(p1, vertex_buffer[2],  rgba_init(255, 0,   0,   255), vec2_init(0.0f, 0.0f)),
+            vertex_init(p2, vertex_buffer[6],  rgba_init(0,   255, 0,   255), vec2_init(0.0f, 0.0f)),
+            vertex_init(p3, vertex_buffer[10], rgba_init(0,   0,   255, 255), vec2_init(0.0f, 0.0f)),
+            depth_buffer, 0);
         vertex_count = 0;
         td_render_flush();
     }
@@ -381,8 +390,7 @@ void td_draw_line(const term_vec2 p1, const term_vec2 p2,
                        vec2_init(0.0f, 0.0f),color, 0);
 }
 
-TD_INLINE term_u8 rgb_to_216(const term_u8 *c)
-{
+TD_INLINE term_u8 rgb_to_216(const term_u8 *c) {
     return (term_u8)(16 + (c[0] / 51 * 36) + (c[1] / 51 * 6) + (c[2] / 51));
 }
 
@@ -390,16 +398,16 @@ TD_INLINE void display_cell(term_u8 *c)
 {
     if (display_channel == 1) {
         if (numeric_options[td_opt_display_type] ==
-            display_grayscale_256)
+            td_display_grayscale_256)
             printf("\x1b[48;2;%d;%d;%dm", c[0], c[0], c[0]);
         else if (numeric_options[td_opt_display_type] ==
-                 display_grayscale_24)
+                 td_display_grayscale_24)
             printf("\x1b[48;5;%dm", 232 + ((c[0] * 24) >> 8));
     } else if (display_channel == 3) {
-        if (numeric_options[td_opt_display_type] == display_truecolor)
+        if (numeric_options[td_opt_display_type] == td_display_truecolor)
             printf("\x1b[48;2;%d;%d;%dm", c[0], c[1], c[2]);
         if (numeric_options[td_opt_display_type] ==
-            display_truecolor_216)
+            td_display_truecolor_216)
             printf("\x1b[48;5;%dm", rgb_to_216(c));
     }
 }
@@ -432,10 +440,12 @@ term_bool td_show()
 
 void td_free()
 {
+    if(!td_initialized) return;
     // Show the cursor again
     // Reset color / graphics mode
-    _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
     fflush(stdout);             // Flush remaining data
+    _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
     restore_env();
-    texture_free(display);
+    tdt_free(display);
+    td_initialized = term_false;
 }

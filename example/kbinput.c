@@ -1,8 +1,8 @@
 #include <string.h>             // strlen, memcpy
 #include <stdlib.h>             // free
 
-#include "term_display.h"
-#include "term_font.h"
+#include "td_main.h"
+#include "td_font.h"
 #include "example_utils.h"
 
 #define MAX_KEY_STR 48          // Define max key string length
@@ -150,7 +150,7 @@ int main()
                                          rgba_init(0, 0, 0, 0));
         td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_RESIZE);
-        texture_free(texture);
+        tdt_free(texture);
 
         // Key Press Display
         texture =
@@ -159,7 +159,7 @@ int main()
                                    rgba_init(0, 0, 0, 0));
         td_copy_texture(texture, vec2_init(-1.0f, 0.0f),
                              TEXTURE_MERGE_CROP);
-        texture_free(texture);
+        tdt_free(texture);
 
         td_show();
 

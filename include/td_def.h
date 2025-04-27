@@ -58,13 +58,19 @@ typedef unsigned long long term_u64;
 typedef float term_f32;
 typedef enum { term_false = 0, term_true } term_bool;
 
-#include "term_math.h"
+#include "td_math.h"
 
 typedef struct {
-    term_u8 r, g, b;
+    struct {
+        term_u8 r, g, b;
+    };
+    term_u8 raw[3];
 } term_rgb;
-typedef struct {
-    term_u8 r, g, b, a;
+typedef union {
+    struct {
+        term_u8 r, g, b, a;
+    };
+    term_u8 raw[4];
 } term_rgba;
 
 /* Structure initializer begin */

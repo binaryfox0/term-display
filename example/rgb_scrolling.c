@@ -2,8 +2,8 @@
 #include <string.h>             // strlen
 #include <stdlib.h>             // free
 
-#include "term_display.h"
-#include "term_font.h"
+#include "td_main.h"
+#include "td_font.h"
 
 #include "example_utils.h"
 
@@ -44,7 +44,7 @@ int main()
                                    rgba_init(0, 0, 0, 0));
         td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
-        texture_free(texture);
+        tdt_free(texture);
 
         td_show();
         elapsed += speed;

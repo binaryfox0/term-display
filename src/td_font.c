@@ -1,4 +1,4 @@
-#include "term_font.h"
+#include "td_font.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -165,8 +165,8 @@ term_texture *tdf_char_texture(term_i8 ch, term_rgba color, term_rgba fg)
         ch = LOWER_LIMIT;       // Space (nothing)
     const term_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
     term_texture *out =
-        texture_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
-    term_u8 *raw = texture_get_location(ivec2_init(0, 0), out);
+        tdt_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
+    term_u8 *raw = tdt_get_location(ivec2_init(0, 0), out);
     term_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
     for (term_u8 i = 0; i < CHAR_PIXEL; i++)
         for (term_u8 j = 0; j < 4; j++, raw++)
@@ -191,12 +191,12 @@ term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
     // s->x is maximum character in one line, s->y is the line in the input text
     s->x = (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line));
     s->y = (int)(lines_count * CHAR_HEIGHT + calculate_pad(lines_count));
-    term_texture *out = texture_create(0, 4, *s, 0, 0);
+    term_texture *out = tdt_create(0, 4, *s, 0, 0);
     if (!out) {
         free(lines_length);
         return 0;
     }
-    texture_fill(out, fg);
+    tdt_fill(out, fg);
 
     // Placing character into place
     term_u32 current_index = 0;
@@ -206,9 +206,9 @@ term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
             term_texture *ch_texture =
                 tdf_char_texture(str[current_index + col], color, fg);
             term_u32 start_x = col * (CHAR_WIDTH + 1);
-            texture_merge(out, ch_texture, ivec2_init((int)start_x, (int)start_y),
+            tdt_merge(out, ch_texture, ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);
-            texture_free(ch_texture);
+            tdt_free(ch_texture);
         }
         current_index += row_l; // Now at newline characater
         if (is_newline(str, &current_index, plen))

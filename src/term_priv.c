@@ -1,7 +1,8 @@
 #include "term_priv.h"
-#include "term_display.h"
+#include "td_main.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define getch_chk(val) if (getchar() != val) return
@@ -255,6 +256,8 @@ void convert(term_u8 *b_out, const term_u8 *b_in, term_u8 ch_a, term_u8 ch_b, te
 {
     term_u8 a_g = IS_GRAYSCALE(ch_a);
     term_u8 b_g = IS_GRAYSCALE(ch_b);
+    term_u8 tmp;
+    if(!out_b) { out_b = &tmp; }
 
     if (a_g && !b_g) { // A is grayscale, B is truecolor
         b_out[0] = to_grayscale(b_in); 
@@ -291,5 +294,34 @@ void alpha_blend(term_u8 *a, const term_u8 *b, const term_u8 ch_a, const term_u8
         a[2] = (term_u8)((a_b * b[2] + iva_b * a[2]) >> 8);
     }
     if (out_a)
-        a[a_i] = (term_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
+    
+    a[a_i] = (term_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
+}
+
+void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
+{
+    if (destsz < srcsz) {
+        memcpy(dest, src, destsz);
+        return;
+    }
+
+    term_u8* ptr = (term_u8*)dest;
+    memcpy(ptr, src, srcsz);
+
+    size_t filled = srcsz;
+    ptr += srcsz;
+
+    while (filled * 2 <= destsz) {
+        memcpy(ptr, dest, filled);
+        ptr += filled;
+        filled *= 2;
+    }
+
+    memcpy(ptr, dest, destsz - filled);
+}
+
+
+void reset_buffer(const void** out_buffer, const term_vec2 size, const term_vec2* out_size, const int type_size)
+{
+    
 }
