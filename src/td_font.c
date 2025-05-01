@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2025 binaryfox0 (Duy Pham Duc)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #include "td_font.h"
 
 #include <stdlib.h>
@@ -12,7 +36,7 @@
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
 // Atlas of font character pattern, will be populated later
-static const term_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
+static const td_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Space
     { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 },    // Exclamation mark
     { 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Quotation mark
@@ -84,14 +108,14 @@ static const term_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
     { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }     // Tilde 
 };
 
-TD_INLINE term_u32 calculate_pad(term_u32 ch)
+TD_INLINE td_u32 calculate_pad(td_u32 ch)
 {
     return (ch ? ch - 1 : 0);
 }
 
-term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u32 max)
+td_u8 is_newline(const td_i8 *str, td_u32 *current, td_u32 max)
 {
-    term_u8 cr = 0;                  // CR LF detection
+    td_u8 cr = 0;                  // CR LF detection
     if (str[*current] == '\n' || (cr = (str[*current] == '\r'))) {
         if (cr && *current + 1 < max && str[*current + 1] == '\n')
             (*current)++;
@@ -100,25 +124,25 @@ term_u8 is_newline(const term_i8 *str, term_u32 *current, term_u32 max)
     return 0;
 }
 
-term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,    // Lines length info
-                 term_u32 *line_count, term_u32 *longest_line)
+td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // Lines length info
+                 td_u32 *line_count, td_u32 *longest_line)
 {
     static const size_t min_realloc = 10;
 
-    term_u32 line_len = 0, current_size = 0;
+    td_u32 line_len = 0, current_size = 0;
     *line_count = 0;
     *longest_line = 0;
 
-    for (term_u32 i = 0; i < len && str[i]; i++) {
+    for (td_u32 i = 0; i < len && str[i]; i++) {
         if (is_newline(str, &i, len)) {
             if (*line_count >= current_size) {
                 size_t new_size = (size_t)current_size + min_realloc;
-                term_u32 *temp =
-                    (term_u32 *) realloc(*lines_length, new_size * sizeof(term_i32));
+                td_u32 *temp =
+                    (td_u32 *) realloc(*lines_length, new_size * sizeof(td_i32));
                 if (!temp)
                     return 1;   // Allocation failed
                 *lines_length = temp;
-                current_size = (term_u32)new_size;
+                current_size = (td_u32)new_size;
             }
 
             (*lines_length)[*line_count] = line_len;
@@ -135,8 +159,8 @@ term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,
     if (line_len > 0) {
         if (*line_count >= current_size) {
             size_t new_size = (size_t)(current_size + 1);    // Allocate just for the last line
-            term_u32 *temp =
-                (term_u32 *) realloc(*lines_length, new_size * sizeof(term_i32));
+            td_u32 *temp =
+                (td_u32 *) realloc(*lines_length, new_size * sizeof(td_i32));
             if (!temp)
                 return 1;
             *lines_length = temp;
@@ -151,39 +175,39 @@ term_u8 query_newline(const term_i8 *str, term_u32 len, term_u32 **lines_length,
 }
 
 
-TD_INLINE term_i8 mapped_ch(term_i8 ch)
+TD_INLINE td_i8 mapped_ch(td_i8 ch)
 {
     if (ch >= 'a')
         return ch - 'a' + 'A';  // To uppercase (how this font mapped)
     return ch;
 }
 
-term_texture *tdf_char_texture(term_i8 ch, term_rgba color, term_rgba fg)
+term_texture *tdf_char_texture(td_i8 ch, term_rgba color, term_rgba fg)
 {
     ch = mapped_ch(ch);
     if (!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
         ch = LOWER_LIMIT;       // Space (nothing)
-    const term_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
+    const td_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
     term_texture *out =
         tdt_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
-    term_u8 *raw = tdt_get_location(ivec2_init(0, 0), out);
-    term_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
-    for (term_u8 i = 0; i < CHAR_PIXEL; i++)
-        for (term_u8 j = 0; j < 4; j++, raw++)
+    td_u8 *raw = tdt_get_location(ivec2_init(0, 0), out);
+    td_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
+    for (td_u8 i = 0; i < CHAR_PIXEL; i++)
+        for (td_u8 j = 0; j < 4; j++, raw++)
             raw[0] = ch_template[i] ? a[j] : b[j];
 
     return out;
 }
 
-term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
+term_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
                                      term_ivec2 *s,
                                      term_rgba color, term_rgba fg)
 {
     if (!str || !len || !s)
         return 0;
-    term_u32 plen = (term_u32)len;
-    term_u32 lines_count = 0, longest_line = 0;
-    term_u32 *lines_length = 0;      // Filling gaps
+    td_u32 plen = (td_u32)len;
+    td_u32 lines_count = 0, longest_line = 0;
+    td_u32 *lines_length = 0;      // Filling gaps
     if (query_newline
         (str, plen, &lines_length, &lines_count, &longest_line)) {
         return 0;
@@ -199,13 +223,13 @@ term_texture *tdf_string_texture(const term_i8 *str, term_u32 len,
     tdt_fill(out, fg);
 
     // Placing character into place
-    term_u32 current_index = 0;
-    for (term_u32 row = 0; row < lines_count; row++) {
-        term_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
-        for (term_u32 col = 0; col < row_l; col++) {
+    td_u32 current_index = 0;
+    for (td_u32 row = 0; row < lines_count; row++) {
+        td_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
+        for (td_u32 col = 0; col < row_l; col++) {
             term_texture *ch_texture =
                 tdf_char_texture(str[current_index + col], color, fg);
-            term_u32 start_x = col * (CHAR_WIDTH + 1);
+            td_u32 start_x = col * (CHAR_WIDTH + 1);
             tdt_merge(out, ch_texture, ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);
             tdt_free(ch_texture);

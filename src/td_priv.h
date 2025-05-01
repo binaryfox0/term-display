@@ -30,20 +30,20 @@
 #endif
 
 // Inline stuff
-TD_INLINE term_u64 calculate_pos(int x, int y, term_i32 width, term_u8 ch){
-    return (term_u64)((y * width + x) * ch);
+TD_INLINE td_u64 calculate_pos(int x, int y, td_i32 width, td_u8 ch){
+    return (td_u64)((y * width + x) * ch);
 }
 
-TD_INLINE term_u64 calculate_size(int x, int y, term_u8 ch){
+TD_INLINE td_u64 calculate_size(int x, int y, td_u8 ch){
     return calculate_pos(0, x, y, ch);
 }
 
-TD_INLINE float lerp(term_f32 c0, term_f32 c1, float t){
+TD_INLINE float lerp(td_f32 c0, td_f32 c1, float t){
     return c0 + t * (c1 - c0);
 }
 
-TD_INLINE term_u8 to_grayscale(const term_u8 *c){
-    return (term_u8)((77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8);
+TD_INLINE td_u8 to_grayscale(const td_u8 *c){
+    return (td_u8)((77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8);
 }
 
 
@@ -69,8 +69,8 @@ term_bool enable_stop_sig();
 #define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
 
 
-void convert(term_u8 * b_out, const term_u8 * b_in, term_u8 ch_a, term_u8 ch_b, term_u8 *out_b);
-void alpha_blend(term_u8 * a, const term_u8 * b, term_u8 ch_a, term_u8 ch_b);
+void convert(td_u8 * b_out, const td_u8 * b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *out_b);
+void alpha_blend(td_u8 * a, const td_u8 * b, td_u8 ch_a, td_u8 ch_b);
 
 void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz);
 void reset_buffer(const void** out_buffer, const term_vec2 size, const term_vec2* out_size, const int type_size);

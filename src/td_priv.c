@@ -1,4 +1,4 @@
-#include "term_priv.h"
+#include "td_priv.h"
 #include "td_main.h"
 
 #include <stdio.h>
@@ -7,7 +7,7 @@
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define getch_chk(val) if (getchar() != val) return
 
-term_bool key_shift_translate(const term_i8 byte, int* ch, int* mods)
+term_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 {
     switch(byte)
     {
@@ -47,7 +47,7 @@ term_bool key_shift_translate(const term_i8 byte, int* ch, int* mods)
 
 // Handle single-byte character input
 term_bool shift_translate = term_false;
-TD_INLINE term_bool handle_single_byte(const term_i8 byte, int *ch, int *mods)
+TD_INLINE term_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
@@ -95,7 +95,7 @@ TD_INLINE term_bool handle_single_byte(const term_i8 byte, int *ch, int *mods)
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-TD_INLINE term_bool handle_nav_key(const term_i8 byte, int *ch)
+TD_INLINE term_bool handle_nav_key(const td_i8 byte, int *ch)
 {
     switch (byte) {
     case 'A': *ch = td_key_up; break;
@@ -110,7 +110,7 @@ TD_INLINE term_bool handle_nav_key(const term_i8 byte, int *ch)
     return 0;
 }
 
-TD_INLINE term_bool handle_f5_below(const term_i8 byte, int *ch)
+TD_INLINE term_bool handle_f5_below(const td_i8 byte, int *ch)
 {
     int tmp = 0;
     if (OUT_RANGE
@@ -120,7 +120,7 @@ TD_INLINE term_bool handle_f5_below(const term_i8 byte, int *ch)
     return 0;
 }
 
-TD_INLINE term_bool handle_f5_above(const term_i8 first, const term_i8 second, int *ch)
+TD_INLINE term_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch)
 {
     if (first == '1') {
         switch (second) {
@@ -247,16 +247,16 @@ void kbpoll_events(key_callback_func func)
     } else                      // Single-byte characters
     if (handle_single_byte(buf[0], &ch, &mods))
         return;
-    if(func)func(ch, mods, key_press);
+    if(func)func(ch, mods, td_key_press);
 }
 
 
 // // Convert b to have the same type as a
-void convert(term_u8 *b_out, const term_u8 *b_in, term_u8 ch_a, term_u8 ch_b, term_u8 *out_b)
+void convert(td_u8 *b_out, const td_u8 *b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *out_b)
 {
-    term_u8 a_g = IS_GRAYSCALE(ch_a);
-    term_u8 b_g = IS_GRAYSCALE(ch_b);
-    term_u8 tmp;
+    td_u8 a_g = IS_GRAYSCALE(ch_a);
+    td_u8 b_g = IS_GRAYSCALE(ch_b);
+    td_u8 tmp;
     if(!out_b) { out_b = &tmp; }
 
     if (a_g && !b_g) { // A is grayscale, B is truecolor
@@ -273,7 +273,7 @@ void convert(term_u8 *b_out, const term_u8 *b_in, term_u8 ch_a, term_u8 ch_b, te
     }
 
     // If both are already the same format, copy directly
-    for (term_u8 i = 0; i < ch_b; i++) {
+    for (td_u8 i = 0; i < ch_b; i++) {
         b_out[i] = b_in[i];
     }
     *out_b = ch_b;
@@ -281,21 +281,21 @@ void convert(term_u8 *b_out, const term_u8 *b_in, term_u8 ch_a, term_u8 ch_b, te
 
 
 // Color b (foreground) er color a (background)
-void alpha_blend(term_u8 *a, const term_u8 *b, const term_u8 ch_a, const term_u8 ch_b)
+void alpha_blend(td_u8 *a, const td_u8 *b, const td_u8 ch_a, const td_u8 ch_b)
 {
-    term_u8 out_a = IS_TRANSPARENT(ch_a);
-    term_u8 a_i = ch_a - 1;
-    term_u8 a_a = out_a ? a[a_i] : 255;
-    term_u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
+    td_u8 out_a = IS_TRANSPARENT(ch_a);
+    td_u8 a_i = ch_a - 1;
+    td_u8 a_a = out_a ? a[a_i] : 255;
+    td_u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
     if (ch_a < 5)
-        a[0] = (term_u8)((a_b * b[0] + iva_b * a[0]) >> 8);
+        a[0] = (td_u8)((a_b * b[0] + iva_b * a[0]) >> 8);
     if (ch_a > 2) {
-        a[1] = (term_u8)((a_b * b[1] + iva_b * a[1]) >> 8);
-        a[2] = (term_u8)((a_b * b[2] + iva_b * a[2]) >> 8);
+        a[1] = (td_u8)((a_b * b[1] + iva_b * a[1]) >> 8);
+        a[2] = (td_u8)((a_b * b[2] + iva_b * a[2]) >> 8);
     }
     if (out_a)
     
-    a[a_i] = (term_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
+    a[a_i] = (td_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
 }
 
 void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
@@ -305,7 +305,7 @@ void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
         return;
     }
 
-    term_u8* ptr = (term_u8*)dest;
+    td_u8* ptr = (td_u8*)dest;
     memcpy(ptr, src, srcsz);
 
     size_t filled = srcsz;

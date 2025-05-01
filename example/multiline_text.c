@@ -48,14 +48,14 @@ void process_input(int key, int mods, td_key_state_t actions)
 
 int main()
 {
-    term_u8 enable = 1;
+    td_u8 enable = 1;
     if (td_init() || start_logging("statics.txt"))
         return 1;
     td_option(td_opt_auto_resize, 0, &enable);
     td_set_key_callback(process_input);
 
     term_ivec2 size = { 0 };
-    term_u64 frame_count = 0;
+    td_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
     while (td_is_running()) {
         frame_count++;

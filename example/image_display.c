@@ -38,7 +38,7 @@ term_ivec2 ratio_new_size(const term_ivec2 old, const term_ivec2 size)
     return size;
 }
 
-term_bool vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
+TD_INLINE term_bool vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
 {
     return vec1.x > vec2.x || vec1.y > vec2.y;
 }
@@ -65,54 +65,45 @@ void resize_callback(term_ivec2 new_size)
     }
 
     if (displayed_image)
-        free(displayed_image);
+        tdt_free(displayed_image);
     displayed_image = tdt_copy(original_image);
     tdt_resize(displayed_image, ivec2_init(width, height));
 }
 
-int main(int argc, char **argv)
+term_bool stop = term_false;
+void key_callback(int key, int mods, td_key_state_t state){
+    if(key == td_key_escape && state == td_key_press)
+        stop = term_true;
+}
+
+char* program_name = 0;
+void display_image(const char* path)
 {
-    char *program_name = get_program_name(argv[0]);
-    if (argc < 2) {
-        printf("Usage: %s: <image>\n", program_name);
-        return 1;
-    }
-    if (argc > 2) {
-        printf("Error: %s:  Currently not support more than one image.\n",
-               program_name);
-        return 1;
-    }
     int channel;
-    stbi_uc *tmp = stbi_load(argv[1], &width, &height, &channel, 0);
+
+    stbi_uc *tmp = stbi_load(path, &width, &height, &channel, 0);
     if (!tmp) {
         printf("Error: %s: Unable to load image file.\n", program_name);
-        return 1;
+        return;
     }
+
     original_image =
         tdt_create(tmp, channel, ivec2_init(width, height), 1, 0);
     if (!original_image) {
         printf("Error: %s: Unable to load image file.\n", program_name);
         free(tmp);
-        return 1;
+        return;
     }
     width = 0;
-
-    if (td_init() || start_logging("statics.txt")) {
-        tdt_free(original_image);
-        tdt_free(displayed_image);
-        return 1;
-    }
-
-    term_u8 enable = 1;
-    td_option(td_opt_auto_resize, 0, &enable);
 
     term_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
     td_set_resize_callback(resize_callback);
 
+    td_set_running_state(term_true);
     double delta_time = 1.0, last_log = get_time();
-    while (td_is_running()) {
+    while (td_is_running() && !stop) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
@@ -134,7 +125,25 @@ int main(int argc, char **argv)
     }
 
     tdt_free(original_image);
+    original_image = 0;
     tdt_free(displayed_image);
+    displayed_image = 0;
+}
+
+int main(int argc, char **argv)
+{
+    program_name = get_program_name(argv[0]);
+    if(argc < 2) {
+        printf("Usage: %s <image>\n", program_name);
+        return 1;
+    }
+
+    if (td_init() || start_logging("statics.txt")) {
+        return 1;
+    }
+
+    display_image(argv[1]);
+
     td_free();
     stop_logging();
 

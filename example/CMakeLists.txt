@@ -24,7 +24,6 @@ example_projects(noise)
 set(EXTRA "")
 
 example_projects(multiline_text)
-example_projects(kbinput)
 set(EXTRA "cglm")
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/cglm/include")
  example_projects(cube)

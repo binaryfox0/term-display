@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2025 binaryfox0 (Duy Pham Duc)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 /** 
  * @file term_display.h
  * @brief Main header of term-display used to control the display and related operations.
@@ -42,8 +66,8 @@ typedef enum {
   * These values represent different display modes for rendering colors and graphics.
   */
 typedef enum {
-    td_display_grayscale_24,   /**< 24-bit grayscale display */
-    td_display_grayscale_256,  /**< 256-level grayscale display */
+    td_display_grayscale_24,   /**< 24-color grayscale display */
+    td_display_grayscale_256,  /**< 256-color grayscale display */
     td_display_truecolor_216,  /**< 216-color truecolor display */
     td_display_truecolor       /**< Full truecolor display */
 } td_display_types;
@@ -55,9 +79,9 @@ typedef enum {
  * Represents the state of a key: whether it is released, pressed, or held.
  */
 typedef enum { 
-    key_release, /**< Key was released */
-    key_press,   /**< Key was pressed */
-    key_hold     /**< Key is being held down */
+    td_key_release, /**< Key was released */
+    td_key_press,   /**< Key was pressed */
+    td_key_hold     /**< Key is being held down */
 } td_key_state_t;
 
 /**
@@ -203,9 +227,12 @@ term_bool td_option(td_settings_t type, term_bool get, void *option);
  * @return A boolean indicating display is shown to user.
  */
 extern volatile term_bool __display_is_running;
-TD_INLINE term_bool td_is_running()
-{
+TD_INLINE term_bool td_is_running() {
     return __display_is_running;
+}
+
+TD_INLINE void td_set_running_state(term_bool state) {
+    __display_is_running = state;
 }
 
 /**
@@ -265,7 +292,7 @@ void td_render_flush();
  * 
  * This function will automatically flush when meets the minimum count of vertices to render shape
  */
-void td_render_add(const term_f32 *vertices, term_i32 component);
+void td_render_add(const td_f32 *vertices, td_i32 component);
 
 /**
  * @brief Displays the framebuffer to the terminal.
@@ -279,4 +306,4 @@ term_bool td_show();
  */
 void td_free();
 
-#endif /* TD_PLATFORM_DISPLAY_H */
+#endif /* TD_MAIN_H */
