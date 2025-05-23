@@ -7,7 +7,7 @@
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define getch_chk(val) if (getchar() != val) return
 
-term_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
+td_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 {
     switch(byte)
     {
@@ -46,8 +46,8 @@ term_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 }
 
 // Handle single-byte character input
-term_bool shift_translate = term_false;
-TD_INLINE term_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
+td_bool shift_translate = td_false;
+TD_INLINE td_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
@@ -95,7 +95,7 @@ TD_INLINE term_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-TD_INLINE term_bool handle_nav_key(const td_i8 byte, int *ch)
+TD_INLINE td_bool handle_nav_key(const td_i8 byte, int *ch)
 {
     switch (byte) {
     case 'A': *ch = td_key_up; break;
@@ -110,7 +110,7 @@ TD_INLINE term_bool handle_nav_key(const td_i8 byte, int *ch)
     return 0;
 }
 
-TD_INLINE term_bool handle_f5_below(const td_i8 byte, int *ch)
+TD_INLINE td_bool handle_f5_below(const td_i8 byte, int *ch)
 {
     int tmp = 0;
     if (OUT_RANGE
@@ -120,7 +120,7 @@ TD_INLINE term_bool handle_f5_below(const td_i8 byte, int *ch)
     return 0;
 }
 
-TD_INLINE term_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch)
+TD_INLINE td_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch)
 {
     if (first == '1') {
         switch (second) {
@@ -143,7 +143,7 @@ TD_INLINE term_bool handle_f5_above(const td_i8 first, const td_i8 second, int *
     return 0;
 }
 
-TD_INLINE term_bool handle_special_combo(const int byte, int *mods)
+TD_INLINE td_bool handle_special_combo(const int byte, int *mods)
 {
     switch (byte) {
     case '8': *mods |= (td_key_ctrl | td_key_alt | td_key_shift); break;
@@ -159,7 +159,7 @@ TD_INLINE term_bool handle_special_combo(const int byte, int *mods)
     return 0;
 }
 
-TD_INLINE term_bool handle_special_key(int *ch)
+TD_INLINE td_bool handle_special_key(int *ch)
 {
     switch (*ch) {
     case '2': *ch = td_key_insert; break;
@@ -223,14 +223,16 @@ void kbpoll_events(key_callback_func func)
                 return;
             break;
         case 6:                // Ctrl/Shift/Alt + (F1 - F4) (Vscode terminal case) and Navigation keys
-            if (buf[1] != '[' || buf[2] != '1' || buf[3] != ';')
-                return;
-            if (handle_special_combo(buf[4], &mods))
-                return;
-            if (!handle_f5_below(buf[5], &ch) ||
-                !handle_nav_key(buf[5], &ch)
-                )
-                return;
+            if (buf[1] != '[') {
+                if(buf[2] != '1' || buf[3] != ';')
+                    return;
+                if (handle_special_combo(buf[4], &mods))
+                    return;
+                if (!handle_f5_below(buf[5], &ch) ||
+                    !handle_nav_key(buf[5], &ch)
+                    )
+                    return;
+            }
             break;
         case 7:
             if (buf[1] != '[' || buf[4] != ';' || buf[6] != '~')
@@ -300,6 +302,7 @@ void alpha_blend(td_u8 *a, const td_u8 *b, const td_u8 ch_a, const td_u8 ch_b)
 
 void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
 {
+    if(!destsz || !srcsz || !dest || !src) return;
     if (destsz < srcsz) {
         memcpy(dest, src, destsz);
         return;
@@ -321,7 +324,7 @@ void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
 }
 
 
-void reset_buffer(const void** out_buffer, const term_vec2 size, const term_vec2* out_size, const int type_size)
+void reset_buffer(const void** out_buffer, const td_vec2 size, const td_vec2* out_size, const int type_size)
 {
     
 }

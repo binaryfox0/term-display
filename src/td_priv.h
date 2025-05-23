@@ -29,6 +29,9 @@
 #define _pisatty isatty
 #endif
 
+#define min(x, y) (((x) < (y)) ? (x) : (y))
+#define max(x, y) (((x) > (y)) ? (x) : (y))
+
 // Inline stuff
 TD_INLINE td_u64 calculate_pos(int x, int y, td_i32 width, td_u8 ch){
     return (td_u64)((y * width + x) * ch);
@@ -48,21 +51,21 @@ TD_INLINE td_u8 to_grayscale(const td_u8 *c){
 
 
 #ifdef TD_PLATFORM_UNIX
-term_bool setup_env(void (*handler)(int));
+td_bool setup_env(void (*handler)(int));
 #else
-term_bool setup_env(BOOL (*handler)(DWORD));
+td_bool setup_env(BOOL (*handler)(DWORD));
 #endif
 
-extern term_bool shift_translate;
+extern td_bool shift_translate;
 
-term_ivec2 query_terminal_size();
-term_bool restore_env();
+td_ivec2 query_terminal_size();
+td_bool restore_env();
 void kbpoll_events(key_callback_func func);
-term_bool timeout(int ms);
+td_bool timeout(int ms);
 int available();
 
-term_bool disable_stop_sig();
-term_bool enable_stop_sig();
+td_bool disable_stop_sig();
+td_bool enable_stop_sig();
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)
@@ -73,6 +76,6 @@ void convert(td_u8 * b_out, const td_u8 * b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *o
 void alpha_blend(td_u8 * a, const td_u8 * b, td_u8 ch_a, td_u8 ch_b);
 
 void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz);
-void reset_buffer(const void** out_buffer, const term_vec2 size, const term_vec2* out_size, const int type_size);
+void reset_buffer(const void** out_buffer, const td_vec2 size, const td_vec2* out_size, const int type_size);
 
 #endif

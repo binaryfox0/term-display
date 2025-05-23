@@ -29,13 +29,13 @@ SOFTWARE.
 
 typedef struct {
     int x, y;
-} term_ivec2;
+} td_ivec2;
 typedef union {
     struct {
         float x, y;
     };
     float raw[2];
-} term_vec2;
+} td_vec2;
 typedef union {
     struct {
         float x, y, z;
@@ -46,17 +46,21 @@ typedef struct {
     td_u32 x, y, z;
 } term_ivec3;
 
-__td_priv_create_constructor(ivec2_init, term_ivec2, x, y)
-__td_priv_create_constructor(vec2_init, term_vec2, x, y)
+__td_priv_create_constructor(td_ivec2_init, td_ivec2, x, y)
+__td_priv_create_constructor(td_vec2_init, td_vec2, x, y)
 
-TD_INLINE td_u8 ivec2_equal(const term_ivec2 a, const term_ivec2 b)
+TD_INLINE td_ivec2 td_ivec2_subtract(const td_ivec2 a, const td_ivec2 b) {
+    return td_ivec2_init(a.x - b.x, a.y - b.y);
+}
+
+TD_INLINE td_u8 ivec2_equal(const td_ivec2 a, const td_ivec2 b)
 {
     return a.x == b.x && a.y == b.y;
 }
 
-TD_INLINE term_ivec2 ndc_to_pos(term_vec2 pos, term_ivec2 size)
+TD_INLINE td_ivec2 ndc_to_pos(td_vec2 pos, td_ivec2 size)
 {
-    return ivec2_init((td_i32) ((pos.x + 1.0) * 0.5f * size.x),
+    return td_ivec2_init((td_i32) ((pos.x + 1.0) * 0.5f * size.x),
                       (td_i32) ((1.0 - pos.y) * 0.5f * size.y)
         );
 }

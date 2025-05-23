@@ -15,11 +15,11 @@
 #include <bcrypt.h>
 #endif
 
-const td_u8 desired_channel = 4;
-term_texture *generate_noise(term_ivec2 size)
+const td_u8 desired_channel = 3;
+td_texture *generate_noise(td_ivec2 size)
 {
-    term_texture *out = tdt_create(0, desired_channel, size, 0, 0);
-    td_u8 *raw = tdt_get_location(ivec2_init(0, 0), out);
+    td_texture *out = tdt_create(0, desired_channel, size, 0, 0);
+    td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
     td_u64 byte = size.x * size.y * desired_channel;
 #ifdef TD_PLATFORM_WINDOWS
     if (BCryptGenRandom(0, raw, byte, BCRYPT_USE_SYSTEM_PREFERED_RNG)) {
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
-    term_ivec2 size = { 0 };    // Temporary
+    td_ivec2 size = { 0 };    // Temporary
     double delta_time = 1.0, last_log = get_time();
     const double max_dt = 1.0 / maximum_fps;
     while (td_is_running()) {
@@ -59,19 +59,19 @@ int main(int argc, char** argv)
         td_poll_events();
 
         td_option(td_opt_display_size, 1, &size);
-        term_texture *noise = generate_noise(size);
-        td_copy_texture(noise, vec2_init(-1.0f, 1.0f),
+        td_texture *noise = generate_noise(size);
+        td_copy_texture(noise, td_vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
         tdt_free(noise);
 
         char *string = to_string("%f", fps);
-        term_texture *texture =
+        td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(0, 0, 0, 255), rgba_init(255,
                                                                       255,
                                                                       255,
                                                                       255));
-        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
         tdt_free(texture);
 

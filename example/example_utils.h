@@ -6,9 +6,9 @@
 #define TESTS_LOGGING
 
 #ifdef TESTS_LOGGING
-term_bool start_logging(const char *filename);
+td_bool start_logging(const char *filename);
 void write_log(const char *format, ...);
-term_bool stop_logging();
+td_bool stop_logging();
 #else
 #define start_logging(tmp) 0
 #define stop_logging() 0

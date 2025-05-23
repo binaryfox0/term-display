@@ -22,37 +22,37 @@ char *get_program_name(char *in)
 }
 
 int width, height;
-term_texture *original_image = 0, *displayed_image = 0;
+td_texture *original_image = 0, *displayed_image = 0;
 
-TD_INLINE term_bool is_landscape(term_ivec2 size)
+TD_INLINE td_bool is_landscape(td_ivec2 size)
 {
     return size.x > size.y;
 }
 
-term_ivec2 ratio_new_size(const term_ivec2 old, const term_ivec2 size)
+td_ivec2 ratio_new_size(const td_ivec2 old, const td_ivec2 size)
 {
     if (!size.x)
-        return ivec2_init((old.x * size.y) / old.y, size.y);
+        return td_ivec2_init((old.x * size.y) / old.y, size.y);
     if (!size.y)
-        return ivec2_init(size.x, (old.y * size.x) / old.x);
+        return td_ivec2_init(size.x, (old.y * size.x) / old.x);
     return size;
 }
 
-TD_INLINE term_bool vec2_larger(term_ivec2 vec1, term_ivec2 vec2)
+TD_INLINE td_bool vec2_larger(td_ivec2 vec1, td_ivec2 vec2)
 {
     return vec1.x > vec2.x || vec1.y > vec2.y;
 }
 
-void resize_callback(term_ivec2 new_size)
+void resize_callback(td_ivec2 new_size)
 {
     if (width)
         width = new_size.x;
     if (height)
         height = new_size.y;
 
-    term_ivec2 tmp =
+    td_ivec2 tmp =
         ratio_new_size(tdt_get_size(original_image),
-                       ivec2_init(width, height));
+                       td_ivec2_init(width, height));
     if (vec2_larger(tmp, new_size)) {
         if (width) {
             height = new_size.y;
@@ -67,13 +67,13 @@ void resize_callback(term_ivec2 new_size)
     if (displayed_image)
         tdt_free(displayed_image);
     displayed_image = tdt_copy(original_image);
-    tdt_resize(displayed_image, ivec2_init(width, height));
+    tdt_resize(displayed_image, td_ivec2_init(width, height));
 }
 
-term_bool stop = term_false;
+td_bool stop = td_false;
 void key_callback(int key, int mods, td_key_state_t state){
     if(key == td_key_escape && state == td_key_press)
-        stop = term_true;
+        stop = td_true;
 }
 
 char* program_name = 0;
@@ -88,7 +88,7 @@ void display_image(const char* path)
     }
 
     original_image =
-        tdt_create(tmp, channel, ivec2_init(width, height), 1, 0);
+        tdt_create(tmp, channel, td_ivec2_init(width, height), 1, 0);
     if (!original_image) {
         printf("Error: %s: Unable to load image file.\n", program_name);
         free(tmp);
@@ -96,12 +96,12 @@ void display_image(const char* path)
     }
     width = 0;
 
-    term_ivec2 current_size;
+    td_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
     td_set_resize_callback(resize_callback);
 
-    td_set_running_state(term_true);
+    td_set_running_state(td_true);
     double delta_time = 1.0, last_log = get_time();
     while (td_is_running() && !stop) {
         double start_frame = get_time();
@@ -109,7 +109,7 @@ void display_image(const char* path)
 
         td_poll_events();
         td_set_color(rgba_init(0, 0, 0, 255));
-        td_copy_texture(displayed_image, vec2_init(-1.f, 1.f),
+        td_copy_texture(displayed_image, td_vec2_init(-1.f, 1.f),
                              TEXTURE_MERGE_CROP);
         td_show();
 

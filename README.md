@@ -5,7 +5,7 @@ term-display
 ## Example
 All examples code are distributed under `example` of repo
 ![image](img/screenshot.png)
-<p align="center" style="font-size:12px;">cube.c</p>
+<p align="center" style="font-size:12px;">cube.c on Alacritty, size: 683x139 cells (XxY)</p>
 
 ## Feature
 Minimal dependencies requirements make it ideal for small, experimental projects.
@@ -39,9 +39,19 @@ Currently known issues with `term-display`
    - Completely CPU dependent: means they almost can't leverage anything from GPU, which is heckin' fast.
  - **Low Resolution**: Terminal-based output is limited by the size, resolution of the terminal window.
 ### Compatibility
-- As we knew that Windows Terminal doesn't support ANSI escape code until [Windows version 10.0.10586](https://superuser.com/a/1300251). If you have a older Windows, consider using something like [ConEmu](https://conemu.github.io/) and add this piece to your code:
+- As we knew that Windows Terminal doesn't support ANSI escape code until [Windows version 10.0.10586](https://superuser.com/a/1300251). If you have a older Windows, consider using something like [ConEmu](https://conemu.github.io/) and add this piece to your code (i don't have a Windows 10 computer):
 
 ```cpp
 td_display_types type = td_display_truecolor_216;
 td_option(td_opt_display_type, 0, &type);
 ```
+
+## Credits
+- **Extremely Fast Line Algorithm Var D (Addition Fixed Point)**  
+  Copyright © 2001 Po-Han Lin  
+  Used under the terms for non-commercial applications.  
+  More info: [http://www.edepot.com/phl.html](http://www.edepot.com/phl.html)
+- ANSI Escape Code Reference by [fnky](https://github.com/fnky)  
+  Source: [https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797](https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797)
+- 3x5 Pixel font made by [Ilmari Karonen](https://graphicdesign.stackexchange.com/users/3239/ilmari-karonen)  
+  Source: [https://graphicdesign.stackexchange.com/a/91523](https://graphicdesign.stackexchange.com/a/91523)

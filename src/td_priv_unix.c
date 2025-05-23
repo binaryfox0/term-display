@@ -33,7 +33,7 @@ SOFTWARE.
 
 static struct termios old, cur;
 
-term_bool set_handler(int type, void (*handler)(int))
+td_bool set_handler(int type, void (*handler)(int))
 {
 #ifdef _POSIX_VERSION
     struct sigaction sa = {.sa_flags = SA_SIGINFO,.sa_handler = handler };
@@ -44,7 +44,7 @@ term_bool set_handler(int type, void (*handler)(int))
 #endif
 }
 
-term_bool setup_env(void(*handler)(int))
+td_bool setup_env(void(*handler)(int))
 {
     if (tcgetattr(STDIN_FILENO, &old) == -1)
         return 1;
@@ -66,15 +66,15 @@ term_bool setup_env(void(*handler)(int))
     return 0;
 }
 
-term_ivec2 query_terminal_size()
+td_ivec2 query_terminal_size()
 {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
-        return ivec2_init(ws.ws_col, ws.ws_row);
-    return ivec2_init(0, 0);
+        return td_ivec2_init(ws.ws_col, ws.ws_row);
+    return td_ivec2_init(0, 0);
 }
 
-term_bool restore_env()
+td_bool restore_env()
 {
     if (tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1)
         return 1;
@@ -90,7 +90,7 @@ term_bool restore_env()
 
 struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
 
-term_bool timeout(int ms)
+td_bool timeout(int ms)
 {
     return poll(&pfd, 1, ms);
 }
@@ -102,12 +102,12 @@ int available()
     return out;
 }
 
-term_bool disable_stop_sig() {
+td_bool disable_stop_sig() {
     cur.c_lflag &= (td_u32)(~ISIG);
     return tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1;
 }
 
-term_bool enable_stop_sig() {
+td_bool enable_stop_sig() {
     cur.c_lflag |= ISIG;
     return tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1;
 }

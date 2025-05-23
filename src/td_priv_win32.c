@@ -36,7 +36,7 @@ HANDLE h_in = 0, h_out = 0;
 DWORD old_in_mode = 0, old_out_mode = 0;
 BOOL (*handle)(DWORD) = 0;
 
-term_bool setup_env(BOOL (*handler)(DWORD))
+td_bool setup_env(BOOL (*handler)(DWORD))
 {
     if ((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
         return 1;
@@ -58,22 +58,22 @@ term_bool setup_env(BOOL (*handler)(DWORD))
     return enable_stop_sig();
 }
 
-term_ivec2 query_terminal_size()
+td_ivec2 query_terminal_size()
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
-        return ivec2_init(csbi.dwSize.X, csbi.dwSize.Y);
-    return ivec2_init(0, 0);
+        return td_ivec2_init(csbi.dwSize.X, csbi.dwSize.Y);
+    return td_ivec2_init(0, 0);
 }
 
-term_bool restore_env()
+td_bool restore_env()
 {
     return SetConsoleMode(h_in, old_in_mode)
         || SetConsoleMode(h_out, old_out_mode)
         || SetConsoleCtrlHandler(NULL, FALSE);
 }
 
-term_bool timeout(int ms)
+td_bool timeout(int ms)
 {
     return WaitForSingleObject(h_in, ms) == WAIT_OBJECT_0;
 }
@@ -85,10 +85,10 @@ int available()
     return (int) out;
 }
 
-term_bool disable_stop_sig() {
+td_bool disable_stop_sig() {
     return !SetConsoleCtrlHandler(NULL, TRUE);
 }
 
-term_bool enable_stop_sig() {
+td_bool enable_stop_sig() {
     return !SetConsoleCtrlHandler(handle, TRUE);
 }

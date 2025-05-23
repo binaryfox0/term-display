@@ -9,7 +9,7 @@
 
 #define M_PI 3.14159265358979323846
 
-TD_INLINE term_rgb calculate_rgb(double d)
+TD_INLINE td_rgb calculate_rgb(double d)
 {
     return rgb_init((td_u8) ((sin(d) + 1) * 127.5),
                     (td_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
@@ -23,7 +23,7 @@ int main(int argc, char** argv)
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
-    term_ivec2 size = { 0 };
+    td_ivec2 size = { 0 };
     double speed = 0.01, elapsed = 0.0;
     double delta_time = 0.0, last_log = get_time();
     const double max_dt = 1.0 / maximum_fps;
@@ -36,11 +36,11 @@ int main(int argc, char** argv)
         td_set_color(to_rgba(calculate_rgb(elapsed)));
 
         char *string = to_string("%f", fps);
-        term_texture *texture =
+        td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(255, 255, 255, 255),
                                    rgba_init(0, 0, 0, 0));
-        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_CROP);
         tdt_free(texture);
 

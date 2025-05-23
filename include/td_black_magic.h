@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef TD_BLACK_MAGIC_H
 #define TD_BLACK_MAGIC_H
 
+// Don't do it XD
+
 #define __member_type(type, member) __typeof__((type){0}.member)
 
 #define __cat(a, b) __cat_(a, b)

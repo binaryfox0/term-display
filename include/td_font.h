@@ -28,9 +28,9 @@ SOFTWARE.
 #include "td_def.h"
 #include "td_texture.h"
 
-term_texture *tdf_char_texture(td_i8 ch, term_rgba color, term_rgba fg);
-term_texture *tdf_string_texture(const td_i8 * str, td_u32 len,
-                                     term_ivec2 * size, term_rgba color,
-                                     term_rgba fg);
+td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg);
+td_texture *tdf_string_texture(const td_i8 * str, td_u32 len,
+                                     td_ivec2 * size, td_rgba color,
+                                     td_rgba fg);
 
 #endif

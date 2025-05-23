@@ -27,26 +27,26 @@ SOFTWARE.
 
 #include "td_def.h"
 
-struct term_texture_s;
-typedef struct term_texture_s term_texture;
+struct td_texture_s;
+typedef struct td_texture_s td_texture;
 
 /* Constructor start */
-term_texture *tdt_create(td_u8 * texture,
+td_texture *tdt_create(td_u8 * texture,
                              const td_u8 channel,
-                             const term_ivec2 size,
+                             const td_ivec2 size,
                              const td_u8 freeable, const td_u8 copy);
 
-term_texture *tdt_copy(term_texture * texture);
+td_texture *tdt_copy(td_texture * texture);
 /* Constructor end */
 
-td_u8 *tdt_get_location(const term_ivec2 pos,
-                         const term_texture * texture);
+td_u8 *tdt_get_location(const td_ivec2 pos,
+                         const td_texture * texture);
 
-term_ivec2 tdt_get_size(const term_texture * texture);
+td_ivec2 tdt_get_size(const td_texture * texture);
 
-void tdt_fill(const term_texture * texture, const term_rgba color);
+void tdt_fill(const td_texture * texture, const td_rgba color);
 
-void tdt_set_channel(term_texture* texture, td_u8 channel);
+void tdt_set_channel(td_texture* texture, td_u8 channel);
 
 enum tdt_merge_mode {
     TEXTURE_MERGE_CROP = 0,
@@ -54,24 +54,24 @@ enum tdt_merge_mode {
 };
 
 // Texture b will place over texture a with proper blending
-void tdt_merge(const term_texture * texture_a,
-                   const term_texture * texture_b,
-                   const term_ivec2 placment_pos,
-                   const enum tdt_merge_mode mode, const term_bool replace);
+void tdt_merge(const td_texture * texture_a,
+                   const td_texture * texture_b,
+                   const td_ivec2 placment_pos,
+                   const enum tdt_merge_mode mode, const td_bool replace);
 
 // Resizing texture with bilinear interpolation
-void tdt_resize(term_texture * texture, const term_ivec2 new_size);
+void tdt_resize(td_texture * texture, const td_ivec2 new_size);
 // Resizing only the raw texture storage
-term_bool tdt_resize_internal(term_texture * texture,
-                           const term_ivec2 new_size);
-void tdt_crop(term_texture * texture, const term_ivec2 new_size);
+td_bool tdt_resize_internal(td_texture * texture,
+                           const td_ivec2 new_size);
+void tdt_crop(td_texture * texture, const td_ivec2 new_size);
 
-void tdt_draw_line(term_texture * texture, const term_ivec2 p1,
-                       const term_ivec2 p2, const term_rgba color);
+void tdt_draw_line(td_texture * texture, const td_ivec2 p1,
+                       const td_ivec2 p2, const td_rgba color);
 
-void tdt_free(term_texture * texture);
+void tdt_free(td_texture * texture);
 
 // Additional functions
-term_rgba pixel_blend(term_rgba a, term_rgba b);
+td_rgba pixel_blend(td_rgba a, td_rgba b);
 
 #endif

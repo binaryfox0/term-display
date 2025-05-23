@@ -11,8 +11,8 @@
 char* buffer = 0;
 int current_size = 0, current_index = 0;
 
-term_texture* string_texture = 0;
-term_ivec2 texture_size;
+td_texture* string_texture = 0;
+td_ivec2 texture_size;
 void refresh_str_texture()
 {
     if(string_texture) tdt_free(string_texture);
@@ -54,7 +54,7 @@ int main()
     td_option(td_opt_auto_resize, 0, &enable);
     td_set_key_callback(process_input);
 
-    term_ivec2 size = { 0 };
+    td_ivec2 size = { 0 };
     td_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
     while (td_is_running()) {
@@ -67,17 +67,17 @@ int main()
         td_set_color(rgba_init(109, 154, 140, frame_count / 7));   // Approximtely patina
 
         char *string = to_string("%f", fps);
-        term_texture *texture =
+        td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
                                    rgba_init(0, 0, 0, 255), rgba_init(255,
                                                                       255,
                                                                       255,
                                                                       255));
-        td_copy_texture(texture, vec2_init(-1.0f, 1.0f),
+        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
                              TEXTURE_MERGE_RESIZE);
         tdt_free(texture);
 
-        td_copy_texture(string_texture, vec2_init(-1.0f, 0.0f),
+        td_copy_texture(string_texture, td_vec2_init(-1.0f, 0.0f),
                              TEXTURE_MERGE_CROP);
 
         td_show();

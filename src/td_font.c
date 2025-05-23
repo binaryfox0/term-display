@@ -182,15 +182,15 @@ TD_INLINE td_i8 mapped_ch(td_i8 ch)
     return ch;
 }
 
-term_texture *tdf_char_texture(td_i8 ch, term_rgba color, term_rgba fg)
+td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg)
 {
     ch = mapped_ch(ch);
     if (!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
         ch = LOWER_LIMIT;       // Space (nothing)
     const td_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
-    term_texture *out =
-        tdt_create(0, 4, ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
-    td_u8 *raw = tdt_get_location(ivec2_init(0, 0), out);
+    td_texture *out =
+        tdt_create(0, 4, td_ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
+    td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
     td_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
     for (td_u8 i = 0; i < CHAR_PIXEL; i++)
         for (td_u8 j = 0; j < 4; j++, raw++)
@@ -199,9 +199,9 @@ term_texture *tdf_char_texture(td_i8 ch, term_rgba color, term_rgba fg)
     return out;
 }
 
-term_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
-                                     term_ivec2 *s,
-                                     term_rgba color, term_rgba fg)
+td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
+                                     td_ivec2 *s,
+                                     td_rgba color, td_rgba fg)
 {
     if (!str || !len || !s)
         return 0;
@@ -215,7 +215,7 @@ term_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
     // s->x is maximum character in one line, s->y is the line in the input text
     s->x = (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line));
     s->y = (int)(lines_count * CHAR_HEIGHT + calculate_pad(lines_count));
-    term_texture *out = tdt_create(0, 4, *s, 0, 0);
+    td_texture *out = tdt_create(0, 4, *s, 0, 0);
     if (!out) {
         free(lines_length);
         return 0;
@@ -227,10 +227,10 @@ term_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
     for (td_u32 row = 0; row < lines_count; row++) {
         td_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
         for (td_u32 col = 0; col < row_l; col++) {
-            term_texture *ch_texture =
+            td_texture *ch_texture =
                 tdf_char_texture(str[current_index + col], color, fg);
             td_u32 start_x = col * (CHAR_WIDTH + 1);
-            tdt_merge(out, ch_texture, ivec2_init((int)start_x, (int)start_y),
+            tdt_merge(out, ch_texture, td_ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);
             tdt_free(ch_texture);
         }

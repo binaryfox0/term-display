@@ -30,10 +30,10 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
-struct term_texture_s {
+struct td_texture_s {
     td_u8 *data;
     td_u8 channel;
-    term_ivec2 size;
+    td_ivec2 size;
     td_u8 freeable;
 };
 
@@ -49,15 +49,15 @@ td_u8 convert_ch(td_u8 ch_a, td_u8 ch_b)
 
 /* Helper utilities end   */
 
-term_texture *tdt_create(td_u8 *texture,
+td_texture *tdt_create(td_u8 *texture,
                              const td_u8 channel,
-                             const term_ivec2 size,
+                             const td_ivec2 size,
                              const td_u8 freeable, const td_u8 copy)
 {
     if (OUT_RANGE(channel, 1, 4) || !size.x || !size.y)
         return 0;
-    term_texture *out = 0;
-    if (!(out = (term_texture *) malloc(sizeof(term_texture))))
+    td_texture *out = 0;
+    if (!(out = (td_texture *) malloc(sizeof(td_texture))))
         return 0;
     td_u64 alloc_size = calculate_pos(0, size.y, size.x, channel);
 
@@ -89,10 +89,10 @@ term_texture *tdt_create(td_u8 *texture,
     return out;
 }
 
-term_texture *tdt_copy(term_texture *texture)
+td_texture *tdt_copy(td_texture *texture)
 {
-    term_texture *out = 0;
-    if (!(out = (term_texture *) malloc(sizeof(term_texture))))
+    td_texture *out = 0;
+    if (!(out = (td_texture *) malloc(sizeof(td_texture))))
         return 0;
     td_u64 size = calculate_size(texture->size.x, texture->size.y, texture->channel);
     if (!(out->data = (td_u8 *) malloc(size))) {
@@ -106,7 +106,7 @@ term_texture *tdt_copy(term_texture *texture)
     return out;
 }
 
-td_u8 *tdt_get_location(const term_ivec2 pos, const term_texture *texture)
+td_u8 *tdt_get_location(const td_ivec2 pos, const td_texture *texture)
 {
     if (!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
         return 0;
@@ -114,19 +114,19 @@ td_u8 *tdt_get_location(const term_ivec2 pos, const term_texture *texture)
              data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-term_ivec2 tdt_get_size(const term_texture *texture)
+td_ivec2 tdt_get_size(const td_texture *texture)
 {
     if (!texture)
-        return ivec2_init(0, 0);
+        return td_ivec2_init(0, 0);
     return texture->size;
 }
 
-void tdt_fill(const term_texture *texture, const term_rgba color)
+void tdt_fill(const td_texture *texture, const td_rgba color)
 {
     if (!texture || !color.a)
         return;
     td_u8 c[4] = EXPAND_RGBA(color), tmp = 4;
-    term_ivec2 size = texture->size;
+    td_ivec2 size = texture->size;
     td_u8 *data = texture->data;
     td_u8 ch = texture->channel;
 
@@ -141,7 +141,7 @@ void tdt_fill(const term_texture *texture, const term_rgba color)
     fill_buffer(data, c, calculate_size(size.x, size.y, ch), ch);
 }
 
-void tdt_set_channel(term_texture* texture, td_u8 channel)
+void tdt_set_channel(td_texture* texture, td_u8 channel)
 {
     td_u64 pix_count = calculate_size(texture->size.x, texture->size.y, 1);
 
@@ -172,15 +172,15 @@ void tdt_set_channel(term_texture* texture, td_u8 channel)
 }
 
 // Forward declaration section
-td_u8 *crop_texture(td_u8 * old, td_u8 channel, term_ivec2 old_size,
-                 term_ivec2 new_size);
-td_u8 *resize_texture(const td_u8 * old, td_u8 channel, term_ivec2 old_size,
-                   term_ivec2 new_size);
+td_u8 *crop_texture(td_u8 * old, td_u8 channel, td_ivec2 old_size,
+                 td_ivec2 new_size);
+td_u8 *resize_texture(const td_u8 * old, td_u8 channel, td_ivec2 old_size,
+                   td_ivec2 new_size);
 
-void tdt_merge(const term_texture *texture_a,
-                   const term_texture *texture_b,
-                   const term_ivec2 placement_pos,
-                   const enum tdt_merge_mode mode, const term_bool replace)
+void tdt_merge(const td_texture *texture_a,
+                   const td_texture *texture_b,
+                   const td_ivec2 placement_pos,
+                   const enum tdt_merge_mode mode, const td_bool replace)
 {
     if (!texture_a || !texture_b)
         return;
@@ -188,7 +188,7 @@ void tdt_merge(const term_texture *texture_a,
         placement_pos.y > texture_a->size.y)
         return;
     td_u8 cha = texture_a->channel, chb = texture_b->channel;
-    term_ivec2 sa = texture_a->size, sb = texture_b->size;
+    td_ivec2 sa = texture_a->size, sb = texture_b->size;
     td_u8 *ta =
         &texture_a->data[(placement_pos.y * sa.x + placement_pos.x) * cha],
         *tb = texture_b->data, *old = 0;
@@ -198,8 +198,8 @@ void tdt_merge(const term_texture *texture_a,
         sa.y - placement_pos.y;
     td_u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
     if (b_freeable) {
-        term_ivec2 new_size =
-            ivec2_init(sb.x > max_space_x ? max_space_x : sb.x,
+        td_ivec2 new_size =
+            td_ivec2_init(sb.x > max_space_x ? max_space_x : sb.x,
                        sb.y > max_space_y ? max_space_y : sb.y);
         if (mode == TEXTURE_MERGE_RESIZE)
             tb = resize_texture(tb, chb, sb, new_size);
@@ -224,24 +224,24 @@ void tdt_merge(const term_texture *texture_a,
         free(old);
 }
 
-term_ivec2 calculate_new_size(const term_ivec2 old, const term_ivec2 size)
+td_ivec2 calculate_new_size(const td_ivec2 old, const td_ivec2 size)
 {
     if (!size.x)
-        return ivec2_init((old.x * size.y) / old.y, size.y);
+        return td_ivec2_init((old.x * size.y) / old.y, size.y);
     if (!size.y)
-        return ivec2_init(size.x, (old.y * size.x) / old.x);
+        return td_ivec2_init(size.x, (old.y * size.x) / old.x);
     return size;
 }
 
-td_u8 *resize_texture(const td_u8 *old, td_u8 channel, term_ivec2 old_size,
-                   term_ivec2 new_size)
+td_u8 *resize_texture(const td_u8 *old, td_u8 channel, td_ivec2 old_size,
+                   td_ivec2 new_size)
 {
     if (!new_size.x || !new_size.y)
         new_size = calculate_new_size(old_size, new_size);
     return ptexture_resize(old, channel, old_size, new_size);
 }
 
-void tdt_resize(term_texture *texture, const term_ivec2 size)
+void tdt_resize(td_texture *texture, const td_ivec2 size)
 {
     if (!texture)
         return;
@@ -255,24 +255,30 @@ void tdt_resize(term_texture *texture, const term_ivec2 size)
     texture->size = calculate_new_size(texture->size, size);
 }
 
-term_bool tdt_resize_internal(term_texture *texture,
-                           const term_ivec2 new_size)
+td_bool tdt_resize_internal(td_texture *texture,
+                           const td_ivec2 new_size)
 {
     if (!texture)
         return 0;
-    td_u8 *tmp =
-        (td_u8 *) realloc(texture->data,
-                       calculate_pos(0, new_size.y, new_size.x,
-                                     texture->channel));
-    if (!tmp)
-        return 1;
-    texture->data = tmp;
+    
+    size_t size = calculate_size(new_size.x, new_size.y, texture->channel);
+    if(size) {
+        td_u8 *tmp = (td_u8 *) realloc(texture->data, size);
+        if (!tmp)
+            return 1;
+        texture->data = tmp;
+    } else {
+        if(texture->data) {
+            free(texture->data);
+            texture->data = 0;
+        }
+    }
     texture->size = new_size;
     return 0;
 }
 
-td_u8 *crop_texture(td_u8 *old, td_u8 channel, term_ivec2 old_size,
-                 term_ivec2 new_size)
+td_u8 *crop_texture(td_u8 *old, td_u8 channel, td_ivec2 old_size,
+                 td_ivec2 new_size)
 {
     td_u8 *raw = 0;
     if (!
@@ -288,7 +294,7 @@ td_u8 *crop_texture(td_u8 *old, td_u8 channel, term_ivec2 old_size,
     return start;
 }
 
-void tdt_crop(term_texture *texture, const term_ivec2 new_size)
+void tdt_crop(td_texture *texture, const td_ivec2 new_size)
 {
     if (!texture || new_size.x >= texture->size.x
         || new_size.y >= texture->size.y)
@@ -303,15 +309,15 @@ void tdt_crop(term_texture *texture, const term_ivec2 new_size)
     texture->size = new_size;
 }
 
-void tdt_draw_line(term_texture *texture, const term_ivec2 p1,
-                       const term_ivec2 p2, const term_rgba color)
+void tdt_draw_line(td_texture *texture, const td_ivec2 p1,
+                       const td_ivec2 p2, const td_rgba color)
 {
     ptexture_draw_line(texture->data, texture->size, texture->channel,
-                       p1, p2, vec2_init(0.0f, 0.0f), color,
+                       p1, p2, td_vec2_init(0.0f, 0.0f), color,
                        0);
 }
 
-void tdt_free(term_texture *texture)
+void tdt_free(td_texture *texture)
 {
     if (!texture)
         return;
@@ -320,7 +326,7 @@ void tdt_free(term_texture *texture)
     free(texture);
 }
 
-term_rgba pixel_blend(term_rgba a, term_rgba b)
+td_rgba pixel_blend(td_rgba a, td_rgba b)
 {
     td_u8 ar[4] = EXPAND_RGBA(a), br[4] = EXPAND_RGBA(b);
     alpha_blend(ar, br, 4, 4);

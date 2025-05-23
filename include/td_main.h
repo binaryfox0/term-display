@@ -45,18 +45,19 @@ SOFTWARE.
   * including size, depth buffer, and other display properties.
   */
 typedef enum {
-    td_opt_auto_resize = 0,         /**< Automatic resizing of the display */
-    td_opt_pixel_width,             /**< Pixel width of the display */
-    td_opt_pixel_height,            /**< Pixel height of the display */
-    td_opt_display_type,            /**< Type of display (grayscale, truecolor, etc.) */
-    td_opt_display_rotate,          /**< Rotation of the display */
-    td_opt_depth_buffer,            /**< Enable or disable depth buffer */
-    td_opt_disable_stop_sig,        /**< Disable stop signal (SIGINT, SIGSTOP, etc) for the display */
-    td_opt_shift_translate,         /**< Option to shift and translate the display */
-    td_opt_enable_downscaling,      /**< Enable downscailing from bigger framebuffer */
-    td_opt_original_scailing_ratio, /**< Option for the framebuffer size that will be resized to the display */
-    __td_opt_numeric_end__,         /**< End of numeric options */
-    td_opt_display_size             /**< Option for the display size */
+    td_opt_auto_resize = 0,             /**< Automatic resizing of the display */
+    td_opt_pixel_width,                 /**< Pixel width of the display */
+    td_opt_pixel_height,                /**< Pixel height of the display */
+    td_opt_display_type,                /**< Type of display (grayscale, truecolor, etc.) */
+    td_opt_display_rotate,              /**< Rotation of the display */
+    td_opt_depth_buffer,                /**< Enable or disable depth buffer */
+    td_opt_disable_stop_sig,            /**< Disable stop signal (SIGINT, SIGSTOP, etc) for the display */
+    td_opt_shift_translate,             /**< Option to shift and translate the display */
+    td_opt_enable_supersampling,        /**< Enable downscailing from bigger framebuffer */
+    __td_opt_numeric_end__,             /**< End of numeric options */
+    td_opt_display_size,                /**< Option for the display size */
+    td_opt_display_pos,                 /**< The placement position of display (cells) */
+    td_opt_supersampling_buffer_ratio   /**< The ratio between the supersampling buffer and the display */
 } td_settings_t;
 
  /**
@@ -193,7 +194,7 @@ typedef void (*key_callback_func)(int key, int mods, td_key_state_t actions);
  * This typedef defines the function pointer type for handling resize events.
  * The callback function is called when term-display is resized and the option <b>is enabled</b>.
  */
-typedef void (*resize_callback_func)(term_ivec2 new_size);
+typedef void (*resize_callback_func)(td_ivec2 new_size);
 
 
 /**
@@ -208,7 +209,7 @@ const char *td_copyright_notice();
  * 
  * @return A boolean indicating the success initialization.
  */
-term_bool td_init();
+td_bool td_init();
 
 /**
  * @brief Gets or sets the value of a term-display setting.
@@ -219,19 +220,19 @@ term_bool td_init();
  * 
  * @return A boolean indicating success or failure.
  */
-term_bool td_option(td_settings_t type, term_bool get, void *option);
+td_bool td_option(td_settings_t type, td_bool get, void *option);
 
 /**
  * @brief Checks if the term-display is running.
  * 
  * @return A boolean indicating display is shown to user.
  */
-extern volatile term_bool __display_is_running;
-TD_INLINE term_bool td_is_running() {
+extern volatile td_bool __display_is_running;
+TD_INLINE td_bool td_is_running() {
     return __display_is_running;
 }
 
-TD_INLINE void td_set_running_state(term_bool state) {
+TD_INLINE void td_set_running_state(td_bool state) {
     __display_is_running = state;
 }
 
@@ -259,7 +260,7 @@ void td_set_resize_callback(resize_callback_func callback);
  * 
  * @param color The color to set.
  */
-void td_set_color(term_rgba color);
+void td_set_color(td_rgba color);
 
 /**
  * @brief Copies a texture to the term-display at the specified position.
@@ -268,7 +269,7 @@ void td_set_color(term_rgba color);
  * @param pos The position where the texture should be copied.
  * @param mode The merge mode to use when copying the texture.
  */
-void td_copy_texture(const term_texture *texture, const term_vec2 pos, const enum tdt_merge_mode mode);
+void td_copy_texture(const td_texture *texture, const td_vec2 pos, const enum tdt_merge_mode mode);
 
 /**
  * @brief Draws a line between two points with a specified color.
@@ -277,7 +278,7 @@ void td_copy_texture(const term_texture *texture, const term_vec2 pos, const enu
  * @param p2 The ending point of the line.
  * @param color The color of the line.
  */
-void td_draw_line(term_vec2 p1, term_vec2 p2, term_rgba color);
+void td_draw_line(td_vec2 p1, td_vec2 p2, td_rgba color);
 
 /**
  * @brief Flushes the rendering pipeline, ensuring that the vertices queue is empty.
@@ -299,7 +300,7 @@ void td_render_add(const td_f32 *vertices, td_i32 component);
  * 
  * @return A boolean indicating the success of the operation.
  */
-term_bool td_show();
+td_bool td_show();
 
 /**
  * @brief Frees any allocated resources used by the term-display library.

@@ -53,7 +53,7 @@ typedef int td_i32;
 typedef unsigned int td_u32;
 typedef unsigned long long td_u64;
 typedef float td_f32;
-typedef enum { term_false = 0, term_true } term_bool;
+typedef enum { td_false = 0, td_true } td_bool;
 
 #include "td_math.h"
 
@@ -62,27 +62,27 @@ typedef struct {
         td_u8 r, g, b;
     };
     td_u8 raw[3];
-} term_rgb;
+} td_rgb;
 typedef union {
     struct {
         td_u8 r, g, b, a;
     };
     td_u8 raw[4];
-} term_rgba;
+} td_rgba;
 
 /* Structure initializer begin */
-__td_priv_create_constructor(rgba_init, term_rgba, r, g, b, a)
-__td_priv_create_constructor(rgb_init, term_rgb, r, g, b)
+__td_priv_create_constructor(rgba_init, td_rgba, r, g, b, a)
+__td_priv_create_constructor(rgb_init, td_rgb, r, g, b)
 
-TD_INLINE term_rgba to_rgba(const term_rgb c)
+TD_INLINE td_rgba to_rgba(const td_rgb c)
 {
-    return (term_rgba) {
+    return (td_rgba) {
     .r = c.r,.g = c.g,.b = c.b,.a = 255};
 }
 
-TD_INLINE term_rgb to_rgb(const term_rgba c)
+TD_INLINE td_rgb to_rgb(const td_rgba c)
 {
-    return (term_rgb) {
+    return (td_rgb) {
     .r = c.r,.g = c.g,.b = c.b};
 }
 

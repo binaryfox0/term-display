@@ -35,7 +35,7 @@ double get_time()
 #ifdef TESTS_LOGGING
 double program_start = 0;
 FILE *file = 0;
-term_bool start_logging(const char *filename)
+td_bool start_logging(const char *filename)
 {
     if (!(file = fopen(filename, "w")))
         return 1;
@@ -66,7 +66,7 @@ void write_log(const char *format, ...)
     free(str);
 }
 
-term_bool stop_logging()
+td_bool stop_logging()
 {
     return fclose(file) == EOF;
 }
@@ -107,4 +107,4 @@ char *to_timestamp(double time)
                      (td_u32) (time * 1000000) % 1000000);
 }
 
-int maximum_fps = 60;
+int maximum_fps = 0xffff;

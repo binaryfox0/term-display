@@ -14,11 +14,9 @@ else()
     message(FATAL_ERROR "Unsupported platform. Aborted.")
 endif()
 
-# Create term-display library
 add_library(term-display STATIC ${sources})
 target_include_directories(term-display PUBLIC include)
 
-# Apply warnings **only** to term-display (not global)
 if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
     if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         target_compile_options(term-display PRIVATE

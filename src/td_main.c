@@ -33,19 +33,20 @@ SOFTWARE.
 #include "td_rasterizer.h"
 
 /* Global variable begin */
-static term_texture *display = 0;
+static td_texture *display = 0;
 static td_u8 *display_raw = 0;            // For the drawing
 static td_u8 display_channel = 3;  // RGBA
-static term_ivec2 size = { 0, 0 },
-    term_size = { 0, 0 }, prev_size = { 0, 0 };
+static td_ivec2 size = { 0, 0 },
+    term_size = { 0, 0 }, prev_size = { 0, 0 },
+    placement_pos = { 0, 0 };
 
 // Display clear color
-term_rgba default_background = { .r = 0, .g = 0, .b = 0, .a = 255 }, 
+td_rgba default_background = { .r = 0, .g = 0, .b = 0, .a = 255 }, 
           clear_color = { .r = 0, .g = 0, .b = 0, .a = 255};
 
 volatile td_u8 internal_failure = 0;
-volatile term_bool __display_is_running = term_false,
-    td_initialized = term_false;
+volatile td_bool __display_is_running = td_false,
+    td_initialized = td_false;
 struct {
     td_i32 x_start, x_end, x_inc;
     td_i32 y_start, y_end, y_inc;
@@ -61,9 +62,10 @@ td_i32 numeric_options[__td_opt_numeric_end__] = {
     [td_opt_display_rotate] = 0,
     [td_opt_depth_buffer] = 0,
     [td_opt_shift_translate] = 1,
-    [td_opt_enable_downscaling] = 0,
-    [td_opt_original_scailing_ratio] = 1
+    [td_opt_enable_supersampling] = 0
 };
+
+td_f32 supersampling_buffer_ratio = 2.0f;
 
 /* Global variable end */
 
@@ -95,8 +97,10 @@ TD_INLINE void query_default_background()
 
 TD_INLINE void calculate_display_size() {
     size =
-        ivec2_init(term_size.x / numeric_options[td_opt_pixel_width],
+        td_ivec2_init(term_size.x / numeric_options[td_opt_pixel_width],
                    term_size.y / numeric_options[td_opt_pixel_height]);
+    size = td_ivec2_subtract(size, placement_pos);
+    // size = td_ivec2_init(0, 0);
 }
 /* Utils function end */
 
@@ -118,38 +122,47 @@ TD_INLINE void reset_depth_buffer()
 {
     if(!depth_buffer) return;
     td_u64 buf_size = calculate_size(size.x, size.y, sizeof(td_f32));
-    depth_buffer[0] = FLT_MAX;
-    fill_buffer(depth_buffer + 1, depth_buffer, buf_size - sizeof(float), sizeof(float));
+    fill_buffer(depth_buffer, &(td_f32){ FLT_MAX }, buf_size, sizeof(td_f32));
 }
 
 void resize_depth_buffer()
 {
     if (!numeric_options[td_opt_depth_buffer])
         return;
+
+    if (size.x == 0 || size.y == 0) {
+        if (depth_buffer) {
+            free(depth_buffer);
+            depth_buffer = NULL;
+        }
+        return;
+    }
+
     td_u64 buf_size = calculate_size(size.x, size.y, sizeof(td_f32));
-    td_f32 *tmp =
-        (td_f32 *) realloc(depth_buffer, buf_size);
+    td_f32 *tmp = (td_f32 *) realloc(depth_buffer, buf_size);
     if (!tmp) {
         internal_failure = 1;
         return;
     }
+
     depth_buffer = tmp;
     reset_depth_buffer();
 }
+
 
 void resize_display()
 {
     if ((internal_failure = tdt_resize_internal(display, size)))
         return;                 // Uhhhh, how to continue processing without the display
-    display_raw = tdt_get_location(ivec2_init(0, 0), display);
+    display_raw = tdt_get_location(td_ivec2_init(0, 0), display);
     if (display_prop.y_inc < 0)
-        display_prop.y_start = size.y - 1;
+        display_prop.y_start = max(size.y - 1, 0);
     else
-        display_prop.y_end = size.y - 1;
+        display_prop.y_end = max(size.y - 1, 0);
     if (display_prop.x_inc < 0)
-        display_prop.x_start = size.x - 1;
+        display_prop.x_start = max(size.x - 1, 0);
     else
-        display_prop.x_end = size.x - 1;
+        display_prop.x_end = max(size.x - 1, 0);
     tdt_fill(display, clear_color);
     clear_screen();
     resize_depth_buffer();
@@ -162,7 +175,7 @@ BOOL stop_display(DWORD ctrl_type)
     {
         case CTRL_C_EVENT:
         case CTRL_BREAK_EVENT:
-            __display_is_running = term_false;
+            __display_is_running = td_false;
             return FALSE;
         default:
             return FALSE;
@@ -173,14 +186,14 @@ BOOL stop_display(DWORD ctrl_type)
 void stop_display(int signal)
 {
     (void) signal;
-    __display_is_running = term_false;
+    __display_is_running = td_false;
 }
 #endif
 
-term_bool td_init()
+td_bool td_init()
 {
-    if(td_initialized) return term_true;
-    if (!_pisatty(STDOUT_FILENO))
+    if(td_initialized) return td_true;
+    if (!_pisatty(STDOUT_FILENO)) // Need stdout
         return 1;
     if (setup_env(stop_display))
         return 1;
@@ -192,7 +205,7 @@ term_bool td_init()
 
     if (!
         (display =
-        tdt_create(0, display_channel, ivec2_init(1, 1), 0, 0))) {
+        tdt_create(0, display_channel, td_ivec2_init(1, 1), 0, 0))) {
         internal_failure = 1;
         return 1;
     }
@@ -202,12 +215,12 @@ term_bool td_init()
 
     if (internal_failure)
         return 1;
-    __display_is_running = term_true;
-    td_initialized = term_true;
+    __display_is_running = td_true;
+    td_initialized = td_true;
     return 0;
 }
 
-TD_INLINE term_bool opt_get(term_bool get, void *option, void *value, size_t s) {
+TD_INLINE td_bool opt_get(td_bool get, void *option, void *value, size_t s) {
     if (get) {
         memcpy(option, value, s);
         return 1;
@@ -221,7 +234,7 @@ TD_INLINE term_bool opt_get(term_bool get, void *option, void *value, size_t s) 
 #define OPT_SET(type, target) \
     (target) = *(type*)option
 
-term_bool td_option(td_settings_t type, term_bool get, void *option) {
+td_bool td_option(td_settings_t type, td_bool get, void *option) {
     switch (type) {
     case td_opt_auto_resize: {
         OPT_GET(td_u8, numeric_options[type]);
@@ -233,7 +246,7 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
     case td_opt_pixel_height: {
         OPT_GET(td_u8, numeric_options[type]);
         td_u8 tmp = *(td_u8*)option;
-        if(!tmp) return term_true;
+        if(!tmp) return td_true;
         numeric_options[type] = tmp;
         calculate_display_size();
         resize_display();
@@ -241,15 +254,23 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
     }
 
     case td_opt_display_size: {
-        OPT_GET(term_ivec2, size);
-        term_ivec2 tmp = *(term_ivec2*)option;
-        if(!tmp.x || !tmp.y) return term_true;
+        OPT_GET(td_ivec2, size);
+        td_ivec2 tmp = *(td_ivec2*)option;
+        if(!tmp.x || !tmp.y) return td_true;
         size = tmp;
-        if(!td_initialized) return term_false;
+        if(!td_initialized) return td_false;
         if ((internal_failure = tdt_resize_internal(display, size)))
             return 1;
         tdt_fill(display, clear_color);
         clear_screen();
+        break;
+    }
+
+    case td_opt_display_pos: {
+        OPT_GET(td_ivec2, placement_pos);
+        OPT_SET(td_ivec2, placement_pos);
+        calculate_display_size();
+        resize_display();
         break;
     }
 
@@ -303,7 +324,7 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
 
     case td_opt_disable_stop_sig:
     {
-        term_bool tmp = *(term_bool*)option;
+        td_bool tmp = *(td_bool*)option;
         if((tmp ? disable_stop_sig() : enable_stop_sig()))
             return 1;
         numeric_options[type] = tmp;
@@ -311,20 +332,20 @@ term_bool td_option(td_settings_t type, term_bool get, void *option) {
     }
 
     case td_opt_shift_translate: {
-        OPT_GET(term_bool, shift_translate);
-        OPT_SET(term_bool, shift_translate);
+        OPT_GET(td_bool, shift_translate);
+        OPT_SET(td_bool, shift_translate);
         break;
     }
 
-    case td_opt_enable_downscaling: {
-        OPT_GET(term_bool, numeric_options[type]);
-        OPT_SET(term_bool, numeric_options[type]);
+    case td_opt_enable_supersampling: {
+        OPT_GET(td_bool, numeric_options[type]);
+        OPT_SET(td_bool, numeric_options[type]);
         break;
     }
 
-    case td_opt_original_scailing_ratio: {
-        OPT_GET(term_bool, numeric_options[type]);
-        OPT_SET(term_bool, numeric_options[type]);
+    case td_opt_supersampling_buffer_ratio: {
+        OPT_GET(td_f32, supersampling_buffer_ratio);
+        OPT_SET(td_f32, supersampling_buffer_ratio);
         break;
     }
 
@@ -361,18 +382,18 @@ void td_set_resize_callback(resize_callback_func callback) {
     private_resize_callback = callback;
 }
 
-void td_set_color(term_rgba color)
+void td_set_color(td_rgba color)
 {
     clear_color = pixel_blend(default_background, color);
     tdt_fill(display, clear_color);
     reset_depth_buffer();
 }
 
-void td_copy_texture(const term_texture *texture,
-                          const term_vec2 pos,
+void td_copy_texture(const td_texture *texture,
+                          const td_vec2 pos,
                           const enum tdt_merge_mode mode)
 {
-    term_ivec2 display_pos = ndc_to_pos(pos, size);
+    td_ivec2 display_pos = ndc_to_pos(pos, size);
     tdt_merge(display, texture, display_pos, mode, 0);
 }
 
@@ -394,26 +415,26 @@ void td_render_add(const td_f32* vertices, td_i32 component)
     if(vertex_count == 3)
     {
         // Homogeneous position conversion
-        term_ivec2 p1 = ndc_to_pos(vec2_init(vertex_buffer[0] / vertex_buffer[3], vertex_buffer[1] / vertex_buffer[3]), size);
-        term_ivec2 p2 = ndc_to_pos(vec2_init(vertex_buffer[4] / vertex_buffer[7], vertex_buffer[5] / vertex_buffer[7]), size);
-        term_ivec2 p3 = ndc_to_pos(vec2_init(vertex_buffer[8] / vertex_buffer[11], vertex_buffer[9] / vertex_buffer[11]), size);
+        td_ivec2 p1 = ndc_to_pos(td_vec2_init(vertex_buffer[0] / vertex_buffer[3], vertex_buffer[1] / vertex_buffer[3]), size);
+        td_ivec2 p2 = ndc_to_pos(td_vec2_init(vertex_buffer[4] / vertex_buffer[7], vertex_buffer[5] / vertex_buffer[7]), size);
+        td_ivec2 p3 = ndc_to_pos(td_vec2_init(vertex_buffer[8] / vertex_buffer[11], vertex_buffer[9] / vertex_buffer[11]), size);
         ptexture_draw_triangle(display_raw, size, display_channel,
-            vertex_init(p1, vertex_buffer[2],  rgba_init(255, 0,   0,   255), vec2_init(0.0f, 0.0f)),
-            vertex_init(p2, vertex_buffer[6],  rgba_init(0,   255, 0,   255), vec2_init(0.0f, 0.0f)),
-            vertex_init(p3, vertex_buffer[10], rgba_init(0,   0,   255, 255), vec2_init(0.0f, 0.0f)),
-            depth_buffer, 0);
+            vertex_init(p1, vertex_buffer[2],  rgba_init(255, 0,   0,   255), td_vec2_init(0.0f, 0.0f)),
+            vertex_init(p2, vertex_buffer[6],  rgba_init(0,   255, 0,   255), td_vec2_init(0.0f, 0.0f)),
+            vertex_init(p3, vertex_buffer[10], rgba_init(0,   0,   255, 255), td_vec2_init(0.0f, 0.0f)),
+            depth_buffer, 0, td_ivec2_init(0, 0));
         vertex_count = 0;
         td_render_flush();
     }
 }
 
-void td_draw_line(const term_vec2 p1, const term_vec2 p2,
-                       const term_rgba color)
+void td_draw_line(const td_vec2 p1, const td_vec2 p2,
+                       const td_rgba color)
 {
     ptexture_draw_line(display_raw, size, display_channel,
                        ndc_to_pos(p1, size),
                        ndc_to_pos(p2, size), 
-                       vec2_init(0.0f, 0.0f),color, 0);
+                       td_vec2_init(0.0f, 0.0f),color, 0);
 }
 
 TD_INLINE td_u8 rgb_to_216(const td_u8 *c) {
@@ -439,12 +460,13 @@ TD_INLINE void display_cell(td_u8 *c)
 }
 
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-term_bool td_show()
+td_bool td_show()
 {
     if (internal_failure)
         return 1;
     
     printf("\x1b[H");
+    
     td_u8 *ptr = display_raw;
     static td_u8 prev[3] = { 0 };
     for (td_i32 row = display_prop.y_start; row != display_prop.y_end;
@@ -473,5 +495,5 @@ void td_free()
     _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
     restore_env();
     tdt_free(display);
-    td_initialized = term_false;
+    td_initialized = td_false;
 }
