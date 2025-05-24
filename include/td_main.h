@@ -23,7 +23,7 @@ SOFTWARE.
 */
 
 /** 
- * @file term_display.h
+ * @file td_main.h
  * @brief Main header of term-display used to control the display and related operations.
  * 
  * This file provides the declarations for term-display settings, input handling,

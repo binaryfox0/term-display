@@ -22,15 +22,54 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+/**
+ * @file td_font.h
+ * @brief Font rendering utilities for term-display.
+ *
+ * Provides basic functionality for converting characters and strings
+ * into textured representations.
+ */
+
+/**
+ * @defgroup td_font Font Utilities
+ * @brief Character and string to texture conversion.
+ *
+ * These functions allow rendering individual characters and strings
+ * as `td_texture` objects using specified foreground/background colors.
+ *
+ * @{
+ */
+
 #ifndef TD_FONT_H
 #define TD_FONT_H
 
 #include "td_def.h"
 #include "td_texture.h"
 
+/**
+ * @brief Generate a texture from a single character.
+ *
+ * @param ch The ASCII character to render.
+ * @param color Background color.
+ * @param fg Foreground (text) color.
+ * @return A pointer to a new `td_texture` representing the character.
+ */
 td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg);
-td_texture *tdf_string_texture(const td_i8 * str, td_u32 len,
-                                     td_ivec2 * size, td_rgba color,
-                                     td_rgba fg);
 
-#endif
+/**
+ * @brief Generate a texture from a string.
+ *
+ * @param str Null-terminated UTF-8 or ASCII string to render.
+ * @param len Length of the string.
+ * @param size Optional output for texture size (can be NULL).
+ * @param fg Foreground (aka text) color.
+ * @param bg Background color.
+ * @return A pointer to a new `td_texture` containing the rendered string.
+ */
+td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
+                               td_ivec2 *size, td_rgba fg,
+                               td_rgba bg);
+
+/** @} */ // end of td_font
+
+#endif // TD_FONT_H

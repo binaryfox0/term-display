@@ -201,7 +201,7 @@ td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg)
 
 td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
                                      td_ivec2 *s,
-                                     td_rgba color, td_rgba fg)
+                                     td_rgba fg, td_rgba bg)
 {
     if (!str || !len || !s)
         return 0;
@@ -228,7 +228,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
         td_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
         for (td_u32 col = 0; col < row_l; col++) {
             td_texture *ch_texture =
-                tdf_char_texture(str[current_index + col], color, fg);
+                tdf_char_texture(str[current_index + col], bg, fg);
             td_u32 start_x = col * (CHAR_WIDTH + 1);
             tdt_merge(out, ch_texture, td_ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);
