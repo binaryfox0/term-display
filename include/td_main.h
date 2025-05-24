@@ -300,7 +300,7 @@ void td_render_add(const td_f32 *vertices, td_i32 component);
  * 
  * @return A boolean indicating the success of the operation.
  */
-td_bool td_show();
+void td_show();
 
 /**
  * @brief Frees any allocated resources used by the term-display library.

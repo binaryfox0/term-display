@@ -64,8 +64,10 @@ int main(int argc, char** argv)
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
-    td_ivec2 pos = td_ivec2_init(10, 10);
-    td_option(td_opt_display_pos, 0, &pos);
+    // td_ivec2 pos = td_ivec2_init(14, 10);
+    // td_option(td_opt_display_pos, 0, &pos);
+    td_u8 rotation = 1;
+    td_option(td_opt_display_rotate, 0, &rotation);
     td_u8 enable = 1;
     td_option(td_opt_depth_buffer, 0, &enable);
     td_option(td_opt_shift_translate, 0, &enable);

@@ -49,6 +49,12 @@ typedef struct {
 __td_priv_create_constructor(td_ivec2_init, td_ivec2, x, y)
 __td_priv_create_constructor(td_vec2_init, td_vec2, x, y)
 
+#define td_ivec2_expand(v) (v).x, (v).y
+
+TD_INLINE td_bool td_ivec2_is_zero(const td_ivec2 v) {
+    return v.x == 0 || v.y == 0;
+}
+
 TD_INLINE td_ivec2 td_ivec2_subtract(const td_ivec2 a, const td_ivec2 b) {
     return td_ivec2_init(a.x - b.x, a.y - b.y);
 }
