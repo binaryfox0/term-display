@@ -132,7 +132,11 @@ void display_image(const char* path)
 
 int main(int argc, char **argv)
 {
-    program_name = get_program_name(argv[0]);
+    char* ptr = 0;
+    parse_argv(argc, argv, (aparse_arg[]){
+        aparse_arg_string("image", &ptr, 0, "Image file to display")
+    }, 1);
+    program_name = get_program_name(ptr);
     if(argc < 2) {
         printf("Usage: %s <image>\n", program_name);
         return 1;

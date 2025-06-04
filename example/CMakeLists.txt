@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(EXTRA "")
-
+add_subdirectory(deps/aparse)
 function (example_projects name)
  add_executable(${name} ${name}.c example_utils.c)
- target_link_libraries(${name} PRIVATE term-display ${EXTRA})
+ target_link_libraries(${name} PRIVATE term-display ${EXTRA} aparse)
 endfunction()
 
 if(UNIX)

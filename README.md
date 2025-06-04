@@ -2,6 +2,9 @@ term-display
 =====
 `term-display` is a **simulated console graphics** library written in C. It aims to provide a rasterizer on a terminal. This is just only a **toy project** so don't expect good performance or usability
 
+> [!IMPORTANT]
+> This project currently not maintain frequently. I'm currently researching about FAT8 filesystem. [See more](https://github.com/binaryfox0/fat8-the-mystery)
+
 ## Example
 All examples code are distributed under `example` of repo
 ![image](img/screenshot.png)

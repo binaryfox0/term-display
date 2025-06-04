@@ -44,7 +44,7 @@ td_texture *generate_noise(td_ivec2 size)
 
 int main(int argc, char** argv)
 {
-    //example_tdopt(argc, argv, 0, 0);
+    parse_argv(argc, argv, 0, 0);
     td_u8 enable = 1;
     if (td_init() || start_logging("statics.txt"))
         return 1;

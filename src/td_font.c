@@ -182,7 +182,7 @@ TD_INLINE td_i8 mapped_ch(td_i8 ch)
     return ch;
 }
 
-td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg)
+td_texture *tdf_char_texture(td_i8 ch, td_rgba fg, td_rgba bg)
 {
     ch = mapped_ch(ch);
     if (!IN_RANGE(ch, LOWER_LIMIT, UPPER_LIMIT))
@@ -191,7 +191,7 @@ td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg)
     td_texture *out =
         tdt_create(0, 4, td_ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
     td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
-    td_u8 a[4] = EXPAND_RGBA(color), b[4] = EXPAND_RGBA(fg);
+    td_u8 a[4] = EXPAND_RGBA(fg), b[4] = EXPAND_RGBA(bg);
     for (td_u8 i = 0; i < CHAR_PIXEL; i++)
         for (td_u8 j = 0; j < 4; j++, raw++)
             raw[0] = ch_template[i] ? a[j] : b[j];
@@ -220,7 +220,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
         free(lines_length);
         return 0;
     }
-    tdt_fill(out, fg);
+    tdt_fill(out, bg);
 
     // Placing character into place
     td_u32 current_index = 0;
@@ -228,7 +228,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
         td_u32 row_l = lines_length[row], start_y = row * (CHAR_HEIGHT + 1);       // 1 is pad
         for (td_u32 col = 0; col < row_l; col++) {
             td_texture *ch_texture =
-                tdf_char_texture(str[current_index + col], bg, fg);
+                tdf_char_texture(str[current_index + col], fg, bg);
             td_u32 start_x = col * (CHAR_WIDTH + 1);
             tdt_merge(out, ch_texture, td_ivec2_init((int)start_x, (int)start_y),
                           TEXTURE_MERGE_CROP, 1);

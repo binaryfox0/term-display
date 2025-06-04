@@ -346,9 +346,9 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
 
 // so much macro
 #define __handler_helper(name) \
-    __cat(name, _callback_func) __cat(__cat(private_, name), _callback); \
-    void __cat(__cat(td_set_, name), _callback)(__cat(name, _callback_func) callback) { \
-        __cat(__cat(private_, name), _callback) = callback; \
+    __td_cat(name, _callback_func) __td_cat(__td_cat(private_, name), _callback); \
+    void __td_cat(__td_cat(td_set_, name), _callback)(__td_cat(name, _callback_func) callback) { \
+        __td_cat(__td_cat(private_, name), _callback) = callback; \
     }
 __handler_helper(key)
 __handler_helper(resize)

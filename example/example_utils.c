@@ -108,3 +108,31 @@ char *to_timestamp(double time)
 }
 
 int maximum_fps = 0xffff;
+void parse_argv(const int argc, char** argv, aparse_arg* custom_args, int args_count)
+{
+    bool auto_resize = false;
+    int 
+        pixel_width = 0, pixel_height = 0,
+        display_type = td_display_truecolor, display_rotate = 0;
+    const aparse_arg example_args[] = {
+        aparse_arg_option(0, "--auto-resize", &auto_resize, sizeof(auto_resize), true, false, true, "Automatic resizing the display"),
+        aparse_arg_option(0, "--pixel-width", &pixel_width, sizeof(pixel_width), true, true, false, "Pixel width of display in terminal cells"),
+        aparse_arg_option(0, "--pixel-height", &pixel_height, sizeof(pixel_height), true, true, false, "Pixel height of display in terminal cells"),
+        aparse_arg_option(0, "--display-type", &display_type, sizeof(display_type), true, true, false, "Type of display (grayscale, truecolor, etc."),
+        aparse_arg_option(0, "--display-rotate", &display_rotate, sizeof(display_rotate), true, true, false, "Type of display (grayscale, truecolor, etc."),
+        aparse_arg_option(0, "--maximum-fps", &maximum_fps, sizeof(maximum_fps), true, true, false, "Maximum Frame-per-Second of display"),
+        aparse_arg_end_marker
+    };
+    int example_args_size = (sizeof(example_args) / sizeof(example_args[0])) - 1; // Exclude the end marker
+    int _args_count = example_args_size + args_count + 1;
+    aparse_arg* main_args = malloc(_args_count* sizeof(aparse_arg));
+    memcpy(main_args, example_args, example_args_size * sizeof(aparse_arg));
+    memcpy(main_args + example_args_size, custom_args, args_count * sizeof(aparse_arg));
+    memset(&main_args[_args_count - 1], 0, sizeof(aparse_arg));
+    aparse_parse(argc, argv, main_args, "Example program of term-display library");
+    td_option(td_opt_auto_resize, 0, &auto_resize);
+    td_option(td_opt_pixel_width, 0, &pixel_width);
+    td_option(td_opt_pixel_height, 0, &pixel_height);
+    td_option(td_opt_display_type, 0, &display_type);
+    td_option(td_opt_display_rotate, 0, &display_rotate);
+}

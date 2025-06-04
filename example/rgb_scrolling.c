@@ -19,7 +19,7 @@ TD_INLINE td_rgb calculate_rgb(double d)
 
 int main(int argc, char** argv)
 {
-    //example_tdopt(argc, argv, 0, 0);
+    parse_argv(argc, argv, 0, 0);
     if (td_init() || start_logging("statics.txt"))
         return 1;
 

@@ -2,6 +2,7 @@
 #define TEST_UTILITIES_H
 
 #include "td_def.h"
+#include "aparse.h"
 
 #define TESTS_LOGGING
 
@@ -22,4 +23,5 @@ char *to_string(const char *format, ...);
 char *to_timestamp(double time);
 
 extern int maximum_fps;
+void parse_argv(const int argc, char** argv, aparse_arg* custom_args, int args_count);
 #endif

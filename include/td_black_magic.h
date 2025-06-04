@@ -41,58 +41,58 @@ SOFTWARE.
  * @param type The type to inspect.
  * @param member The member to extract the type from.
  */
-#define __member_type(type, member) __typeof__((type){0}.member)
+#define __td_member_type(type, member) __typeof__((type){0}.member)
 
 /**
  * @def __cat(a, b)
  * @brief Concatenates two tokens.
  */
-#define __cat(a, b) __cat_(a, b)
-#define __cat_(a, b) a##b
+#define __td_cat(a, b) __td_cat_(a, b)
+#define __td_cat_(a, b) a##b
 
 /**
  * @def __count_args(...)
  * @brief Counts the number of arguments passed in.
  */
-#define __count_args(...) __count_args_(__VA_ARGS__, 8,7,6,5,4,3,2,1)
+#define __td_count_args(...) __td_count_args_(__VA_ARGS__, 8,7,6,5,4,3,2,1)
 /** @internal */
-#define __count_args_(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
+#define __td_count_args_(_1,_2,_3,_4,_5,_6,_7,_8,N,...) N
 
 /**
  * @def __expand(...)
  * @brief Forces macro expansion of arguments.
  */
-#define __expand(...) __expand1(__expand1(__expand1(__VA_ARGS__)))
+#define __td_expand(...) __td_expand1(__td_expand1(__td_expand1(__VA_ARGS__)))
 /** @internal */
-#define __expand1(...) __VA_ARGS__
+#define __td_expand1(...) __VA_ARGS__
 
 // Mapping macros over arguments (up to 8 arguments)
-#define __map_1(m, a, x)               m(a, x)
-#define __map_2(m, a, x, ...)          m(a, x), __map_1(m, a, __VA_ARGS__)
-#define __map_3(m, a, x, ...)          m(a, x), __map_2(m, a, __VA_ARGS__)
-#define __map_4(m, a, x, ...)          m(a, x), __map_3(m, a, __VA_ARGS__)
-#define __map_5(m, a, x, ...)          m(a, x), __map_4(m, a, __VA_ARGS__)
-#define __map_6(m, a, x, ...)          m(a, x), __map_5(m, a, __VA_ARGS__)
-#define __map_7(m, a, x, ...)          m(a, x), __map_6(m, a, __VA_ARGS__)
-#define __map_8(m, a, x, ...)          m(a, x), __map_7(m, a, __VA_ARGS__)
+#define __td_map_1(m, a, x)               m(a, x)
+#define __td_map_2(m, a, x, ...)          m(a, x), __td_map_1(m, a, __VA_ARGS__)
+#define __td_map_3(m, a, x, ...)          m(a, x), __td_map_2(m, a, __VA_ARGS__)
+#define __td_map_4(m, a, x, ...)          m(a, x), __td_map_3(m, a, __VA_ARGS__)
+#define __td_map_5(m, a, x, ...)          m(a, x), __td_map_4(m, a, __VA_ARGS__)
+#define __td_map_6(m, a, x, ...)          m(a, x), __td_map_5(m, a, __VA_ARGS__)
+#define __td_map_7(m, a, x, ...)          m(a, x), __td_map_6(m, a, __VA_ARGS__)
+#define __td_map_8(m, a, x, ...)          m(a, x), __td_map_7(m, a, __VA_ARGS__)
 
 /**
  * @def __map(m, a, ...)
  * @brief Maps a macro `m` with fixed first argument `a` over variadic arguments.
  */
-#define __map(m, a, ...) __cat(__map_, __count_args(__VA_ARGS__))(m, a, __VA_ARGS__)
+#define __td_map(m, a, ...) __td_cat(__td_map_, __td_count_args(__VA_ARGS__))(m, a, __VA_ARGS__)
 
 /**
  * @def __arg(type, member)
  * @brief Expands to a typed member initializer parameter.
  */
-#define __arg(type, member) __member_type(type, member) member
+#define __td_arg(type, member) __td_member_type(type, member) member
 
 /**
  * @def __init(_, member)
  * @brief Expands to a named initializer using the field name.
  */
-#define __init(_, member) .member = member
+#define __td_init(_, member) .member = member
 
 /**
  * @def __td_priv_create_constructor(name, type, ...)
@@ -110,8 +110,8 @@ SOFTWARE.
  * @param ... List of field names in the struct
  */
 #define __td_priv_create_constructor(name, type, ...) \
-    TD_INLINE type name(__expand(__map(__arg, type, __VA_ARGS__))) { \
-        return (type){ __expand(__map(__init, _, __VA_ARGS__)) }; \
+    TD_INLINE type name(__td_expand(__td_map(__td_arg, type, __VA_ARGS__))) { \
+        return (type){ __td_expand(__td_map(__td_init, _, __VA_ARGS__)) }; \
     }
 
 #endif // TD_BLACK_MAGIC_H

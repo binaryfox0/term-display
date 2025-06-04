@@ -50,16 +50,16 @@ SOFTWARE.
  * @brief Generate a texture from a single character.
  *
  * @param ch The ASCII character to render.
- * @param color Background color.
  * @param fg Foreground (text) color.
+ * @param bg Background color.
  * @return A pointer to a new `td_texture` representing the character.
  */
-td_texture *tdf_char_texture(td_i8 ch, td_rgba color, td_rgba fg);
+td_texture *tdf_char_texture(td_i8 ch, td_rgba fg, td_rgba bg);
 
 /**
  * @brief Generate a texture from a string.
  *
- * @param str Null-terminated UTF-8 or ASCII string to render.
+ * @param str Null-terminated ASCII string to render.
  * @param len Length of the string.
  * @param size Optional output for texture size (can be NULL).
  * @param fg Foreground (aka text) color.
