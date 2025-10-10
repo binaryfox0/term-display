@@ -1,5 +1,6 @@
 #include <string.h>             // strlen
 #include <stdlib.h>             // free
+#include <math.h>               // sin
 
 #include "td_main.h"
 #include "td_font.h"
@@ -12,11 +13,14 @@ char* buffer = 0;
 int current_size = 0, current_index = 0;
 
 td_texture* string_texture = 0;
-td_ivec2 texture_size;
 void refresh_str_texture()
 {
-    if(string_texture) tdt_free(string_texture);
-    string_texture = tdf_string_texture(buffer, -1, &texture_size, rgba_init(255,255,255,255), rgba_init(0,0,0,0));
+    if(string_texture) {
+        tdt_free(string_texture);
+        string_texture = 0;
+    }
+    string_texture = tdf_string_texture(buffer, -1, 
+        0, td_rgba_init(255,255,255,255), td_rgba_init(0,0,0,0));
 }
 
 
@@ -46,8 +50,9 @@ void process_input(int key, int mods, td_key_state_t actions)
     refresh_str_texture();
 }
 
-int main()
+int main(int argc, char** argv)
 {
+    parse_argv(argc, argv, 0, 0);
     td_u8 enable = 1;
     if (td_init() || start_logging("statics.txt"))
         return 1;
@@ -57,6 +62,7 @@ int main()
     td_ivec2 size = { 0 };
     td_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
+    const double max_dt = 1.0 / maximum_fps;
     while (td_is_running()) {
         frame_count++;
         double start_frame = get_time();
@@ -64,25 +70,21 @@ int main()
 
         td_poll_events();
 
-        td_set_color(rgba_init(109, 154, 140, frame_count / 7));   // Approximtely patina
+        float brightness = 0.5f * (sin((double)frame_count / 32) + 1.0f);
+        tdr_set_clear_color(td_rgba_init(109 * brightness, 154 * brightness, 140 * brightness, 255));   // Approximtely patina
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   rgba_init(0, 0, 0, 255), rgba_init(255,
-                                                                      255,
-                                                                      255,
-                                                                      255));
-        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
-                             TEXTURE_MERGE_RESIZE);
+                                td_rgba_init(0, 0, 0, 255), td_rgba_init(255, 255, 255, 255));
+        tdr_copy_texture(texture, td_ivec2_init(0, 0));
         tdt_free(texture);
 
-        td_copy_texture(string_texture, td_vec2_init(-1.0f, 0.0f),
-                             TEXTURE_MERGE_CROP);
+        tdr_copy_texture(string_texture, td_ivec2_init(0, size.y + 1));
 
-        td_show();
+        tdr_render();
 
-        delta_time = get_time() - start_frame;
+        while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {
             write_log("FPS: %s", string);
             last_log = get_time();

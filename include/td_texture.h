@@ -58,8 +58,8 @@ typedef struct td_texture_s td_texture;
  * These modes control how `texture_b` is combined with `texture_a` in `tdt_merge()`.
  */
 enum tdt_merge_mode {
-    TEXTURE_MERGE_CROP = 0,        ///< Crop B to fit inside A.
-    TEXTURE_MERGE_RESIZE,          ///< Resize B to match size of A.
+    TDT_MERGE_CROP = 0,        ///< Crop B to fit inside A.
+    TDT_MERGE_RESIZE,          ///< Resize B to match size of A.
 };
 
 /**

@@ -66,7 +66,7 @@ td_bool setup_env(void(*handler)(int))
     return 0;
 }
 
-td_ivec2 query_terminal_size()
+td_ivec2 query_terminal_size(void)
 {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
@@ -74,7 +74,7 @@ td_ivec2 query_terminal_size()
     return td_ivec2_init(0, 0);
 }
 
-td_bool restore_env()
+td_bool restore_env(void)
 {
     if (tcsetattr(STDIN_FILENO, TCSANOW, &old) == -1)
         return 1;

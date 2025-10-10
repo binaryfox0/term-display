@@ -1,8 +1,5 @@
 #include <string.h>
 #include <fcntl.h>
-#include <math.h>
-#include <stdio.h>
-#include <time.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -60,22 +57,17 @@ int main(int argc, char** argv)
 
         td_option(td_opt_display_size, 1, &size);
         td_texture *noise = generate_noise(size);
-        td_copy_texture(noise, td_vec2_init(-1.0f, 1.0f),
-                             TEXTURE_MERGE_CROP);
+        tdr_copy_texture(noise, td_ivec2_init(0, 0));
         tdt_free(noise);
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   rgba_init(0, 0, 0, 255), rgba_init(255,
-                                                                      255,
-                                                                      255,
-                                                                      255));
-        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
-                             TEXTURE_MERGE_CROP);
+                                td_rgba_init(0, 0, 0, 255), td_rgba_init(255, 255, 255, 255));
+        tdr_copy_texture(texture, td_ivec2_init(0, 0));
         tdt_free(texture);
 
-        td_show();
+        tdr_render();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {

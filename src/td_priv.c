@@ -46,7 +46,7 @@ td_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 }
 
 // Handle single-byte character input
-td_bool shift_translate = td_false;
+td_bool tdp_shift_translate = td_false;
 TD_INLINE td_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
 {
     switch (byte) {
@@ -77,7 +77,7 @@ TD_INLINE td_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
             *mods |= td_key_ctrl;
             break;
         }
-        if(shift_translate) {
+        if(tdp_shift_translate) {
             if(!key_shift_translate(byte, ch, mods))
                 break;
             if (IN_RANGE(byte, 'a', 'z')) {
@@ -246,10 +246,12 @@ void kbpoll_events(key_callback_func func)
         default:
             return;
         }
-    } else                      // Single-byte characters
-    if (handle_single_byte(buf[0], &ch, &mods))
-        return;
-    if(func)func(ch, mods, td_key_press);
+    } else {                      // Single-byte characters
+        if (handle_single_byte(buf[0], &ch, &mods))
+            return;
+    }
+    if(func)
+        func(ch, mods, td_key_press);
 }
 
 
@@ -321,10 +323,4 @@ void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
     }
 
     memcpy(ptr, dest, destsz - filled);
-}
-
-
-void reset_buffer(const void** out_buffer, const td_vec2 size, const td_vec2* out_size, const int type_size)
-{
-    
 }

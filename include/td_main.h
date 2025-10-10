@@ -36,6 +36,7 @@ SOFTWARE.
 
 #include "td_def.h"
 #include "td_texture.h"
+#include "td_renderer.h"
  
  /**
   * @enum td_settings_t
@@ -202,14 +203,14 @@ typedef void (*resize_callback_func)(td_ivec2 new_size);
  * 
  * @return A string containing the copyright notice.
  */
-const char *td_copyright_notice();
+const char *td_copyright_notice(void);
 
 /**
  * @brief Initializes the term-display library.
  * 
  * @return A boolean indicating the success initialization.
  */
-td_bool td_init();
+td_bool td_init(void);
 
 /**
  * @brief Gets or sets the value of a term-display setting.
@@ -228,7 +229,7 @@ td_bool td_option(td_settings_t type, td_bool get, void *option);
  * @return A boolean indicating display is shown to user.
  */
 extern volatile td_bool __display_is_running;
-TD_INLINE td_bool td_is_running() {
+TD_INLINE td_bool td_is_running(void) {
     return __display_is_running;
 }
 
@@ -239,7 +240,7 @@ TD_INLINE void td_set_running_state(td_bool state) {
 /**
  * @brief Polls for events related to the display.
  */
-void td_poll_events();
+void td_poll_events(void);
 
 /**
  * @brief Sets the callback function to handle key events.
@@ -256,55 +257,8 @@ void td_set_key_callback(key_callback_func callback);
 void td_set_resize_callback(resize_callback_func callback);
 
 /**
- * @brief Sets the color to be used by term-display to clear the display.
- * 
- * @param color The color to set.
- */
-void td_set_color(td_rgba color);
-
-/**
- * @brief Copies a texture to the term-display at the specified position.
- * 
- * @param texture The texture to copy.
- * @param pos The position where the texture should be copied.
- * @param mode The merge mode to use when copying the texture.
- */
-void td_copy_texture(const td_texture *texture, const td_vec2 pos, const enum tdt_merge_mode mode);
-
-/**
- * @brief Draws a line between two points with a specified color.
- * 
- * @param p1 The starting point of the line.
- * @param p2 The ending point of the line.
- * @param color The color of the line.
- */
-void td_draw_line(td_vec2 p1, td_vec2 p2, td_rgba color);
-
-/**
- * @brief Flushes the rendering pipeline, ensuring that the vertices queue is empty.
- */
-void td_render_flush();
-
-/**
- * @brief Adds vertices to the render pipeline.
- * 
- * @param vertices The array of vertex data.
- * @param component The type of vertex data (position, texture, etc.).
- * 
- * This function will automatically flush when meets the minimum count of vertices to render shape
- */
-void td_render_add(const td_f32 *vertices, td_i32 component);
-
-/**
- * @brief Displays the framebuffer to the terminal.
- * 
- * @return A boolean indicating the success of the operation.
- */
-void td_show();
-
-/**
  * @brief Frees any allocated resources used by the term-display library.
  */
-void td_free();
+void td_free(void);
 
 #endif /* TD_MAIN_H */

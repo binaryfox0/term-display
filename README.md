@@ -20,6 +20,7 @@ Minimal dependencies requirements make it ideal for small, experimental projects
 ## Requirements
 - A standard C/C++ 11 compiler
 - A terminal support ANSI escape sequence on Windows [¹](#compatibility) (**not tested yet**)  or POSIX-compliance OS
+- **Recommendation**: We recommend you using `alacritty` as it was the most optimized terminal I have ever used to test
 
 ## Building
 1. Clone the repository and download [cmake](https://cmake.org/download/)

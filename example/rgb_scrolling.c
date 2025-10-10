@@ -9,9 +9,19 @@
 
 #define M_PI 3.14159265358979323846
 
+static td_f32 vertices[] = {
+//    x     y     u     v
+    -1.0f, 1.0f, 0.0f, 1.0f, // Top-left
+     0.0f, 1.0f, 1.0f, 1.0f,
+     0.0f, 0.0f, 1.0f, 0.0f,
+    -1.0f, 1.0f, 0.0f, 1.0f,
+     0.0f, 0.0f, 1.0f, 0.0f,
+    -1.0f, 0.0f, 0.0f, 0.0f
+};
+
 TD_INLINE td_rgb calculate_rgb(double d)
 {
-    return rgb_init((td_u8) ((sin(d) + 1) * 127.5),
+    return td_rgb_init((td_u8) ((sin(d) + 1) * 127.5),
                     (td_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
                     (td_u8) ((sin(d + (4 * M_PI / 3)) + 1) * 127.5)
         );
@@ -27,24 +37,37 @@ int main(int argc, char** argv)
     double speed = 0.01, elapsed = 0.0;
     double delta_time = 0.0, last_log = get_time();
     const double max_dt = 1.0 / maximum_fps;
+    tdr_vertex_attrib attribs[] = { TDRVA_POSITION_2D, TDRVA_UV_COORDS};
     while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
         td_poll_events();
 
-        td_set_color(to_rgba(calculate_rgb(elapsed)));
+        tdr_set_clear_color(to_rgba(calculate_rgb(elapsed)));
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   rgba_init(255, 255, 255, 255),
-                                   rgba_init(0, 0, 0, 0));
-        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
-                             TEXTURE_MERGE_CROP);
+                                   td_rgba_init(255, 255, 255, 255),
+                                   td_rgba_init(0, 0, 0, 0));
+
+        tdr_bind_texture(texture);
+        td_ivec2 display_sz = {0};
+        td_option(td_opt_display_size, td_true, &display_sz);
+        td_vec2 right_pos = pos_to_ndc(td_ivec2_init(size.x, 0) , display_sz);
+        td_vec2 bottom_pos = pos_to_ndc(td_ivec2_init(0, size.y), display_sz);
+        vertices[1 * 4 + 0] = right_pos.x;
+        vertices[2 * 4 + 0] = right_pos.x;
+        vertices[2 * 4 + 1] = bottom_pos.y;
+        vertices[4 * 4 + 0] = right_pos.x;
+        vertices[4 * 4 + 1] = bottom_pos.y;
+        vertices[5 * 4 + 1] = bottom_pos.y;
+        for(int i = 0; i < sizeof(vertices) / sizeof(float) / 4; i++)
+            tdr_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]));
         tdt_free(texture);
 
-        td_show();
+        tdr_render();
         elapsed += speed;
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}

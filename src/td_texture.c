@@ -30,13 +30,6 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
-struct td_texture_s {
-    td_u8 *data;
-    td_u8 channel;
-    td_ivec2 size;
-    td_u8 freeable;
-};
-
 td_u8 convert_ch(td_u8 ch_a, td_u8 ch_b)
 {
     td_u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
@@ -54,11 +47,18 @@ td_texture *tdt_create(td_u8 *texture,
                              const td_ivec2 size,
                              const td_u8 freeable, const td_u8 copy)
 {
-    if (OUT_RANGE(channel, 1, 4) || !size.x || !size.y)
+    if (OUT_RANGE(channel, 1, 4))
         return 0;
     td_texture *out = 0;
     if (!(out = (td_texture *) malloc(sizeof(td_texture))))
         return 0;
+
+    out->size = size;
+    out->channel = channel;
+
+    if(!size.x || !size.y)
+        return out;
+
     td_u64 alloc_size = calculate_pos(0, size.y, size.x, channel);
 
     if (!texture || copy) {
@@ -84,8 +84,6 @@ td_texture *tdt_create(td_u8 *texture,
         out->freeable = freeable;
     }
 
-    out->size = size;
-    out->channel = channel;
     return out;
 }
 
@@ -125,7 +123,7 @@ void tdt_fill(const td_texture *texture, const td_rgba color)
 {
     if (!texture || !color.a)
         return;
-    td_u8 c[4] = EXPAND_RGBA(color), tmp = 4;
+    td_u8 c[4] = TD_EXPAND_RGBA(color), tmp = 4;
     td_ivec2 size = texture->size;
     td_u8 *data = texture->data;
     td_u8 ch = texture->channel;
@@ -201,7 +199,7 @@ void tdt_merge(const td_texture *texture_a,
         td_ivec2 new_size =
             td_ivec2_init(sb.x > max_space_x ? max_space_x : sb.x,
                        sb.y > max_space_y ? max_space_y : sb.y);
-        if (mode == TEXTURE_MERGE_RESIZE)
+        if (mode == TDT_MERGE_RESIZE)
             tb = resize_texture(tb, chb, sb, new_size);
         else
             tb = crop_texture(tb, chb, sb, new_size);
@@ -309,13 +307,12 @@ void tdt_crop(td_texture *texture, const td_ivec2 new_size)
     texture->size = new_size;
 }
 
-void tdt_draw_line(td_texture *texture, const td_ivec2 p1,
-                       const td_ivec2 p2, const td_rgba color)
-{
-    ptexture_draw_line(texture->data, texture->size, texture->channel,
-                       p1, p2, td_vec2_init(0.0f, 0.0f), color,
-                       0);
-}
+// void tdt_draw_line(td_texture *texture, const td_ivec2 p1,
+                    //    const td_ivec2 p2, const td_rgba color)
+// {
+    // ptexture_draw_line((td_framebuffer){texture->data, texture->channel, 0, texture->size},
+                    //    p1, p2, td_vec2_init(0.0f, 0.0f), color);
+// }
 
 void tdt_free(td_texture *texture)
 {
@@ -328,7 +325,7 @@ void tdt_free(td_texture *texture)
 
 td_rgba pixel_blend(td_rgba a, td_rgba b)
 {
-    td_u8 ar[4] = EXPAND_RGBA(a), br[4] = EXPAND_RGBA(b);
+    td_u8 ar[4] = TD_EXPAND_RGBA(a), br[4] = TD_EXPAND_RGBA(b);
     alpha_blend(ar, br, 4, 4);
-    return rgba_init(ar[0], ar[1], ar[2], ar[3]);
+    return td_rgba_init(ar[0], ar[1], ar[2], ar[3]);
 }

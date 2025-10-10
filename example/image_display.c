@@ -1,10 +1,28 @@
 #include "td_main.h"
-#include "td_font.h"
 
 #include "example_utils.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+float vertices[] = {
+    // x,    y,    z     w     u,    v
+//    -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // bottom-left
+//     1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 0.0f,  // bottom-right
+//     1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f,  // top-right
+//    -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f,  // bottom-left
+//     1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 1.0f,  // top-right
+//    -1.0f,  1.0f, 0.0f, 1.0f, 0.0f, 1.0f   // top-left
+    // x, y, u, v
+    -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, // bottom-left
+     1.0f, -1.0f, 0.0f, 1.0f, 1.0f, 1.0f, // bottom-right
+     1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, // top-right
+    -1.0f, -1.0f, 0.0f, 1.0f, 0.0f, 1.0f, // bottom-left
+     1.0f,  1.0f, 0.0f, 1.0f, 1.0f, 0.0f, // top-right
+    -1.0f,  1.0f, 0.0f, 1.0f, 0.0f, 0.0f  // top-left
+
+};
+
 
 char *get_program_name(char *in)
 {
@@ -71,9 +89,14 @@ void resize_callback(td_ivec2 new_size)
 }
 
 td_bool stop = td_false;
+td_bool force_stop = td_false;
+
 void key_callback(int key, int mods, td_key_state_t state){
-    if(key == td_key_escape && state == td_key_press)
+    if(key == td_key_escape && state == td_key_press) {
+        if(mods == td_key_ctrl)
+            force_stop = true;
         stop = td_true;
+    }
 }
 
 char* program_name = 0;
@@ -100,18 +123,22 @@ void display_image(const char* path)
     td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
     td_set_resize_callback(resize_callback);
+    td_set_key_callback(key_callback);
 
     td_set_running_state(td_true);
+    stop = false;
     double delta_time = 1.0, last_log = get_time();
+    tdr_vertex_attrib attribs[] = {TDRVA_POSITION_4D, TDRVA_UV_COORDS };
     while (td_is_running() && !stop) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
         td_poll_events();
-        td_set_color(rgba_init(0, 0, 0, 255));
-        td_copy_texture(displayed_image, td_vec2_init(-1.f, 1.f),
-                             TEXTURE_MERGE_CROP);
-        td_show();
+        tdr_clear_framebuffer();
+        tdr_bind_texture(displayed_image);
+        for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 6; i++)
+            tdr_add_vertex(vertices + i * 6, attribs, 2);
+        tdr_render();
 
         delta_time = get_time() - start_frame;
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -132,21 +159,23 @@ void display_image(const char* path)
 
 int main(int argc, char **argv)
 {
-    char* ptr = 0;
-    parse_argv(argc, argv, (aparse_arg[]){
-        aparse_arg_string("image", &ptr, 0, "Image file to display")
+    char** images = 0;
+    aparse_arg* main_args = parse_argv(argc, argv, (aparse_arg[]){
+        aparse_arg_array("images", &images, 0, APARSE_ARG_TYPE_STRING, 0, "Images to be displayed")
     }, 1);
-    program_name = get_program_name(ptr);
-    if(argc < 2) {
-        printf("Usage: %s <image>\n", program_name);
-        return 1;
-    }
+
+    int images_count = main_args[0].size;
+    free(main_args);
 
     if (td_init() || start_logging("statics.txt")) {
         return 1;
     }
 
-    display_image(argv[1]);
+    tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
+    for(int i = 0; i < images_count && images && !force_stop; i++)
+        display_image(images[i]);
+    if(images)
+        free(images);
 
     td_free();
     stop_logging();

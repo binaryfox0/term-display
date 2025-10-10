@@ -76,30 +76,25 @@ int main(int argc, char** argv)
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     double last_log = get_time();
     const double max_dt = 1.0 / maximum_fps;
+    tdr_vertex_attrib attribs[] = { TDRVA_POSITION_4D, TDRVA_COLOR_RGBA };
+
+    tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
+
     while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
         td_poll_events();
 
-        td_set_color(rgba_init(0, 0, 0, 255));
+        tdr_clear_framebuffer();
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   rgba_init(255, 255, 255, 255),
-                                   rgba_init(0, 0, 0, 0));
-        td_copy_texture(texture, td_vec2_init(-1.0f, 1.0f),
-                             TEXTURE_MERGE_CROP);
+                                   td_rgba_init(255, 255, 255, 255),
+                                   td_rgba_init(0, 0, 0, 0));
+        tdr_copy_texture(texture, td_ivec2_init(0, 0));
         tdt_free(texture);
-
-        //td_vec2 p1 = td_vec2_init(gen_rand(), gen_rand()), p2 =
-        //    td_vec2_init(gen_rand(), gen_rand()), p3 =
-        //    td_vec2_init(gen_rand(), gen_rand());
-        //td_draw_line(p1, p2, rgba_init(0, 255, 255, 255));
-        //td_draw_line(p2, p3, rgba_init(0, 255, 255, 255));
-        //td_draw_line(p3, p1, rgba_init(0, 255, 255, 255));
-        //td_draw_triangle(p1, p2, p3, rgba_init(0, 255, 255, 255));
 
         td_option(td_opt_display_size, 1, &size);
             
@@ -117,23 +112,25 @@ int main(int argc, char** argv)
         glm_mat4_mul(mvp, model, mvp);
             
         for (int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 3; i++)
-        //for(int i = 0; i < 3; i++)
         {
             float *dest = &out[i * 3];
             vec4 transformed = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
             
             glm_mat4_mulv(mvp, transformed, transformed);  // Multiply by MVP matrix
 
-            td_render_add(transformed, 4);
+            tdr_add_vertex(transformed, attribs, 2);
         }
 
+        td_ivec2 display_size = {0};
+        td_option(td_opt_display_size, td_true, &display_size);
+
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
-        texture = tdf_string_texture(tmp, -1, &size, rgba_init(255,0,0,255), rgba_init(0,0,0,0));
-        td_copy_texture(texture, td_vec2_init(-1.0f, 0.0f), TEXTURE_MERGE_RESIZE);
+        texture = tdf_string_texture(tmp, -1, &size, td_rgba_init(255,0,0,255), td_rgba_init(0,0,0,0));
+        tdr_copy_texture(texture, td_ivec2_init(0, display_size.y - size.y));
         tdt_free(texture);
         free(tmp);
 
-        td_show();
+        tdr_render();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {

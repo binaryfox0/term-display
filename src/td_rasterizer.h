@@ -3,38 +3,36 @@
 
 #include "td_def.h"
 
+struct td_texture_s;
+typedef struct td_texture_s td_texture;
+
 typedef struct
 {
     td_ivec2 pos;
     td_f32 depth;
     td_rgba color;
     td_vec2 uv;
-} vertex;
+} tdr_vertex;
 
-__td_priv_create_constructor(vertex_init, vertex, pos, depth, color, uv)
+__td_priv_create_constructor(vertex_init, tdr_vertex, pos, depth, color, uv)
 
 td_u8* ptexture_resize(const td_u8* old,
                      const td_u8 channel,
                      const td_ivec2 old_size,
                      const td_ivec2 new_size);
 
-void ptexture_draw_line(td_u8 * texture,
-                        const td_ivec2 size,
-                        const td_u8 channel,
+void tdr_draw_line(const td_texture* fb,
+                        td_f32* depth_buf,
                         const td_ivec2 p1,
                         const td_ivec2 p2,
-                        const td_vec2 depth,
-                        const td_rgba color, td_f32 * depth_buffer);
+                        const td_rgba color);
 
-void ptexture_draw_triangle(td_u8 * output,
-                            const td_ivec2 size,
-                            const td_u8 channel,
-                            const vertex v1,
-                            const vertex v2,
-                            const vertex v3,
-                            td_f32 * depth_buffer,
-                            const td_u8* texture_data,
-                            const td_ivec2 texture_size
+void td_rasterize_triangle( const td_texture* fb,
+                            td_f32* depth_buf,
+                            const tdr_vertex v1,
+                            const tdr_vertex v2,
+                            const tdr_vertex v3,
+                            const td_texture* tex
                         );
 
 #endif

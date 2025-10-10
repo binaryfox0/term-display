@@ -35,77 +35,83 @@ SOFTWARE.
 #define CHAR_HEIGHT 5
 #define CHAR_PIXEL CHAR_WIDTH * CHAR_HEIGHT
 
+#define TDF_COMPRESS(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) \
+    { \
+        (a) | (b << 1) | (c << 2) | (d << 3) | (e << 4) | (f << 5) | (g << 6) | (h << 7), \
+        (i) | (j << 1) | (k << 2) | (l << 3) | (m << 4) | (n << 5) | (o << 6) \
+    }
+
 // Atlas of font character pattern, will be populated later
-static const td_u8 texture_atlas[ATLAS_SIZE][CHAR_PIXEL] = {
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Space
-    { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0 },    // Exclamation mark
-    { 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Quotation mark
-    { 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1 },    // Number sign
-    { 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0 },    // Dollar sign
-    { 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1 },    // Percent sign
-    { 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1 },    // Ampersand
-    { 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Astrophobe
-    { 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0 },    // Left parenthesis
-    { 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0 },    // Right parenthesis
-    { 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1 },    // Asterisk
-    { 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0 },    // Plus sign
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0 },    // Comma
-    { 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0 },    // Hyphen
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 },    // Period
-    { 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0 },    // Slash
-    { 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 },    // Digit 0
-    { 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },    // Digit 1
-    { 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 },    // Digit 2
-    { 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0 },    // Digit 3
-    { 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1 },    // Digit 4
-    { 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0 },    // Digit 5
-    { 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0 },    // Digit 6
-    { 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0 },    // Digit 7
-    { 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 },    // Digit 8
-    { 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0 },    // Digit 9
-    { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0 },    // Colon
-    { 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0 },    // Semicolon
-    { 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1 },    // Less-than
-    { 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0 },    // Equals-to
-    { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0 },    // Greater-than
-    { 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0 },    // Question mark
-    { 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1 },    // At sign
-    { 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1 },    // Letter A
-    { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0 },    // Letter B
-    { 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0 },    // Letter C
-    { 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0 },    // Letter D
-    { 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1 },    // Letter E
-    { 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0 },    // Letter F
-    { 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1 },    // Letter G
-    { 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1 },    // Letter H
-    { 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },    // Letter I
-    { 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0 },    // Letter J
-    { 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1 },    // Letter K
-    { 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1 },    // Letter L
-    { 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },    // Letter M
-    { 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1 },    // Letter N
-    { 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0 },    // Letter O
-    { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0 },    // Letter P
-    { 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1 },    // Letter Q
-    { 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1 },    // Letter R
-    { 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0 },    // Letter S
-    { 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0 },    // Letter T
-    { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1 },    // Letter U
-    { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0 },    // Letter V
-    { 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1 },    // Letter W
-    { 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1 },    // Letter X
-    { 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0 },    // Letter Y
-    { 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1 },    // Letter Z
-    { 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0 },    // Left square bracket
-    { 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1 },    // Backslash
-    { 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1 },    // Right square bracket
-    { 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Caret
-    { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 },    // Underscore 
-    { 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },    // Grave accent
-    { 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1 },    // Left curly brace
-    { 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 },    // Vertical bar
-    { 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0 },    // Right curly brace
-    { 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 }     // Tilde 
+static const td_u8 texture_atlas[ATLAS_SIZE][2] = {
+    TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Space
+    TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0),    // Exclamation mark
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Quotation mark
+    TDF_COMPRESS(1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1),    // Number sign
+    TDF_COMPRESS(0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0),    // Dollar sign
+    TDF_COMPRESS(1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1),    // Percent sign
+    TDF_COMPRESS(0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1),    // Ampersand
+    TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Astrophobe
+    TDF_COMPRESS(0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0),    // Left parenthesis
+    TDF_COMPRESS(0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0),    // Right parenthesis
+    TDF_COMPRESS(1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1),    // Asterisk
+    TDF_COMPRESS(0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0),    // Plus sign
+    TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0),    // Comma
+    TDF_COMPRESS(0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0),    // Hyphen
+    TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0),    // Period
+    TDF_COMPRESS(0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0),    // Slash
+    TDF_COMPRESS(1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1),    // Digit 0
+    TDF_COMPRESS(0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Digit 1
+    TDF_COMPRESS(1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1),    // Digit 2
+    TDF_COMPRESS(1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0),    // Digit 3
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1),    // Digit 4
+    TDF_COMPRESS(1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0),    // Digit 5
+    TDF_COMPRESS(0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0),    // Digit 6
+    TDF_COMPRESS(1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Digit 7
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0),    // Digit 8
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0),    // Digit 9
+    TDF_COMPRESS(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0),    // Colon
+    TDF_COMPRESS(0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0),    // Semicolon
+    TDF_COMPRESS(0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1),    // Less-than
+    TDF_COMPRESS(0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0),    // Equals-to
+    TDF_COMPRESS(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0),    // Greater-than
+    TDF_COMPRESS(1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0),    // Question mark
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1),    // At sign
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1),    // Letter A
+    TDF_COMPRESS(1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0),    // Letter B
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0),    // Letter C
+    TDF_COMPRESS(1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0),    // Letter D
+    TDF_COMPRESS(1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1),    // Letter E
+    TDF_COMPRESS(1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0),    // Letter F
+    TDF_COMPRESS(0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1),    // Letter G
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1),    // Letter H
+    TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Letter I
+    TDF_COMPRESS(0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0),    // Letter J
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1),    // Letter K
+    TDF_COMPRESS(1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1),    // Letter L
+    TDF_COMPRESS(1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1),    // Letter M
+    TDF_COMPRESS(1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1),    // Letter N
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0),    // Letter O
+    TDF_COMPRESS(1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0),    // Letter P
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1),    // Letter Q
+    TDF_COMPRESS(1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1),    // Letter R
+    TDF_COMPRESS(0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0),    // Letter S
+    TDF_COMPRESS(1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Letter T
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1),    // Letter U
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0),    // Letter V
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1),    // Letter W
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1),    // Letter X
+    TDF_COMPRESS(1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Letter Y
+    TDF_COMPRESS(1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1),    // Letter Z
+    TDF_COMPRESS(1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0),    // Left square bracket
+    TDF_COMPRESS(1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1),    // Backslash
+    TDF_COMPRESS(0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1),    // Right square bracket
+    TDF_COMPRESS(0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Caret
+    TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1),    // Underscore 
+    TDF_COMPRESS(1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Grave accent
+    TDF_COMPRESS(0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1),    // Left curly brace
+    TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0),    // Vertical bar
+    TDF_COMPRESS(1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0),    // Right curly brace
+    TDF_COMPRESS(0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)     // Tilde 
 };
 
 TD_INLINE td_u32 calculate_pad(td_u32 ch)
@@ -191,10 +197,12 @@ td_texture *tdf_char_texture(td_i8 ch, td_rgba fg, td_rgba bg)
     td_texture *out =
         tdt_create(0, 4, td_ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
     td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
-    td_u8 a[4] = EXPAND_RGBA(fg), b[4] = EXPAND_RGBA(bg);
-    for (td_u8 i = 0; i < CHAR_PIXEL; i++)
+    td_u8 a[4] = TD_EXPAND_RGBA(fg), b[4] = TD_EXPAND_RGBA(bg);
+    for (td_u8 i = 0; i < CHAR_PIXEL; i++) {
+        td_bool is_pix = ch_template[i / 8] & (1 << (i % 8));
         for (td_u8 j = 0; j < 4; j++, raw++)
-            raw[0] = ch_template[i] ? a[j] : b[j];
+            raw[0] = is_pix ? a[j] : b[j];
+    }
 
     return out;
 }
@@ -203,7 +211,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
                                      td_ivec2 *s,
                                      td_rgba fg, td_rgba bg)
 {
-    if (!str || !len || !s)
+    if (!str || !len)
         return 0;
     td_u32 plen = (td_u32)len;
     td_u32 lines_count = 0, longest_line = 0;
@@ -213,9 +221,14 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
         return 0;
     }
     // s->x is maximum character in one line, s->y is the line in the input text
-    s->x = (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line));
-    s->y = (int)(lines_count * CHAR_HEIGHT + calculate_pad(lines_count));
-    td_texture *out = tdt_create(0, 4, *s, 0, 0);
+    td_ivec2 texture_size = {
+        (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line)),
+        (int)(lines_count * CHAR_HEIGHT + calculate_pad(lines_count))
+    };
+    if(s) {
+        *s = texture_size;
+    }
+    td_texture *out = tdt_create(0, 4, texture_size, 0, 0);
     if (!out) {
         free(lines_length);
         return 0;
@@ -231,7 +244,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
                 tdf_char_texture(str[current_index + col], fg, bg);
             td_u32 start_x = col * (CHAR_WIDTH + 1);
             tdt_merge(out, ch_texture, td_ivec2_init((int)start_x, (int)start_y),
-                          TEXTURE_MERGE_CROP, 1);
+                          TDT_MERGE_CROP, 1);
             tdt_free(ch_texture);
         }
         current_index += row_l; // Now at newline characater
