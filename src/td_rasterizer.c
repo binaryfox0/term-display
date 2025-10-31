@@ -5,7 +5,7 @@
 
 #define TD_SWAP(a, b) do { tdr_vertex temp = a; a = b; b = temp; } while (0)
 
-td_bool tdp_wireframe_enabled = td_true;
+td_bool tdp_wireframe_enabled = td_false;
 
 TD_INLINE td_i32 td_floor(const float x) {
     return (td_i32)x;

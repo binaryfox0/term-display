@@ -35,6 +35,7 @@ typedef enum tdr_vertex_attrib_e {
     TDRVA_POSITION_3D,
     TDRVA_POSITION_2D,
     TDRVA_COLOR_RGBA,
+    TDRVA_COLOR_RGB,
     TDRVA_UV_COORDS
 } tdr_vertex_attrib;
 
@@ -61,7 +62,7 @@ void tdr_copy_texture(const td_texture* tex, const td_ivec2 placement_pos);
 /**
  */
 void tdr_bind_texture(const td_texture* tex);
-void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attribs, const int attribs_count);
+void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize);
 
 /**
  * @brief Render built-in framebuffer

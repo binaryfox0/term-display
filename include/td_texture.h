@@ -71,6 +71,13 @@ enum tdt_merge_mode {
  * @param freeable If true, `tdt_free()` will free the raw data.
  * @param copy If true, the texture data will be copied internally.
  * @return Pointer to a newly created texture object.
+ *
+ * @details
+ * If `texture` is NULL, the function allocates memory and zero-initializes it.
+ * If `copy` is true, the function copies the content of `texture` into newly
+ * allocated memory. Ownership of `texture` is transferred if `freeable` is set.
+ * If `size.x` or `size.y` is 0, the function returns an empty td_texture object
+ * without allocating any data.
  */
 td_texture *tdt_create(td_u8 * texture,
                        const td_u8 channel,

@@ -85,6 +85,7 @@ td_bool setup_env(void (*handler)(int));
 td_bool setup_env(BOOL (*handler)(DWORD));
 #endif
 
+extern volatile td_bool td_initialized; // td_main.c
 extern td_bool tdp_shift_translate;
 
 td_ivec2 query_terminal_size(void);

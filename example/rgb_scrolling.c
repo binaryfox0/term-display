@@ -64,7 +64,7 @@ int main(int argc, char** argv)
         vertices[4 * 4 + 1] = bottom_pos.y;
         vertices[5 * 4 + 1] = bottom_pos.y;
         for(int i = 0; i < sizeof(vertices) / sizeof(float) / 4; i++)
-            tdr_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]));
+            tdr_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]), td_true);
         tdt_free(texture);
 
         tdr_render();

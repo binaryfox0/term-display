@@ -7,7 +7,7 @@
 
 #include "example_utils.h"
 
-float vertices[] = {
+static const float vertices[] = {
     -0.5f, -0.5f, -0.5f,
      0.5f, -0.5f, -0.5f,
      0.5f,  0.5f, -0.5f,
@@ -51,6 +51,12 @@ float vertices[] = {
     -0.5f, 0.5f, -0.5f
 };
 
+static const float vertex_colors[] = {
+    1.0f, 0.0f, 0.0f,
+    0.0f, 1.0f, 0.0f,
+    0.0f, 0.0f, 1.0f
+};
+
 vec3 cameraPos   = (vec3){0.0f, 0.0f,  3.0f};
 vec3 cameraFront = (vec3){0.0f, 0.0f, -1.0f};
 vec3 cameraUp    = (vec3){0.0f, 1.0f,  0.0f};
@@ -76,7 +82,6 @@ int main(int argc, char** argv)
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     double last_log = get_time();
     const double max_dt = 1.0 / maximum_fps;
-    tdr_vertex_attrib attribs[] = { TDRVA_POSITION_4D, TDRVA_COLOR_RGBA };
 
     tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
 
@@ -114,11 +119,11 @@ int main(int argc, char** argv)
         for (int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 3; i++)
         {
             float *dest = &out[i * 3];
-            vec4 transformed = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
-            
-            glm_mat4_mulv(mvp, transformed, transformed);  // Multiply by MVP matrix
+            vec4 vertex = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
+            glm_mat4_mulv(mvp, vertex, vertex);  // Multiply by MVP matrix
 
-            tdr_add_vertex(transformed, attribs, 2);
+            tdr_add_vertex(vertex, (tdr_vertex_attrib[1]){TDRVA_POSITION_4D}, 1, td_false);
+            tdr_add_vertex(vertex_colors + (i % 3) * 3, (tdr_vertex_attrib[1]){TDRVA_COLOR_RGB}, 1, td_true);
         }
 
         td_ivec2 display_size = {0};

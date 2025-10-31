@@ -46,7 +46,7 @@ td_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 }
 
 // Handle single-byte character input
-td_bool tdp_shift_translate = td_false;
+td_bool tdp_shift_translate = td_true;
 TD_INLINE td_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
 {
     switch (byte) {

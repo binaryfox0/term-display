@@ -53,8 +53,11 @@ td_texture *tdt_create(td_u8 *texture,
     if (!(out = (td_texture *) malloc(sizeof(td_texture))))
         return 0;
 
+    memset(out, 0, sizeof(*out));
+
     out->size = size;
     out->channel = channel;
+    out->freeable = freeable;
 
     if(!size.x || !size.y)
         return out;
@@ -81,7 +84,6 @@ td_texture *tdt_create(td_u8 *texture,
             memset(out->data, 0, alloc_size);
     } else {
         out->data = texture;
-        out->freeable = freeable;
     }
 
     return out;
@@ -306,13 +308,6 @@ void tdt_crop(td_texture *texture, const td_ivec2 new_size)
     texture->data = tmp;
     texture->size = new_size;
 }
-
-// void tdt_draw_line(td_texture *texture, const td_ivec2 p1,
-                    //    const td_ivec2 p2, const td_rgba color)
-// {
-    // ptexture_draw_line((td_framebuffer){texture->data, texture->channel, 0, texture->size},
-                    //    p1, p2, td_vec2_init(0.0f, 0.0f), color);
-// }
 
 void tdt_free(td_texture *texture)
 {

@@ -107,7 +107,7 @@ int tdp_renderer_init(const td_ivec2 term_size)
     tdp_query_background();
     tdp_clear_color = tdp_bg_color; // No color yet
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
-    if (!(tdp_display.fb = tdt_create(0, 3, td_ivec2_init(0, 0), 0, 0))) // Empty texture
+    if (!(tdp_display.fb = tdt_create(0, 3, td_ivec2_init(0, 0), 1, 0))) // Empty texture
         return 1;
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
     tdp_resize_handle(term_size);
@@ -121,6 +121,8 @@ void tdp_renderer_exit(void)
     fflush(stdout);             // Flush remaining data
     _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
     tdt_free(tdp_display.fb);
+    if(tdp_display.depth)
+        free(tdp_display.depth);
 }
 
 void tdr_set_clear_color(const td_rgba clear_color)
@@ -145,7 +147,7 @@ void tdr_bind_texture(const td_texture *tex)
     tdp_current_tex = tex;
 }
 
-void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attribs, const int attribs_count)
+void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize)
 {
     if(!attribs_count)
         return;
@@ -175,6 +177,12 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
             curr->color = td_rgba_init((td_u8)(vertex[0] * 255), (td_u8)(vertex[1] * 255), (td_u8)(vertex[2] * 255), (td_u8)(vertex[3] * 255));
             vertex += 4;
             break;
+
+        case TDRVA_COLOR_RGB:
+            curr->color = td_rgba_init((td_u8)(vertex[0] * 255), (td_u8)(vertex[1] * 255), (td_u8)(vertex[2] * 255), 255);
+            vertex += 3;
+            break;
+
         
         case TDRVA_UV_COORDS:
             curr->uv = td_vec2_init(vertex[0], vertex[1]);
@@ -182,7 +190,8 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
             break;
         }
     }
-    tdp_vertex_index++;
+    if(finalize)
+        tdp_vertex_index++;
     if(tdp_vertex_index == 3) {
         td_rasterize_triangle(tdp_display.fb, tdp_display.depth,
             tdp_vertex_buffer[0], tdp_vertex_buffer[1], tdp_vertex_buffer[2],
@@ -232,9 +241,9 @@ void tdr_render(void)
                 int tx = x, ty = y;
 
                 switch (rot) {
-                    case 1: /* 90° clockwise */      tx = y; ty = tdp_display.fb->size.y - 1 - x; break;
-                    case 2: /* 180° */               tx = tdp_display.fb->size.x - 1 - x; ty = tdp_display.fb->size.y - 1 - y; break;
-                    case 3: /* 270° clockwise */     tx = tdp_display.fb->size.x - 1 - y; ty = x; break;
+                    case 1: /* 90 deg clockwise */      tx = y; ty = tdp_display.fb->size.y - 1 - x; break;
+                    case 2: /* 180 deg */               tx = tdp_display.fb->size.x - 1 - x; ty = tdp_display.fb->size.y - 1 - y; break;
+                    case 3: /* 270 deg clockwise */     tx = tdp_display.fb->size.x - 1 - y; ty = x; break;
                     default:                         break;
                 }
 

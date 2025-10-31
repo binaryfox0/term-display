@@ -43,8 +43,6 @@ volatile td_bool internal_failure = 0;
 volatile td_bool __display_is_running = td_false,
     td_initialized = td_false;
 
-td_f32 *depth_buffer = 0;
-
 td_i32 tdp_options[__td_opt_numeric_end__] = {
     [td_opt_auto_resize] = 0,
     [td_opt_pixel_width] = 2,
@@ -59,13 +57,6 @@ td_i32 tdp_options[__td_opt_numeric_end__] = {
 td_f32 supersampling_buffer_ratio = 2.0f;
 
 extern td_display tdp_display;
-
-/* Global variable end */
-
-
-
-
-
 
 /* Utils function end */
 
@@ -137,6 +128,7 @@ TD_INLINE td_bool opt_get(td_bool get, void *option, void *value, size_t s) {
     (target) = *(type*)option
 
 #define td_opt_set(index, type) tdp_options[(index)] = (td_i32)(*(type*)option)
+#define tdp_ensure_initialized() if(!td_initialized) return td_true
 
 td_bool td_option(td_settings_t type, td_bool get, void *option) {
     switch (type) {
@@ -171,6 +163,7 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     case td_opt_display_pos: {
         OPT_GET(td_ivec2, tdp_display.pos);
         OPT_SET(td_ivec2, tdp_display.pos);
+        tdp_ensure_initialized();
         tdp_resize_handle(tdp_term_size);
         break;
     }
@@ -188,13 +181,15 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
             return 1;
         }
         tdp_options[type] = (td_i32)tmp;
-        if(td_initialized) tdt_set_channel(tdp_display.fb, new_channel);
+        tdp_ensure_initialized();
+        tdt_set_channel(tdp_display.fb, new_channel);
         break;
     }
 
     case td_opt_display_rotate: {
         OPT_GET(td_u8, tdp_options[type]);
         OPT_SET(td_u8, tdp_options[type]) % 4;
+        tdp_ensure_initialized();
         tdp_resize_handle(tdp_term_size);
         break;
     }
@@ -204,8 +199,8 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
         if((OPT_SET(td_u8, tdp_options[type]))){
             tdp_resize_depth_buffer();
         } else {
-            if(depth_buffer) free(depth_buffer);
-            depth_buffer = NULL;
+            if(tdp_display.depth) free(tdp_display.depth);
+            tdp_display.depth = NULL;
         }
         break;
     }

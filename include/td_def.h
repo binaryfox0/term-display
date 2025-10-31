@@ -235,7 +235,7 @@ TD_INLINE td_vec2 pos_to_ndc(td_ivec2 pos, td_ivec2 size)
 {
     td_vec2 ndc;
     ndc.x = (2.0f * (float)pos.x) / (float)(size.x - 1) - 1.0f;
-    ndc.y = 1.0f - (2.0f * (float)pos.y) / (float)(size.y - 1);
+    ndc.y = (2.0f * (float)pos.y) / (float)(size.y - 1) - 1.0f;
     return ndc;
 }
 
