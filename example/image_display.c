@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include "td_main.h"
 
 #include "example_utils.h"
@@ -30,13 +32,8 @@ char *get_program_name(char *in)
 #endif
 }
 
-int width = 0, height = 1;
-td_texture *original_image = 0, *displayed_image = 0;
-
-TD_INLINE td_bool is_landscape(td_ivec2 size)
-{
-    return size.x > size.y;
-}
+static td_texture *displayed_image = 0;
+static td_ivec2 imgsz = {0};
 
 td_ivec2 ratio_new_size(const td_ivec2 old, const td_ivec2 size)
 {
@@ -54,29 +51,9 @@ TD_INLINE td_bool vec2_larger(td_ivec2 vec1, td_ivec2 vec2)
 
 void resize_callback(td_ivec2 new_size)
 {
-    if (width)
-        width = new_size.x;
-    if (height)
-        height = new_size.y;
-
-    td_ivec2 tmp =
-        ratio_new_size(tdt_get_size(original_image),
-                       td_ivec2_init(width, height));
-    if (vec2_larger(tmp, new_size)) {
-        if (width) {
-            height = new_size.y;
-            width = 0;
-        }
-        else if (height) {
-            width = new_size.x;
-            height = 0;
-        }
-    }
-
-    if (displayed_image)
-        tdt_free(displayed_image);
-    displayed_image = tdt_copy(original_image);
-    tdt_resize(displayed_image, td_ivec2_init(width, height));
+    td_ivec2 tmp = ratio_new_size(imgsz, td_ivec2_init(new_size.x, 0));
+    if(vec2_larger(tmp, new_size))
+        tmp = ratio_new_size(imgsz, td_ivec2_init(0, new_size.y));
 
     // compute corners in NDC
     td_vec2 bottom_left  = pos_to_ndc(td_ivec2_init(0, tmp.y - 1), new_size);
@@ -107,7 +84,7 @@ void key_callback(int key, int mods, td_key_state_t state){
 char* program_name = 0;
 void display_image(const char* path)
 {
-    int channel;
+    int channel, width, height;
 
     stbi_set_flip_vertically_on_load(true);
     stbi_uc *tmp = stbi_load(path, &width, &height, &channel, 0);
@@ -116,23 +93,17 @@ void display_image(const char* path)
         return;
     }
 
-    original_image =
+    displayed_image =
         tdt_create(tmp, channel, td_ivec2_init(width, height), 1, 0);
-    if (!original_image) {
+    if (!displayed_image) {
         printf("Error: %s: Unable to load image file.\n", program_name);
         free(tmp);
         return;
     }
+    imgsz = td_ivec2_init(width, height);
 
     td_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
-
-    double ratio1 = (double)current_size.x / current_size.y;
-    double ratio2 = (double)width / height;
-    if(ratio1 > ratio2)
-        width = 0;
-    else 
-        height = 0;
 
     resize_callback(current_size);
     td_set_resize_callback(resize_callback);
@@ -164,8 +135,6 @@ void display_image(const char* path)
         }
     }
 
-    tdt_free(original_image);
-    original_image = 0;
     tdt_free(displayed_image);
     displayed_image = 0;
 }
