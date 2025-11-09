@@ -107,7 +107,7 @@ int tdp_renderer_init(const td_ivec2 term_size)
     tdp_query_background();
     tdp_clear_color = tdp_bg_color; // No color yet
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
-    if (!(tdp_display.fb = tdt_create(0, 3, td_ivec2_init(0, 0), 1, 0))) // Empty texture
+    if (!(tdp_display.fb = tdt_create(0, tdp_options[td_opt_display_type], td_ivec2_init(0, 0), 1, 0))) // Empty texture
         return 1;
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
     tdp_resize_handle(term_size);
