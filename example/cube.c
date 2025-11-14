@@ -67,12 +67,12 @@ void processInput(int key, int mods, td_key_state_t action);
 
 int main(int argc, char** argv)
 {
-    parse_argv(argc, argv, 0, 0);
+    example_params p = parse_argv(argc, argv, 0, 0, 0);
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
-    // td_ivec2 pos = td_ivec2_init(14, 10);
-    // td_option(td_opt_display_pos, 0, &pos);
+    use_params(p);
+
     td_u8 enable = 1;
     td_option(td_opt_depth_buffer, 0, &enable);
     td_option(td_opt_shift_translate, 0, &enable);
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
     td_ivec2 size = { 0 };
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     double last_log = get_time();
-    const double max_dt = 1.0 / maximum_fps;
+    const double max_dt = 1.0 / p.max_fps;
 
     tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
 

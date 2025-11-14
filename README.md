@@ -20,7 +20,7 @@ Minimal dependencies requirements make it ideal for small, experimental projects
 ## Requirements
 - A standard C/C++ 11 compiler
 - A terminal support ANSI escape sequence on Windows [¹](#compatibility) (**not tested yet**)  or POSIX-compliance OS
-- **Recommendation**: We recommend you using `alacritty` as it was the most optimized terminal I have ever used to test
+- **Recommendation**: We recommend you using `alacritty` as it the best terminal outperform in [noise](example/noise.c)
 
 ## Building
 1. Clone the repository and download [cmake](https://cmake.org/download/)
@@ -41,7 +41,7 @@ Currently known issues with `term-display`
  * **Bad Performance**:
    - Rendering complex or large pixel grids in the terminal using `term-display` can be slower compared to alternatives. It is especially worse on virtual environments such as `termux` on mobile, which isn't fully optimized.
    - Completely CPU dependent: means they almost can't leverage anything from GPU, which is heckin' fast.
- - **Low Resolution**: Terminal-based output is limited by the size, resolution of the terminal window.
+ - **Low Resolution**: Terminal-based output is limited by the size, resolution of the terminal window, unless you use alacritty.
 ### Compatibility
 - As we knew that Windows Terminal doesn't support ANSI escape code until [Windows version 10.0.10586](https://superuser.com/a/1300251). If you have a older Windows, consider using something like [ConEmu](https://conemu.github.io/) and add this piece to your code (i don't have a Windows 10 computer):
 

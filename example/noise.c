@@ -41,14 +41,16 @@ td_texture *generate_noise(td_ivec2 size)
 
 int main(int argc, char** argv)
 {
-    parse_argv(argc, argv, 0, 0);
+    example_params p = parse_argv(argc, argv, 0, 0, 0);
     td_u8 enable = 1;
     if (td_init() || start_logging("statics.txt"))
         return 1;
 
+    use_params(p);
+
     td_ivec2 size = { 0 };    // Temporary
     double delta_time = 1.0, last_log = get_time();
-    const double max_dt = 1.0 / maximum_fps;
+    const double max_dt = 1.0 / p.max_fps;
     while (td_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;

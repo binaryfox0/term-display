@@ -39,6 +39,11 @@ typedef enum tdr_vertex_attrib_e {
     TDRVA_UV_COORDS
 } tdr_vertex_attrib;
 
+/**
+ * @brief Clear the terminal screen, not framebuffer
+ */
+void tdr_clear_term(void);
+
 /** 
  * @brief Set clear color for tdr_clear_framebuffer
  *

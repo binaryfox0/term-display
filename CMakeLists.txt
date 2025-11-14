@@ -22,7 +22,7 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
         target_compile_options(term-display PRIVATE
             -Werror -Wall -Wextra -pedantic -Wcast-align
             -Wcast-qual -Wdisabled-optimization -Wformat=2
-            -Winit-self -Wlogical-op -Wmissing-include-dirs
+            -Winit-self -Wmissing-include-dirs
             -Wredundant-decls -Wshadow -Wundef -Wno-unused 
             -Wno-variadic-macros -Wno-parentheses 
             -fdiagnostics-show-option -Wconversion

@@ -50,7 +50,9 @@ TD_INLINE td_bool vec2_larger(td_ivec2 vec1, td_ivec2 vec2)
 }
 
 void resize_callback(td_ivec2 new_size)
-{
+{    
+    static const tdr_vertex_attrib attribs[] = {TDRVA_POSITION_2D, TDRVA_UV_COORDS };
+
     td_ivec2 tmp = ratio_new_size(imgsz, td_ivec2_init(new_size.x, 0));
     if(vec2_larger(tmp, new_size))
         tmp = ratio_new_size(imgsz, td_ivec2_init(0, new_size.y));
@@ -68,6 +70,13 @@ void resize_callback(td_ivec2 new_size)
     memcpy(vertices + 12, bottom_left.raw,  sizeof(float) * 2);  // v3
     memcpy(vertices + 16, top_right.raw,    sizeof(float) * 2);  // v4
     memcpy(vertices + 20, top_left.raw,     sizeof(float) * 2);  // v5
+
+    tdr_clear_framebuffer();
+    tdr_bind_texture(displayed_image);
+    for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 4; i++)
+        tdr_add_vertex(vertices + i * 4, attribs, 2, td_true);
+    tdr_render();
+    fflush(stdout);
 }
 
 td_bool stop = td_false;
@@ -102,27 +111,21 @@ void display_image(const char* path)
     }
     imgsz = td_ivec2_init(width, height);
 
+    tdr_clear_term();
+
     td_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
-
     resize_callback(current_size);
-    td_set_resize_callback(resize_callback);
-    td_set_key_callback(key_callback);
 
     td_set_running_state(td_true);
+
     stop = false;
     double delta_time = 1.0, last_log = get_time();
-    tdr_vertex_attrib attribs[] = {TDRVA_POSITION_2D, TDRVA_UV_COORDS };
     while (td_is_running() && !stop) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 
         td_poll_events();
-        tdr_clear_framebuffer();
-        tdr_bind_texture(displayed_image);
-        for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 4; i++)
-            tdr_add_vertex(vertices + i * 4, attribs, 2, td_true);
-        tdr_render();
 
         delta_time = get_time() - start_frame;
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -142,9 +145,10 @@ void display_image(const char* path)
 int main(int argc, char **argv)
 {
     char** images = 0;
-    aparse_arg* main_args = parse_argv(argc, argv, (aparse_arg[]){
+    aparse_arg* main_args = 0;
+    example_params p = parse_argv(argc, argv, (aparse_arg[]){
         aparse_arg_array("images", &images, 0, APARSE_ARG_TYPE_STRING, 0, "Images to be displayed")
-    }, 1);
+    }, 1, &main_args);
 
     int images_count = main_args[0].size;
     free(main_args);
@@ -153,7 +157,11 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    use_params(p);
+
     tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
+    td_set_resize_callback(resize_callback);
+    td_set_key_callback(key_callback);
     for(int i = 0; i < images_count && images && !force_stop; i++)
         display_image(images[i]);
     if(images)

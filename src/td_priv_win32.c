@@ -34,9 +34,9 @@ SOFTWARE.
 
 HANDLE h_in = 0, h_out = 0;
 DWORD old_in_mode = 0, old_out_mode = 0;
-BOOL (*handle)(DWORD) = 0;
+tdp_sighand handle = 0;
 
-td_bool setup_env(BOOL (*handler)(DWORD))
+td_bool tdp_setup_env(const tdp_sighand handler)
 {
     if ((h_in = GetStdHandle(STD_INPUT_HANDLE)) == INVALID_HANDLE_VALUE)
         return 1;
@@ -55,10 +55,10 @@ td_bool setup_env(BOOL (*handler)(DWORD))
         (h_out, old_out_mode & ENABLE_VIRTUAL_TERMINAL_PROCESSING))
         return 1;
     handle = handler;
-    return enable_stop_sig();
+    return tdp_enable_stop_sig(td_true);
 }
 
-td_ivec2 query_terminal_size()
+td_ivec2 tdp_get_termsz(void)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
@@ -66,29 +66,25 @@ td_ivec2 query_terminal_size()
     return td_ivec2_init(0, 0);
 }
 
-td_bool restore_env()
+td_bool tdp_restore_env(void)
 {
     return SetConsoleMode(h_in, old_in_mode)
         || SetConsoleMode(h_out, old_out_mode)
         || SetConsoleCtrlHandler(NULL, FALSE);
 }
 
-td_bool timeout(int ms)
+td_bool tdp_stdin_ready(const int ms)
 {
     return WaitForSingleObject(h_in, ms) == WAIT_OBJECT_0;
 }
 
-int available()
+int tdp_stdin_available(void)
 {
     DWORD out = 0;
     PeekNamedPipe(h_in, 0, 0, 0, &out, 0);
     return (int) out;
 }
 
-td_bool disable_stop_sig() {
-    return !SetConsoleCtrlHandler(NULL, TRUE);
-}
-
-td_bool enable_stop_sig() {
-    return !SetConsoleCtrlHandler(handle, TRUE);
+td_bool tdp_enable_stop_sig(const td_bool enable) {
+    return !SetConsoleCtrlHandler(enable ? handle : NULL, TRUE);
 }

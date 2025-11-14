@@ -175,10 +175,10 @@ TD_INLINE td_bool handle_special_key(int *ch)
 #define BUFFER_SIZE 12
 void kbpoll_events(key_callback_func func)
 {
-    if (!timeout(0))
+    if (!tdp_stdin_ready(0))
         return;
     int ch = 0, mods = 0, bytes = 0;
-    if ((bytes = available()) < 1)
+    if ((bytes = tdp_stdin_available()) < 1)
         return;
 
     char buf[BUFFER_SIZE] = { 0 };

@@ -1,12 +1,12 @@
-#ifndef TEST_UTILITIES_H
-#define TEST_UTILITIES_H
+#ifndef EXAMPLE_UTILITIES_H
+#define EXAMPLE_UTILITIES_H
 
 #include "td_def.h"
 #include "aparse.h"
 
-#define TESTS_LOGGING
+#define EXAMPLE_LOGGING
 
-#ifdef TESTS_LOGGING
+#ifdef EXAMPLE_LOGGING
 td_bool start_logging(const char *filename);
 void write_log(const char *format, ...);
 td_bool stop_logging();
@@ -18,10 +18,23 @@ td_bool stop_logging();
 
 #define LOG_INTERVAL 0.1 // In seconds
 
+typedef struct example_params {
+    td_bool auto_resize;
+    td_u8 px_w, px_h;
+    int display_type;
+    td_u8 display_orientation;
+    td_u32 max_fps;
+} example_params;
+
 double get_time();
 char *to_string(const char *format, ...);
 char *to_timestamp(double time);
 
-extern int maximum_fps;
-aparse_arg* parse_argv(const int argc, char** argv, aparse_arg* custom_args, int args_count);
+example_params parse_argv(
+    const int argc, char** argv,
+    aparse_arg* custom_args, int args_count, aparse_arg** merged_args
+);
+
+void use_params(example_params p);
+
 #endif

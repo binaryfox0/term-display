@@ -20,19 +20,11 @@ static td_rgba tdp_clear_color = {0};
 
 extern td_i32 tdp_options[__td_opt_numeric_end__];
 
-void tdp_clear_screen(void) {
-    printf("\x1b[0m"            // Reset colors mode
-        "\x1b[3J"            // Clear saved line (scrollbuffer)
-        "\x1b[H"             // To position 0,0
-        "\x1b[2J"            // Clear entire screen
-    );
-}
-
 TD_INLINE void tdp_query_background(void)
 {
     static const char *request = "\x1b]11;?\x1b\\";
     _pwrite(STDOUT_FILENO, request, strlen(request));
-    if (!timeout(1))
+    if (!tdp_stdin_ready(4))
         return;
     char buffer[32] = { 0 };
     if (_pread(STDIN_FILENO, buffer, 32) == -1)
@@ -98,7 +90,7 @@ void tdp_resize_handle(const td_ivec2 term_size)
     if (tdt_resize_internal(tdp_display.fb, new_size))
         return;                 // Uhhhh, how to continue processing without the tdp_display
     tdt_fill(tdp_display.fb, tdp_clear_color);
-    tdp_clear_screen();
+    tdr_clear_term();
     tdp_resize_depth_buffer();
 }
 
@@ -106,8 +98,7 @@ int tdp_renderer_init(const td_ivec2 term_size)
 {
     tdp_query_background();
     tdp_clear_color = tdp_bg_color; // No color yet
-    _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
-    if (!(tdp_display.fb = tdt_create(0, tdp_options[td_opt_display_type], td_ivec2_init(0, 0), 1, 0))) // Empty texture
+    if (!(tdp_display.fb = tdt_create(0, 3, td_ivec2_init(0, 0), 1, 0))) // Empty texture
         return 1;
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
     tdp_resize_handle(term_size);
@@ -123,6 +114,17 @@ void tdp_renderer_exit(void)
     tdt_free(tdp_display.fb);
     if(tdp_display.depth)
         free(tdp_display.depth);
+}
+
+void tdr_clear_term(void) {
+    fflush(stdout);
+    _pwrite(STDOUT_FILENO, 
+        "\x1b[0m"                       // Reset colors mode
+        "\x1b[3J"                       // Clear saved line (scrollbuffer)
+        "\x1b[H"                        // To position 0,0
+        "\x1b[2J",                      // Clear entire screen
+        16
+    );
 }
 
 void tdr_set_clear_color(const td_rgba clear_color)

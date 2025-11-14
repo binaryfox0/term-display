@@ -19,6 +19,9 @@
 #define _pread _read
 #define _pwrite _write
 #define _pisatty _isatty
+
+typedef BOOL (*tdp_sighand)(DWORD);
+
 #endif
 
 #ifdef TD_PLATFORM_UNIX
@@ -29,6 +32,8 @@
 #define _pread read
 #define _pwrite write
 #define _pisatty isatty
+
+typedef void (*tdp_sighand)(int);
 #endif
 
 #define min(x, y) (((x) < (y)) ? (x) : (y))
@@ -76,26 +81,21 @@ TD_INLINE td_u8 to_grayscale(const td_u8 *c){
 int tdp_renderer_init(const td_ivec2 term_size);
 void tdp_renderer_exit(void);
 void tdp_resize_handle(const td_ivec2 term_size);
-void tdp_clear_screen(void);
 void tdp_resize_depth_buffer(void);
 
-#ifdef TD_PLATFORM_UNIX
-td_bool setup_env(void (*handler)(int));
-#else
-td_bool setup_env(BOOL (*handler)(DWORD));
-#endif
-
 extern volatile td_bool td_initialized; // td_main.c
-extern td_bool tdp_shift_translate;
+extern td_bool tdp_shift_translate; //td_priv.c
 
-td_ivec2 query_terminal_size(void);
-td_bool restore_env(void);
-void kbpoll_events(key_callback_func func);
-td_bool timeout(int ms);
-int available(void);
+// Platform-dependent
+td_ivec2 tdp_get_termsz(void);
+td_bool tdp_setup_env(const tdp_sighand handler);
+void tdp_restore_env(void);
+td_bool tdp_stdin_ready(const int ms);
+int tdp_stdin_available(void);
+td_bool tdp_enable_stop_sig(const td_bool enable);
 
-td_bool disable_stop_sig(void);
-td_bool enable_stop_sig(void);
+// Platform-independent
+void tdp_kbpoll(const key_callback_func func);
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)

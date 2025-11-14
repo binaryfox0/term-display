@@ -33,7 +33,7 @@ double get_time()
 }
 #endif
 
-#ifdef TESTS_LOGGING
+#ifdef EXAMPLE_LOGGING
 double program_start = 0;
 FILE *file = 0;
 td_bool start_logging(const char *filename)
@@ -108,20 +108,26 @@ char *to_timestamp(double time)
                      (td_u32) (time * 1000000) % 1000000);
 }
 
-int maximum_fps = 60;
-aparse_arg* parse_argv(const int argc, char** argv, aparse_arg* custom_args, int args_count)
+
+example_params parse_argv(
+    const int argc, char** argv, 
+    aparse_arg* custom_args, int args_count, aparse_arg** merged_args
+)
 {
-    bool auto_resize = false;
-    int 
-        pixel_width = 0, pixel_height = 0,
-        display_type = td_display_truecolor, display_rotate = 0;
+    example_params p = {
+        td_false,
+        2, 1,
+        td_display_truecolor,
+        0,
+        60
+    };
     const aparse_arg example_args[] = {
-        aparse_arg_option(0, "--auto-resize", &auto_resize, sizeof(auto_resize), APARSE_ARG_TYPE_BOOL, "Automatic resizing the display"),
-        aparse_arg_option(0, "--pixel-width", &pixel_width, sizeof(pixel_width), APARSE_ARG_TYPE_UNSIGNED, "Pixel width of display in terminal cells"),
-        aparse_arg_option(0, "--pixel-height", &pixel_height, sizeof(pixel_height), APARSE_ARG_TYPE_UNSIGNED, "Pixel height of display in terminal cells"),
-        aparse_arg_option(0, "--display-type", &display_type, sizeof(display_type), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
-        aparse_arg_option(0, "--display-rotate", &display_rotate, sizeof(display_rotate), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
-        aparse_arg_option(0, "--maximum-fps", &maximum_fps, sizeof(maximum_fps), APARSE_ARG_TYPE_UNSIGNED, "Maximum Frame-per-Second of display"),
+        aparse_arg_option(0, "--auto-resize", &p.auto_resize, sizeof(p.auto_resize), APARSE_ARG_TYPE_BOOL, "Automatic resizing the display"),
+        aparse_arg_option(0, "--pixel-width", &p.px_w, sizeof(p.px_w), APARSE_ARG_TYPE_UNSIGNED, "Pixel width of display in terminal cells"),
+        aparse_arg_option(0, "--pixel-height", &p.px_h, sizeof(p.px_h), APARSE_ARG_TYPE_UNSIGNED, "Pixel height of display in terminal cells"),
+        aparse_arg_option(0, "--display-type", &p.display_type, sizeof(p.display_type), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
+        aparse_arg_option(0, "--display-rotate", &p.display_orientation, sizeof(p.display_orientation), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
+        aparse_arg_option(0, "--maximum-fps", &p.max_fps, sizeof(p.max_fps), APARSE_ARG_TYPE_UNSIGNED, "Maximum Frame-per-Second of display"),
         aparse_arg_end_marker
     };
     int example_args_size = (sizeof(example_args) / sizeof(example_args[0])); // Exclude the end marker
@@ -130,18 +136,31 @@ aparse_arg* parse_argv(const int argc, char** argv, aparse_arg* custom_args, int
     memcpy(main_args, custom_args, args_count * sizeof(aparse_arg));
     memcpy(main_args + args_count, example_args, example_args_size * sizeof(aparse_arg));
     
-    aparse_parse(argc, argv, main_args, "Example program of term-display library");
-
-    td_option(td_opt_auto_resize, 0, &auto_resize);
-    td_option(td_opt_pixel_width, 0, &pixel_width);
-    td_option(td_opt_pixel_height, 0, &pixel_height);
-    td_option(td_opt_display_type, 0, &display_type);
-    td_option(td_opt_display_rotate, 0, &display_rotate);
-
-    if(args_count == 0) {
+    if(aparse_parse(argc, argv, main_args, "Example program of term-display library") == APARSE_STATUS_FAILURE) {
         free(main_args);
-        return 0;
-    } else {
-        return main_args;
+        exit(EXIT_FAILURE);
     }
+
+    if(p.max_fps == 0) {
+        aparse_prog_error("invalid max fps was specified");
+        aparse_prog_info("this can make this example unable to exit");
+        free(main_args);
+        exit(EXIT_FAILURE);
+    }
+
+    if(!merged_args)
+        free(main_args);
+    else
+        *merged_args = main_args;
+
+    return p;
+}
+
+void use_params(example_params p)
+{
+    td_option(td_opt_auto_resize, td_false, &p.auto_resize);
+    td_option(td_opt_pixel_width, td_false, &p.px_w);
+    td_option(td_opt_pixel_height, td_false, &p.px_h);
+    td_option(td_opt_display_type, td_false, &p.display_type);
+    td_option(td_opt_display_rotate, 0, &p.display_orientation);
 }

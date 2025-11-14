@@ -102,12 +102,14 @@ static const td_u8 texture_atlas[ATLAS_SIZE][2] = {
     TDF_COMPRESS(1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1),    // Letter X
     TDF_COMPRESS(1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0),    // Letter Y
     TDF_COMPRESS(1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1),    // Letter Z
+    
     TDF_COMPRESS(1, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 0),    // Left square bracket
     TDF_COMPRESS(1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1),    // Backslash
     TDF_COMPRESS(0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1),    // Right square bracket
     TDF_COMPRESS(0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Caret
     TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1),    // Underscore 
     TDF_COMPRESS(1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Grave accent
+    
     TDF_COMPRESS(0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1),    // Left curly brace
     TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0),    // Vertical bar
     TDF_COMPRESS(1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0),    // Right curly brace
@@ -183,8 +185,11 @@ td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // L
 
 TD_INLINE td_i8 mapped_ch(td_i8 ch)
 {
-    if (ch >= 'a')
+    // Uppercase only
+    if (IN_RANGE(ch, 'a', 'z'))
         return ch - 'a' + 'A';  // To uppercase (how this font mapped)
+    if (ch > '`')
+        return ch - '{' + 'a';
     return ch;
 }
 

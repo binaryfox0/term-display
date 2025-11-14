@@ -29,14 +29,16 @@ TD_INLINE td_rgb calculate_rgb(double d)
 
 int main(int argc, char** argv)
 {
-    parse_argv(argc, argv, 0, 0);
+    example_params p = parse_argv(argc, argv, 0, 0, 0);
     if (td_init() || start_logging("statics.txt"))
-        return 1;
+        return 1; 
+    
+    use_params(p);
 
     td_ivec2 size = { 0 };
     double speed = 0.01, elapsed = 0.0;
     double delta_time = 0.0, last_log = get_time();
-    const double max_dt = 1.0 / maximum_fps;
+    const double max_dt = 1.0 / p.max_fps;
     tdr_vertex_attrib attribs[] = { TDRVA_POSITION_2D, TDRVA_UV_COORDS};
     while (td_is_running()) {
         double start_frame = get_time();

@@ -75,8 +75,8 @@ const char *td_copyright_notice(void)
 }
 
 
-#if defined(TERMINAL_WINDOWS)
-BOOL stop_display(DWORD ctrl_type)
+#if defined(TD_PLATFORM_WINDOWS)
+BOOL tdp_stop_handle(DWORD ctrl_type)
 {
     switch(ctrl_type)
     {
@@ -90,7 +90,7 @@ BOOL stop_display(DWORD ctrl_type)
     return FALSE;
 }
 #else
-void stop_display(int signal)
+void tdp_stop_handle(int signal)
 {
     (void) signal;
     __display_is_running = td_false;
@@ -102,10 +102,10 @@ td_bool td_init(void)
     if(td_initialized) return td_true;
     if (!_pisatty(STDOUT_FILENO)) // Need stdout
         return 1;
-    if (setup_env(stop_display))
+    if (tdp_setup_env(tdp_stop_handle) == td_false)
         return 1;
     
-    tdp_term_size = tdp_prev_size = query_terminal_size();      // Disable calling callback on the first time
+    tdp_term_size = tdp_prev_size = tdp_get_termsz();      // Disable calling callback on the first time
     if(tdp_renderer_init(tdp_term_size))
         return 1;
     __display_is_running = td_true;
@@ -128,9 +128,10 @@ TD_INLINE td_bool opt_get(td_bool get, void *option, void *value, size_t s) {
     (target) = *(type*)option
 
 #define td_opt_set(index, type) tdp_options[(index)] = (td_i32)(*(type*)option)
-#define tdp_ensure_initialized() if(!td_initialized) return td_true
 
 td_bool td_option(td_settings_t type, td_bool get, void *option) {
+    if(!td_initialized)
+        return td_false;
     switch (type) {
     case td_opt_auto_resize: {
         OPT_GET(td_u8, tdp_options[type]);
@@ -156,14 +157,13 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
         if ((internal_failure = tdt_resize_internal(tdp_display.fb, tmp)))
             return 1;
         tdt_fill(tdp_display.fb, clear_color);
-        tdp_clear_screen();
+        tdr_clear_term();
         break;
     }
 
     case td_opt_display_pos: {
         OPT_GET(td_ivec2, tdp_display.pos);
         OPT_SET(td_ivec2, tdp_display.pos);
-        tdp_ensure_initialized();
         tdp_resize_handle(tdp_term_size);
         break;
     }
@@ -181,7 +181,6 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
             return 1;
         }
         tdp_options[type] = (td_i32)tmp;
-        tdp_ensure_initialized();
         tdt_set_channel(tdp_display.fb, new_channel);
         break;
     }
@@ -189,7 +188,6 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     case td_opt_display_rotate: {
         OPT_GET(td_u8, tdp_options[type]);
         OPT_SET(td_u8, tdp_options[type]) % 4;
-        tdp_ensure_initialized();
         tdp_resize_handle(tdp_term_size);
         break;
     }
@@ -208,7 +206,7 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     case td_opt_disable_stop_sig:
     {
         td_bool tmp = *(td_bool*)option;
-        if((tmp ? disable_stop_sig() : enable_stop_sig()))
+        if(tdp_enable_stop_sig(!tmp) == td_false)
             return 1;
         tdp_options[type] = (td_i32)tmp;
         break;
@@ -233,10 +231,10 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     }
 
     default:
-        return 1;
+        return td_false;
     }
 
-    return 0;
+    return td_true;
 }
 
 
@@ -250,13 +248,13 @@ __handler_helper(key)
 __handler_helper(resize)
 void td_poll_events(void)
 {
-    kbpoll_events(private_key_callback);
-    if (!ivec2_equal((tdp_term_size = query_terminal_size()), tdp_prev_size)) {
+    tdp_kbpoll(private_key_callback);
+    if (!ivec2_equal((tdp_term_size = tdp_get_termsz()), tdp_prev_size)) {
         if (tdp_options[td_opt_auto_resize]) {
             tdp_resize_handle(tdp_term_size);
             if(private_resize_callback) private_resize_callback(tdp_display.fb->size);
         } else
-            tdp_clear_screen();
+            tdr_clear_term();
         tdp_prev_size = tdp_term_size;
     }
 }
@@ -265,6 +263,6 @@ void td_free(void)
 {
     if(!td_initialized) return;
     tdp_renderer_exit();
-    restore_env();
+    tdp_restore_env();
     td_initialized = td_false;
 }
