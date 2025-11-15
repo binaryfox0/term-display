@@ -200,8 +200,8 @@ td_texture *tdf_char_texture(td_i8 ch, td_rgba fg, td_rgba bg)
         ch = LOWER_LIMIT;       // Space (nothing)
     const td_u8 *ch_template = texture_atlas[ch - LOWER_LIMIT];
     td_texture *out =
-        tdt_create(0, 4, td_ivec2_init(CHAR_WIDTH, CHAR_HEIGHT), 0, 0);
-    td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
+        tdt_create(0, 4, (td_ivec2){.x = CHAR_WIDTH, .y = CHAR_HEIGHT}, 0, 0);
+    td_u8 *raw = tdt_get_location((td_ivec2){0}, out);
     td_u8 a[4] = TD_EXPAND_RGBA(fg), b[4] = TD_EXPAND_RGBA(bg);
     for (td_u8 i = 0; i < CHAR_PIXEL; i++) {
         td_bool is_pix = ch_template[i / 8] & (1 << (i % 8));
@@ -248,7 +248,7 @@ td_texture *tdf_string_texture(const td_i8 *str, td_u32 len,
             td_texture *ch_texture =
                 tdf_char_texture(str[current_index + col], fg, bg);
             td_u32 start_x = col * (CHAR_WIDTH + 1);
-            tdt_merge(out, ch_texture, td_ivec2_init((int)start_x, (int)start_y),
+            tdt_merge(out, ch_texture, (td_ivec2){.x=(int)start_x, .y=(int)start_y},
                           TDT_MERGE_CROP, 1);
             tdt_free(ch_texture);
         }

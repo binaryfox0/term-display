@@ -71,8 +71,8 @@ td_ivec2 tdp_get_termsz(void)
 {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
-        return td_ivec2_init(ws.ws_col, ws.ws_row);
-    return td_ivec2_init(0, 0);
+        return (td_ivec2){.x=ws.ws_col, .y=ws.ws_row};
+    return (td_ivec2){0};
 }
 
 void tdp_restore_env(void)

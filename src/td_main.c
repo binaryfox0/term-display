@@ -152,7 +152,7 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     case td_opt_display_size: {
         OPT_GET(td_ivec2, tdp_display.fb->size);
         td_ivec2 tmp = *(td_ivec2*)option;
-        if(td_ivec2_is_zero(tmp)) return td_true;
+        if(!tmp.x || !tmp.y) return td_true;
         if(!td_initialized) return td_false;
         if ((internal_failure = tdt_resize_internal(tdp_display.fb, tmp)))
             return 1;
@@ -249,7 +249,8 @@ __handler_helper(resize)
 void td_poll_events(void)
 {
     tdp_kbpoll(private_key_callback);
-    if (!ivec2_equal((tdp_term_size = tdp_get_termsz()), tdp_prev_size)) {
+    tdp_term_size = tdp_get_termsz();;
+    if (tdp_prev_size.x != tdp_term_size.x || tdp_prev_size.y != tdp_term_size.y) {
         if (tdp_options[td_opt_auto_resize]) {
             tdp_resize_handle(tdp_term_size);
             if(private_resize_callback) private_resize_callback(tdp_display.fb->size);

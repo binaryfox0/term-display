@@ -5,9 +5,9 @@
 #include <string.h>
 
 #define _getch(ch) if (((ch) = getchar()) == EOF) return
-#define getch_chk(val) if (getchar() != val) return
+#define raise_hand(hand, ...) if((hand)) (hand)(__VA_ARGS__)
 
-td_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
+td_bool key_shift_translate(const td_i32 byte, int* ch, int* mods)
 {
     switch(byte)
     {
@@ -47,7 +47,7 @@ td_bool key_shift_translate(const td_i8 byte, int* ch, int* mods)
 
 // Handle single-byte character input
 td_bool tdp_shift_translate = td_true;
-TD_INLINE td_bool handle_single_byte(const td_i8 byte, int *ch, int *mods)
+TD_INLINE td_bool handle_single_byte(const td_i32 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
@@ -172,15 +172,98 @@ TD_INLINE td_bool handle_special_key(int *ch)
     return 0;
 }
 
+#define BUF_SIZE 16  // physical buffer size
+typedef struct {
+    char buffer[BUF_SIZE];        // physical storage
+    int start_idx;          // logical index of buffer[0]
+    int count;              // number of valid elements in buffer
+} tdp_ringbuf;
+
+static int tdp_kbbyte_available = 0;
+// Access by logical index
+int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
+    // If buffer empty, fill first chunk
+    if (rb->count == 0) {
+        int n = (int)read(STDIN_FILENO, rb->buffer, min((size_t)tdp_kbbyte_available, BUF_SIZE));
+        if (n == 0) return -1;  // no data
+        
+        rb->start_idx = index;
+        rb->count = n;
+        tdp_kbbyte_available -= n;
+
+        return rb->buffer[0];
+    }
+
+    int end_idx = rb->start_idx + rb->count - 1;
+
+    if (index < rb->start_idx) return -1; // too old
+
+    // If index beyond current buffer, refill
+    while (index > end_idx) {
+        char tmp[BUF_SIZE];
+
+        int n = (int)read(STDIN_FILENO, tmp, min((size_t)tdp_kbbyte_available, BUF_SIZE));
+        if (n == 0) return -1;  // no more data
+
+        // Copy into circular buffer
+        for (int i = 0; i < n; i++) {
+            int pos = (rb->start_idx + rb->count + i) % BUF_SIZE;
+            rb->buffer[pos] = tmp[i];
+        }
+
+        // Update count and start_idx if buffer exceeded
+        if (rb->count + n > BUF_SIZE) {
+            rb->start_idx += (rb->count + n - BUF_SIZE);
+            rb->count = BUF_SIZE;
+        } else {
+            rb->count += n;
+        }
+
+        end_idx = rb->start_idx + rb->count - 1;
+        tdp_kbbyte_available -= n;
+    }
+
+    int phys = index % BUF_SIZE;
+    return rb->buffer[phys];
+}
+
 #define BUFFER_SIZE 12
-void kbpoll_events(key_callback_func func)
+void tdp_kbpoll(key_callback_func func)
 {
     if (!tdp_stdin_ready(0))
         return;
-    int ch = 0, mods = 0, bytes = 0;
-    if ((bytes = tdp_stdin_available()) < 1)
+    if ((tdp_kbbyte_available = tdp_stdin_available()) < 1)
         return;
 
+    tdp_ringbuf rb = {0};
+    int idx = 0;
+    for(;;)
+    {
+        int ch = 0, mods = 0;
+        int b0 = tdp_rbuf_get(&rb, idx + 0);
+        if(b0 == -1) break;
+        if(b0 != 0x1B) {
+            idx++;
+            if(handle_single_byte(b0, &ch, &mods))
+                continue;
+            raise_hand(func, ch, mods, td_key_press);
+            continue;
+        }
+
+        int b1 = tdp_rbuf_get(&rb, idx + 1);
+        if(b1 == -1) break;
+        if(b1 != '[' && b1 != '0')
+        {
+            idx += 2;
+            mods |= td_key_alt;
+            if(handle_single_byte(b1, &ch, &mods))
+                continue;
+            raise_hand(func, ch, mods, td_key_press);
+            continue;
+        }
+    }
+
+    /*
     char buf[BUFFER_SIZE] = { 0 };
     if (read(STDIN_FILENO, buf, (size_t)(bytes < BUFFER_SIZE ? bytes : BUFFER_SIZE))
         == -1)
@@ -252,6 +335,7 @@ void kbpoll_events(key_callback_func func)
     }
     if(func)
         func(ch, mods, td_key_press);
+    */
 }
 
 

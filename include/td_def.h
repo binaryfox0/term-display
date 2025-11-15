@@ -153,36 +153,6 @@ typedef union {
     td_u8 raw[4]; ///< Raw access to RGBA bytes
 } td_rgba;
 
-/**
- * @brief Creates a td_rgba struct from individual values.
- */
-__td_priv_create_constructor(td_rgba_init, td_rgba, r, g, b, a)
-
-/**
- * @brief Creates a td_rgb struct from individual values.
- */
-__td_priv_create_constructor(td_rgb_init, td_rgb, r, g, b)
-
-/**
- * @brief Converts a td_rgb color to td_rgba with alpha set to 255.
- * @param c The td_rgb color to convert.
- * @return td_rgba equivalent.
- */
-TD_INLINE td_rgba to_rgba(const td_rgb c)
-{
-    return (td_rgba){ .r = c.r, .g = c.g, .b = c.b, .a = 255 };
-}
-
-/**
- * @brief Converts a td_rgba color to td_rgb, dropping the alpha.
- * @param c The td_rgba color to convert.
- * @return td_rgb equivalent.
- */
-TD_INLINE td_rgb to_rgb(const td_rgba c)
-{
-    return (td_rgb){ .r = c.r, .g = c.g, .b = c.b };
-}
-
 typedef struct {
     int x, y;
 } td_ivec2;
@@ -206,37 +176,20 @@ typedef struct {
     td_u32 left, top, right, bottom;
 } td_rect;
 
-__td_priv_create_constructor(td_ivec2_init, td_ivec2, x, y)
-__td_priv_create_constructor(td_vec2_init, td_vec2, x, y)
-
-#define td_ivec2_expand(v) (v).x, (v).y
-
-TD_INLINE td_bool td_ivec2_is_zero(const td_ivec2 v) {
-    return v.x == 0 || v.y == 0;
-}
-
-TD_INLINE td_ivec2 td_ivec2_subtract(const td_ivec2 a, const td_ivec2 b) {
-    return td_ivec2_init(a.x - b.x, a.y - b.y);
-}
-
-TD_INLINE td_u8 ivec2_equal(const td_ivec2 a, const td_ivec2 b)
-{
-    return a.x == b.x && a.y == b.y;
-}
-
 TD_INLINE td_ivec2 ndc_to_pos(td_vec2 pos, td_ivec2 size)
 {
-    return td_ivec2_init((td_i32) ((pos.x + 1.0) * 0.5f * size.x),
-                      (td_i32) ((1.0 - pos.y) * 0.5f * size.y)
-        );
+    return (td_ivec2) {
+        .x = (td_i32) ((pos.x + 1.0) * 0.5f * size.x),
+        .y = (td_i32) ((1.0 - pos.y) * 0.5f * size.y)
+    };
 }
 
 TD_INLINE td_vec2 pos_to_ndc(td_ivec2 pos, td_ivec2 size)
 {
-    td_vec2 ndc;
-    ndc.x = 2.0f * (float)pos.x / (float)(size.x - 1) - 1.0f;
-    ndc.y = 1.0f - 2.0f * (float)pos.y / (float)(size.y - 1); // flip Y
-    return ndc;
+    return (td_vec2){
+        .x = 2.0f * (float)pos.x / (float)(size.x - 1) - 1.0f,
+        .y = 1.0f - 2.0f * (float)pos.y / (float)(size.y - 1)
+    };
 }
 
 #endif // TD_DEFINITION_H

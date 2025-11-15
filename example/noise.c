@@ -16,7 +16,7 @@ const td_u8 desired_channel = 3;
 td_texture *generate_noise(td_ivec2 size)
 {
     td_texture *out = tdt_create(0, desired_channel, size, 0, 0);
-    td_u8 *raw = tdt_get_location(td_ivec2_init(0, 0), out);
+    td_u8 *raw = tdt_get_location((td_ivec2){0}, out);
     td_u64 byte = size.x * size.y * desired_channel;
 #ifdef TD_PLATFORM_WINDOWS
     if (BCryptGenRandom(0, raw, byte, BCRYPT_USE_SYSTEM_PREFERED_RNG)) {
@@ -59,14 +59,14 @@ int main(int argc, char** argv)
 
         td_option(td_opt_display_size, 1, &size);
         td_texture *noise = generate_noise(size);
-        tdr_copy_texture(noise, td_ivec2_init(0, 0));
+        tdr_copy_texture(noise, (td_ivec2){0});
         tdt_free(noise);
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                td_rgba_init(0, 0, 0, 255), td_rgba_init(255, 255, 255, 255));
-        tdr_copy_texture(texture, td_ivec2_init(0, 0));
+                                (td_rgba){.a=255}, (td_rgba){255, 255, 255, 255});
+        tdr_copy_texture(texture, (td_ivec2){0});
         tdt_free(texture);
 
         tdr_render();

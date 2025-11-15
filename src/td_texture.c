@@ -62,7 +62,7 @@ td_texture *tdt_create(td_u8 *texture,
     if(!size.x || !size.y)
         return out;
 
-    td_u64 alloc_size = calculate_pos(0, size.y, size.x, channel);
+    td_u64 alloc_size = calculate_pos((td_ivec2){.y=size.y}, size.x, channel);
 
     if (!texture || copy) {
         out->data = (td_u8 *) malloc(alloc_size);
@@ -94,7 +94,7 @@ td_texture *tdt_copy(td_texture *texture)
     td_texture *out = 0;
     if (!(out = (td_texture *) malloc(sizeof(td_texture))))
         return 0;
-    td_u64 size = calculate_size(texture->size.x, texture->size.y, texture->channel);
+    td_u64 size = calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.y, texture->channel);
     if (!(out->data = (td_u8 *) malloc(size))) {
         free(out);
         return 0;
@@ -117,7 +117,7 @@ td_u8 *tdt_get_location(const td_ivec2 pos, const td_texture *texture)
 td_ivec2 tdt_get_size(const td_texture *texture)
 {
     if (!texture)
-        return td_ivec2_init(0, 0);
+        return (td_ivec2){0};
     return texture->size;
 }
 
@@ -138,15 +138,15 @@ void tdt_fill(const td_texture *texture, const td_rgba color)
         }
         return;
     }
-    fill_buffer(data, c, calculate_size(size.x, size.y, ch), ch);
+    fill_buffer(data, c, calculate_pos((td_ivec2){.y=size.y}, size.x, ch), ch);
 }
 
 void tdt_set_channel(td_texture* texture, td_u8 channel)
 {
-    td_u64 pix_count = calculate_size(texture->size.x, texture->size.y, 1);
+    td_u64 pix_count = calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, 1);
 
     td_u8* old_ptr = texture->data;
-    td_u8* tmp = (td_u8*)malloc(calculate_size(texture->size.x, texture->size.y, channel));
+    td_u8* tmp = (td_u8*)malloc(calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, channel));
     if(!tmp) return;
     texture->data = tmp;
     td_u8 old_channel = texture->channel;
@@ -198,9 +198,10 @@ void tdt_merge(const td_texture *texture_a,
         sa.y - placement_pos.y;
     td_u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
     if (b_freeable) {
-        td_ivec2 new_size =
-            td_ivec2_init(sb.x > max_space_x ? max_space_x : sb.x,
-                       sb.y > max_space_y ? max_space_y : sb.y);
+        td_ivec2 new_size = (td_ivec2){
+            .x = sb.x > max_space_x ? max_space_x : sb.x,
+            .y = sb.y > max_space_y ? max_space_y : sb.y
+        };
         if (mode == TDT_MERGE_RESIZE)
             tb = resize_texture(tb, chb, sb, new_size);
         else
@@ -227,9 +228,9 @@ void tdt_merge(const td_texture *texture_a,
 td_ivec2 calculate_new_size(const td_ivec2 old, const td_ivec2 size)
 {
     if (!size.x)
-        return td_ivec2_init((old.x * size.y) / old.y, size.y);
+        return (td_ivec2){.x=(old.x * size.y) / old.y, .y=size.y};
     if (!size.y)
-        return td_ivec2_init(size.x, (old.y * size.x) / old.x);
+        return (td_ivec2){.x=size.x, .y=(old.y * size.x) / old.x};
     return size;
 }
 
@@ -261,7 +262,7 @@ td_bool tdt_resize_internal(td_texture *texture,
     if (!texture)
         return 0;
     
-    size_t size = calculate_size(new_size.x, new_size.y, texture->channel);
+    size_t size = calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, texture->channel);
     if(size) {
         td_u8 *tmp = (td_u8 *) realloc(texture->data, size);
         if (!tmp)
@@ -283,7 +284,7 @@ td_u8 *crop_texture(td_u8 *old, td_u8 channel, td_ivec2 old_size,
     td_u8 *raw = 0;
     if (!
         (raw =
-         (td_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel))))
+         (td_u8 *) malloc(calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, channel))))
         return 0;
     td_u8 *ptr = old, *start = raw;
     td_u64 row_length = (td_u64)(new_size.x * channel), old_length =
@@ -322,5 +323,5 @@ td_rgba pixel_blend(td_rgba a, td_rgba b)
 {
     td_u8 ar[4] = TD_EXPAND_RGBA(a), br[4] = TD_EXPAND_RGBA(b);
     alpha_blend(ar, br, 4, 4);
-    return td_rgba_init(ar[0], ar[1], ar[2], ar[3]);
+    return (td_rgba){.raw = {ar[0], ar[1], ar[2], ar[3]}};
 }

@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     double last_log = get_time();
     const double max_dt = 1.0 / p.max_fps;
 
-    tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
+    tdr_set_clear_color((td_rgba){.a=255});
 
     while (td_is_running()) {
         double start_frame = get_time();
@@ -96,9 +96,9 @@ int main(int argc, char** argv)
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   td_rgba_init(255, 255, 255, 255),
-                                   td_rgba_init(0, 0, 0, 0));
-        tdr_copy_texture(texture, td_ivec2_init(0, 0));
+                                   (td_rgba){255, 255, 255, 255},
+                                   (td_rgba){0});
+        tdr_copy_texture(texture, (td_ivec2){0});
         tdt_free(texture);
 
         td_option(td_opt_display_size, 1, &size);
@@ -130,8 +130,8 @@ int main(int argc, char** argv)
         td_option(td_opt_display_size, td_true, &display_size);
 
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
-        texture = tdf_string_texture(tmp, -1, &size, td_rgba_init(255,0,0,255), td_rgba_init(0,0,0,0));
-        tdr_copy_texture(texture, td_ivec2_init(0, display_size.y - size.y));
+        texture = tdf_string_texture(tmp, -1, &size, (td_rgba){255,0,0,255}, (td_rgba){0});
+        tdr_copy_texture(texture, (td_ivec2){.y=display_size.y - size.y});
         tdt_free(texture);
         free(tmp);
 

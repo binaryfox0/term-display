@@ -41,7 +41,7 @@ void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
     }
 
     *tex = tdf_string_texture(str, -1, 
-        texsz, td_rgba_init(255,255,255,255), td_rgba_init(0,0,0,0));
+        texsz, (td_rgba){255,255,255,255}, (td_rgba){0});
 }
 
 void append_char_textin(const int key)
@@ -58,10 +58,6 @@ void append_char_textin(const int key)
             buffer = tmp;
             current_size = new_size;
         }
-    }
-    else if(key == td_key_enter)
-    {
-        buffer[current_index++] = '\n';
     }
     else {
         if(current_index + 1 >= current_size)
@@ -185,17 +181,17 @@ int main(int argc, char** argv)
         td_poll_events();
 
         float brightness = 0.5f * (sin((double)frame_count / 32) + 1.0f);
-        tdr_set_clear_color(td_rgba_init(109 * brightness, 154 * brightness, 140 * brightness, 255));   // Approximtely patina
+        tdr_set_clear_color((td_rgba){109 * brightness, 154 * brightness, 140 * brightness, 255});   // Approximtely patina
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                td_rgba_init(0, 0, 0, 255), td_rgba_init(255, 255, 255, 255));
-        tdr_copy_texture(texture, td_ivec2_init(0, 0));
+                                (td_rgba){.a=255}, (td_rgba){255, 255, 255, 255});
+        tdr_copy_texture(texture, (td_ivec2){0});
         tdt_free(texture);
 
-        tdr_copy_texture(textinput_tex, td_ivec2_init(0, size.y + 1));
-        tdr_copy_texture(keystroke_tex, td_ivec2_init(0, fbsz.y - kstork_texh));
+        tdr_copy_texture(textinput_tex, (td_ivec2){.y=size.y + 1});
+        tdr_copy_texture(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
 
         tdr_render();
 

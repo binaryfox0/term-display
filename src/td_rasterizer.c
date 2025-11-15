@@ -24,7 +24,7 @@ static inline void td_rasterize_pixel(
                                 const td_u8 color[4], const td_u8 cch)
 {
     if(!IN_RANGE(pos.x, 0, fb->size.x -1 ) || !IN_RANGE(pos.y, 0, fb->size.y - 1)) return;
-    const td_u64 wpos = calculate_pos(pos.x, pos.y, fb->size.x, 1);
+    const td_u64 wpos = calculate_pos(pos, fb->size.x, 1);
     if (depth_buf) {
         if (depth_buf[wpos] <= depth)
             return;
@@ -39,7 +39,7 @@ td_u8* ptexture_resize(const td_u8 *old, const td_u8 channel, const td_ivec2 old
         x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
         y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
     td_u8 *raw =
-        (td_u8 *) malloc(calculate_pos(0, new_size.y, new_size.x, channel)),
+        (td_u8 *) malloc(calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, channel)),
         *start = raw;
     if (!raw)
         return 0;
@@ -53,10 +53,11 @@ td_u8* ptexture_resize(const td_u8 *old, const td_u8 channel, const td_ivec2 old
             td_i32 ixf = td_floor(tmp), ixc = td_ceil(tmp);
             float tx = tmp - (td_f32)ixf;
 
-            td_u64 i00 = calculate_pos(ixf, iyf, old_size.x, channel),
-                i10 = calculate_pos(ixc, iyf, old_size.x, channel),
-                i01 = calculate_pos(ixf, iyc, old_size.x, channel),
-                i11 = calculate_pos(ixc, iyc, old_size.x, channel);
+            td_u64 
+                i00 = calculate_pos((td_ivec2){.x=ixf, .y=iyf}, old_size.x, channel),
+                i10 = calculate_pos((td_ivec2){.x=ixc, .y=iyf}, old_size.x, channel),
+                i01 = calculate_pos((td_ivec2){ixf, iyc}, old_size.x, channel),
+                i11 = calculate_pos((td_ivec2){ixc, iyc}, old_size.x, channel);
 
             for (td_u8 c = 0; c < channel; c++, raw++)
                 raw[0] =
@@ -97,14 +98,14 @@ void tdr_draw_line(const td_texture* fb,
     if (yLonger) {
         for (int i = 0; i != endVal; i += incrementVal) {
             td_rasterize_pixel(fb, depth_buf,
-                       td_ivec2_init(p1.x + (j >> 16), p1.y + i), 0,
+                       (td_ivec2){.x=p1.x + (j >> 16), .y=p1.y + i}, 0,
                        raw, cch);
             j += decInc;
         }
     } else {
         for (int i = 0; i != endVal; i += incrementVal) {
             td_rasterize_pixel(fb, depth_buf,
-                       td_ivec2_init(p1.x + i, p1.y + (j >> 16)), 0,
+                       (td_ivec2){.x=p1.x + i, .y=p1.y + (j >> 16)}, 0,
                        raw, cch);
             j += decInc;
         }
@@ -135,13 +136,13 @@ void td_rasterize_triangle(
     convert(pv3.color.raw, pv3.color.raw, fb->channel, 4, &c_ch);
 
     td_u8* texture_data = tex ? tex->data : 0;
-    td_ivec2 texture_size = tex ? tex->size : td_ivec2_init(0, 0);
+    td_ivec2 texture_size = tex ? tex->size : (td_ivec2){0};
     td_u8 texture_ch = tex ? tex->channel : 0;
 
     if(tdp_wireframe_enabled) {
-        tdr_draw_line(fb, depth_buf, v1.pos, v2.pos, td_rgba_init(255, 255, 255, 255));
-        tdr_draw_line(fb, depth_buf, v2.pos, v3.pos, td_rgba_init(255, 255, 255, 255));
-        tdr_draw_line(fb, depth_buf, v3.pos, v1.pos, td_rgba_init(255, 255, 255, 255));
+        tdr_draw_line(fb, depth_buf, v1.pos, v2.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255 });
+        tdr_draw_line(fb, depth_buf, v2.pos, v3.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
+        tdr_draw_line(fb, depth_buf, v3.pos, v1.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
 
         return;
     }
@@ -199,10 +200,10 @@ void td_rasterize_triangle(
                     td_f32 tx = tex_u - (td_f32)ixf;
                     td_f32 ty = tex_v - (td_f32)iyf;
 
-                    td_u64 i00 = calculate_pos(ixf, iyf, texture_size.x, texture_ch);
-                    td_u64 i10 = calculate_pos(ixc, iyf, texture_size.x, texture_ch);
-                    td_u64 i01 = calculate_pos(ixf, iyc, texture_size.x, texture_ch);
-                    td_u64 i11 = calculate_pos(ixc, iyc, texture_size.x, texture_ch);
+                    td_u64 i00 = calculate_pos((td_ivec2){.x=ixf, .y=iyf}, texture_size.x, texture_ch);
+                    td_u64 i10 = calculate_pos((td_ivec2){.x=ixc, .y=iyf}, texture_size.x, texture_ch);
+                    td_u64 i01 = calculate_pos((td_ivec2){.x=ixf, .y=iyc}, texture_size.x, texture_ch);
+                    td_u64 i11 = calculate_pos((td_ivec2){.x=ixc, .y=iyc}, texture_size.x, texture_ch);
 
                     td_u8 texel[4];
                     for (td_u8 c = 0; c < texture_ch; c++)
@@ -218,7 +219,7 @@ void td_rasterize_triangle(
                 }
 
                 // Set pixel
-                td_rasterize_pixel(fb, depth_buf, td_ivec2_init(x, y), pixel_depth, final_color, c_ch);
+                td_rasterize_pixel(fb, depth_buf, (td_ivec2){.x=x,.y=y}, pixel_depth, final_color, c_ch);
             }
             w0_row += A0;
             w1_row += A1;

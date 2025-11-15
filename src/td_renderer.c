@@ -32,24 +32,29 @@ TD_INLINE void tdp_query_background(void)
     char r[5] = { 0 }, b[5] = { 0 }, g[5] = { 0 };
     if (sscanf(buffer, "\x1B]11;rgb:%4[^/]/%4[^/]/%4[^;]", r, g, b) != 3)
         return;
-    tdp_bg_color =
-        td_rgba_init((td_u8)(strtol(r, 0, 16) / 257),
-                  (td_u8)(strtol(g, 0, 16) / 257), (td_u8)(strtol(b, 0, 16) / 257), 255);
+    tdp_bg_color = (td_rgba){
+        .r = (td_u8)(strtol(r, 0, 16) / 257),
+        .g = (td_u8)(strtol(g, 0, 16) / 257),
+        .b = (td_u8)(strtol(b, 0, 16) / 257),
+        .a = 255
+    };
 }
 
 td_ivec2 tdp_calculate_display_size(const td_ivec2 term_size)
 {
     td_ivec2 new_size = {0};
     if(tdp_options[td_opt_display_rotate] % 2 == 0) {
-        new_size =
-            td_ivec2_init(term_size.x / tdp_options[td_opt_pixel_width],
-                       term_size.y / tdp_options[td_opt_pixel_height]);
+        new_size = (td_ivec2){
+            .x = term_size.x / tdp_options[td_opt_pixel_width],
+            .y = term_size.y / tdp_options[td_opt_pixel_height]
+        };
         tdp_display.sprop.yend = new_size.y;
         tdp_display.sprop.xend = new_size.x;
     } else {
-        new_size =
-            td_ivec2_init(term_size.y / tdp_options[td_opt_pixel_height],
-                       term_size.x / tdp_options[td_opt_pixel_width]);
+        new_size = (td_ivec2){
+            .x = term_size.y / tdp_options[td_opt_pixel_height],
+            .y = term_size.x / tdp_options[td_opt_pixel_width]
+        };
         tdp_display.sprop.yend = new_size.x;
         tdp_display.sprop.xend = new_size.y;
     }
@@ -58,7 +63,8 @@ td_ivec2 tdp_calculate_display_size(const td_ivec2 term_size)
 }
 
 TD_INLINE void tdp_reset_depth_buffer(void) {
-    fill_buffer(tdp_display.depth, &(td_f32){ FLT_MAX }, calculate_size(td_ivec2_expand(tdp_display.fb->size), sizeof(td_f32)), sizeof(td_f32));
+    fill_buffer(tdp_display.depth, &(td_f32){ FLT_MAX }, calculate_pos(
+        (td_ivec2){.y=tdp_display.fb->size.y}, tdp_display.fb->size.x, sizeof(td_f32)), sizeof(td_f32));
 }
 
 void tdp_resize_depth_buffer(void)
@@ -66,7 +72,7 @@ void tdp_resize_depth_buffer(void)
     if (!tdp_options[td_opt_depth_buffer])
         return;
 
-    if (td_ivec2_is_zero(tdp_display.fb->size)) {
+    if (!tdp_display.fb->size.x || !tdp_display.fb->size.y) {
         if (tdp_display.depth) {
             free(tdp_display.depth);
             tdp_display.depth = NULL;
@@ -74,7 +80,7 @@ void tdp_resize_depth_buffer(void)
         return;
     }
 
-    td_u64 buf_size = calculate_size(td_ivec2_expand(tdp_display.fb->size), sizeof(td_f32));
+    td_u64 buf_size = calculate_pos((td_ivec2){.y=tdp_display.fb->size.y}, tdp_display.fb->size.x, sizeof(td_f32));
     td_f32 *tmp = (td_f32 *) realloc(tdp_display.depth, buf_size);
     if (!tmp) {
         return;
@@ -98,7 +104,7 @@ int tdp_renderer_init(const td_ivec2 term_size)
 {
     tdp_query_background();
     tdp_clear_color = tdp_bg_color; // No color yet
-    if (!(tdp_display.fb = tdt_create(0, 3, td_ivec2_init(0, 0), 1, 0))) // Empty texture
+    if (!(tdp_display.fb = tdt_create(0, 3, (td_ivec2){0}, 1, 0))) // Empty texture
         return 1;
     _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
     tdp_resize_handle(term_size);
@@ -159,35 +165,45 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
         switch(vertex_attribs[i])
         {
         case TDRVA_POSITION_4D:
-            curr->pos = ndc_to_pos(td_vec2_init(vertex[0] / vertex[3], vertex[1] / vertex[3]), tdp_display.fb->size);
+            curr->pos = ndc_to_pos((td_vec2){.x=vertex[0] / vertex[3], .y=vertex[1] / vertex[3]}, tdp_display.fb->size);
             curr->depth = vertex[2];
             vertex += 4;
             break;
 
         case TDRVA_POSITION_3D:
-            curr->pos = ndc_to_pos(td_vec2_init(vertex[0], vertex[1]), tdp_display.fb->size);
+            curr->pos = ndc_to_pos((td_vec2){.x=vertex[0], .y=vertex[1]}, tdp_display.fb->size);
             curr->depth = vertex[2];
             vertex += 3;
             break;
         
         case TDRVA_POSITION_2D:
-            curr->pos = ndc_to_pos(td_vec2_init(vertex[0], vertex[1]), tdp_display.fb->size);
+            curr->pos = ndc_to_pos((td_vec2){.x=vertex[0], .y=vertex[1]}, tdp_display.fb->size);
             vertex += 2;
             break;
 
         case TDRVA_COLOR_RGBA:
-            curr->color = td_rgba_init((td_u8)(vertex[0] * 255), (td_u8)(vertex[1] * 255), (td_u8)(vertex[2] * 255), (td_u8)(vertex[3] * 255));
+            curr->color = (td_rgba){
+                .r = (td_u8)(vertex[0] * 255),
+                .g = (td_u8)(vertex[1] * 255),
+                .b = (td_u8)(vertex[2] * 255),
+                .a = (td_u8)(vertex[3] * 255)
+            };
             vertex += 4;
             break;
 
         case TDRVA_COLOR_RGB:
-            curr->color = td_rgba_init((td_u8)(vertex[0] * 255), (td_u8)(vertex[1] * 255), (td_u8)(vertex[2] * 255), 255);
+            curr->color = (td_rgba){
+                .r = (td_u8)(vertex[0] * 255),
+                .g = (td_u8)(vertex[1] * 255),
+                .b = (td_u8)(vertex[2] * 255),
+                .a = 255
+            };
             vertex += 3;
             break;
 
         
         case TDRVA_UV_COORDS:
-            curr->uv = td_vec2_init(vertex[0], vertex[1]);
+            curr->uv = (td_vec2){.x=vertex[0], .y=vertex[1]};
             vertex += 2;
             break;
         }
@@ -249,7 +265,8 @@ void tdr_render(void)
                     default:                         break;
                 }
 
-                td_u8* ptr = tdp_display.fb->data + calculate_pos(tx, ty, tdp_display.fb->size.x, tdp_display.fb->channel);
+                td_u8* ptr = tdp_display.fb->data + 
+                    calculate_pos((td_ivec2){.x=tx, .y=ty}, tdp_display.fb->size.x, tdp_display.fb->channel);
                 if (memcmp(prev, ptr, tdp_display.fb->channel)) {
                     tdp_tdp_display_cell(ptr);
                     memcpy(prev, ptr, tdp_display.fb->channel);

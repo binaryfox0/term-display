@@ -19,12 +19,14 @@ static td_f32 vertices[] = {
     -1.0f, 0.0f, 0.0f, 0.0f
 };
 
-TD_INLINE td_rgb calculate_rgb(double d)
+TD_INLINE td_rgba calculate_rgb(double d)
 {
-    return td_rgb_init((td_u8) ((sin(d) + 1) * 127.5),
-                    (td_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
-                    (td_u8) ((sin(d + (4 * M_PI / 3)) + 1) * 127.5)
-        );
+    return (td_rgba){
+        (td_u8) ((sin(d) + 1) * 127.5),
+        (td_u8) ((sin(d + (2 * M_PI / 3)) + 1) * 127.5),
+        (td_u8) ((sin(d + (4 * M_PI / 3)) + 1) * 127.5),
+        255
+    };
 }
 
 int main(int argc, char** argv)
@@ -46,19 +48,19 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        tdr_set_clear_color(to_rgba(calculate_rgb(elapsed)));
+        tdr_set_clear_color(calculate_rgb(elapsed));
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             tdf_string_texture(string, strlen(string), &size,
-                                   td_rgba_init(255, 255, 255, 255),
-                                   td_rgba_init(0, 0, 0, 0));
+                                   (td_rgba){255, 255, 255, 255},
+                                   (td_rgba){0, 0, 0, 0});
 
         tdr_bind_texture(texture);
         td_ivec2 display_sz = {0};
         td_option(td_opt_display_size, td_true, &display_sz);
-        td_vec2 right_pos = pos_to_ndc(td_ivec2_init(size.x, 0) , display_sz);
-        td_vec2 bottom_pos = pos_to_ndc(td_ivec2_init(0, size.y), display_sz);
+        td_vec2 right_pos = pos_to_ndc((td_ivec2){.x=size.x} , display_sz);
+        td_vec2 bottom_pos = pos_to_ndc((td_ivec2){.y=size.y}, display_sz);
         vertices[1 * 4 + 0] = right_pos.x;
         vertices[2 * 4 + 0] = right_pos.x;
         vertices[2 * 4 + 1] = bottom_pos.y;

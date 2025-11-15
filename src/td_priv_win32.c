@@ -62,8 +62,8 @@ td_ivec2 tdp_get_termsz(void)
 {
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
-        return td_ivec2_init(csbi.dwSize.X, csbi.dwSize.Y);
-    return td_ivec2_init(0, 0);
+        return (td_ivec2){.x=csbi.dwSize.X, .y=csbi.dwSize.Y};
+    return (td_ivec2){0};
 }
 
 td_bool tdp_restore_env(void)

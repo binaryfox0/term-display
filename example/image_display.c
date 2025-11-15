@@ -38,9 +38,9 @@ static td_ivec2 imgsz = {0};
 td_ivec2 ratio_new_size(const td_ivec2 old, const td_ivec2 size)
 {
     if (!size.x)
-        return td_ivec2_init((old.x * size.y) / old.y, size.y);
+        return (td_ivec2){(old.x * size.y) / old.y, size.y};
     if (!size.y)
-        return td_ivec2_init(size.x, (old.y * size.x) / old.x);
+        return (td_ivec2){size.x, (old.y * size.x) / old.x};
     return size;
 }
 
@@ -53,15 +53,15 @@ void resize_callback(td_ivec2 new_size)
 {    
     static const tdr_vertex_attrib attribs[] = {TDRVA_POSITION_2D, TDRVA_UV_COORDS };
 
-    td_ivec2 tmp = ratio_new_size(imgsz, td_ivec2_init(new_size.x, 0));
+    td_ivec2 tmp = ratio_new_size(imgsz, (td_ivec2){.x=new_size.x});
     if(vec2_larger(tmp, new_size))
-        tmp = ratio_new_size(imgsz, td_ivec2_init(0, new_size.y));
+        tmp = ratio_new_size(imgsz, (td_ivec2){.y=new_size.y});
 
     // compute corners in NDC
-    td_vec2 bottom_left  = pos_to_ndc(td_ivec2_init(0, tmp.y - 1), new_size);
-    td_vec2 bottom_right = pos_to_ndc(td_ivec2_init(tmp.x - 1, tmp.y - 1), new_size);
-    td_vec2 top_right    = pos_to_ndc(td_ivec2_init(tmp.x - 1, 0), new_size);
-    td_vec2 top_left     = pos_to_ndc(td_ivec2_init(0, 0), new_size);
+    td_vec2 bottom_left  = pos_to_ndc((td_ivec2){.y=tmp.y - 1}, new_size);
+    td_vec2 bottom_right = pos_to_ndc((td_ivec2){.x=tmp.x - 1, .y=tmp.y - 1}, new_size);
+    td_vec2 top_right    = pos_to_ndc((td_ivec2){.x=tmp.x - 1}, new_size);
+    td_vec2 top_left     = pos_to_ndc((td_ivec2){0}, new_size);
 
     // copy positions correctly (2 floats each)
     memcpy(vertices + 0,  bottom_left.raw,  sizeof(float) * 2);  // v0
@@ -98,18 +98,18 @@ void display_image(const char* path)
     stbi_set_flip_vertically_on_load(true);
     stbi_uc *tmp = stbi_load(path, &width, &height, &channel, 0);
     if (!tmp) {
-        printf("Error: %s: Unable to load image file.\n", program_name);
+        aparse_prog_error("unable to load image: \"%s\"", path);
         return;
     }
 
     displayed_image =
-        tdt_create(tmp, channel, td_ivec2_init(width, height), 1, 0);
+        tdt_create(tmp, channel, (td_ivec2){.x=width, .y=height}, 1, 0);
     if (!displayed_image) {
-        printf("Error: %s: Unable to load image file.\n", program_name);
+        aparse_prog_error("unable to create texture from image.\n");
         free(tmp);
         return;
     }
-    imgsz = td_ivec2_init(width, height);
+    imgsz = (td_ivec2){.x=width, .y=height};
 
     tdr_clear_term();
 
@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 
     use_params(p);
 
-    tdr_set_clear_color(td_rgba_init(0, 0, 0, 255));
+    tdr_set_clear_color((td_rgba){0, 0, 0, 255});
     td_set_resize_callback(resize_callback);
     td_set_key_callback(key_callback);
     for(int i = 0; i < images_count && images && !force_stop; i++)

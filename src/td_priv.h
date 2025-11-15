@@ -56,12 +56,8 @@ typedef struct td_display_s {
 } td_display;
 
 // Inline stuff
-TD_INLINE td_u64 calculate_pos(int x, int y, td_i32 width, td_u8 ch){
-    return (td_u64)((y * width + x) * ch);
-}
-
-TD_INLINE td_u64 calculate_size(int x, int y, td_u8 ch){
-    return calculate_pos(0, x, y, ch);
+TD_INLINE td_u64 calculate_pos(const td_ivec2 pos, const td_i32 width, const td_u8 ch){
+    return (td_u64)((pos.y * width + pos.x) * ch);
 }
 
 TD_INLINE float lerp(td_f32 c0, td_f32 c1, float t){
