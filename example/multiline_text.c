@@ -2,12 +2,17 @@
 #include <stdlib.h>             // free
 #include <math.h>               // sin
 
+// Non-standard stuffs
+#include <pthread.h>
+
 #include "td_main.h"
 #include "td_font.h"
 
 #include "example_utils.h"
 
 #define KSTROK_BUFSIZ 48
+#define KSTROK_FREQ 24
+#define KSTROK_INTERVAL 0.25 // in secs
 
 int kstork_texh = 0;
 
@@ -69,7 +74,10 @@ void append_char_textin(const int key)
             memset(&buffer[current_size], 0, new_size - current_size);
             current_size = new_size;
         }
-        buffer[current_index++] = (char)key;
+        if(key == td_key_enter)
+            buffer[current_index++] = '\n';
+        else
+            buffer[current_index++] = IN_RANGE(key, ' ', '~') ? (char)key : ' ';
     }
     refresh_texture(&textinput_tex, buffer, 0);
 }
@@ -154,17 +162,11 @@ void resize_handle(td_ivec2 new_size) {
     fbsz = new_size;
 }
 
-int main(int argc, char** argv)
+void normal_routine(const int max_fps)
 {
-    example_params p = parse_argv(argc, argv, 0, 0, 0);
-    td_bool enable = td_false;
+    td_bool disable = td_false;
 
-    if (td_init() || start_logging("statics.txt"))
-        return 1;
-
-    use_params(p);
-
-    td_option(td_opt_shift_translate, td_false, &enable);
+    td_option(td_opt_shift_translate, td_false, &disable);
     td_option(td_opt_display_size, td_true, &fbsz);
     td_set_key_callback(process_input);
     td_set_resize_callback(resize_handle);
@@ -172,7 +174,7 @@ int main(int argc, char** argv)
     td_ivec2 size = { 0 };
     td_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
-    const double max_dt = 1.0 / p.max_fps;
+    const double max_dt = 1.0 / max_fps;
     while (td_is_running()) {
         frame_count++;
         double start_frame = get_time();
@@ -205,8 +207,72 @@ int main(int argc, char** argv)
 
     tdt_free(textinput_tex);
     tdt_free(keystroke_tex);
+}
 
-    td_free();
+volatile double kstrok_frame_start = 0;
+volatile int kstrok_thread_running = 1;
+void* kstrok_watchdog(void* userdata)
+{
+    (void)userdata;
+    const double max_dt = 1.0 / KSTROK_FREQ;
+    while(kstrok_thread_running)
+    {
+        double start_frame = get_time();
+        if(get_time() - kstrok_frame_start > KSTROK_INTERVAL) {
+            td_free();
+            aparse_prog_error("program has crashed due to an unsupported keystroke");
+            exit(127);
+        }
+        while(get_time() - start_frame < max_dt) {}
+    }
+    pthread_exit(0);
+}
+
+void kstrok_logger(int key, int mods, td_key_state_t state)
+{
+    printf("%d, %d, %d\n", key, mods, state);
+}
+
+void kstrok_test_routine(const int max_fps)
+{
+    pthread_t watchdog = 0;
+    if(pthread_create(&watchdog, 0, kstrok_watchdog, 0) != 0) {
+        td_free();
+        exit(127);
+    }
+    td_set_key_callback(kstrok_logger);
+
+    const double max_dt = 1.0 / max_fps;
+    while (td_is_running()) {
+        kstrok_frame_start = get_time();
+        td_poll_events();
+        while (get_time() - kstrok_frame_start < max_dt) {}
+    }
+
+    kstrok_thread_running = 0;
+    pthread_join(watchdog, 0);
+}
+
+int main(int argc, char** argv)
+{
+    int is_keystroke_test = 0;
+    example_params p = parse_argv(argc, argv, (aparse_arg[1]){
+            aparse_arg_option(0, "--keystroke-test", &is_keystroke_test, sizeof(is_keystroke_test),
+                              APARSE_ARG_TYPE_BOOL, "enable keystroke test")
+        }, 1, 0
+    );
+
+    if (td_init() || start_logging("statics.txt"))
+        return 1;
+
+    use_params(p);
+    if(is_keystroke_test)
+        kstrok_test_routine(p.max_fps);
+    else
+        normal_routine(p.max_fps);
+
     stop_logging();
+    td_free();
+
     return 0;
 }

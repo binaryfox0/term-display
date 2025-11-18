@@ -95,7 +95,7 @@ TD_INLINE td_bool handle_single_byte(const td_i32 byte, int *ch, int *mods)
 }
 
 // Handle navigation keys (Arrow keys, Home, End)
-TD_INLINE td_bool handle_nav_key(const td_i8 byte, int *ch)
+TD_INLINE td_bool handle_nav_key(const td_i32 byte, int *ch)
 {
     switch (byte) {
     case 'A': *ch = td_key_up; break;
@@ -104,23 +104,27 @@ TD_INLINE td_bool handle_nav_key(const td_i8 byte, int *ch)
     case 'D': *ch = td_key_left; break;
     case 'H': *ch = td_key_home; break;
     case 'F': *ch = td_key_end; break;
+    case '2': *ch = td_key_insert; break;
+    case '3': *ch = td_key_delete; break;
+    case '5': *ch = td_key_page_up; break;
+    case '6': *ch = td_key_page_down; break;
     default:
-        return 1;
+        return td_false;
     }
-    return 0;
+    return td_true;
 }
 
-TD_INLINE td_bool handle_f5_below(const td_i8 byte, int *ch)
+TD_INLINE td_bool handle_f5_below(const td_i32 byte, int *ch)
 {
     int tmp = 0;
     if (OUT_RANGE
         ((tmp = byte - 'P' + td_key_f1), td_key_f1, td_key_f4))
-        return 1;
+        return td_false;
     *ch = tmp;
-    return 0;
+    return td_true;
 }
 
-TD_INLINE td_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch)
+TD_INLINE td_bool handle_f5_above(const td_i32 first, const td_i32 second, int *ch)
 {
     if (first == '1') {
         switch (second) {
@@ -128,7 +132,7 @@ TD_INLINE td_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch
         case '7': *ch = td_key_f6; break;
         case '8': *ch = td_key_f7; break;
         case '9': *ch = td_key_f8; break;
-        default: return 1;
+        default: return td_false;
         }
     } else if (first == '2') {
         switch (second) {
@@ -136,11 +140,11 @@ TD_INLINE td_bool handle_f5_above(const td_i8 first, const td_i8 second, int *ch
         case '1': *ch = td_key_f10; break;
         case '3': *ch = td_key_f11; break;
         case '4': *ch = td_key_f12; break;
-        default: return 1;
+        default: return td_false;
         }
     } else
-        return 1;
-    return 0;
+        return td_false;
+    return td_true;
 }
 
 TD_INLINE td_bool handle_special_combo(const int byte, int *mods)
@@ -154,22 +158,9 @@ TD_INLINE td_bool handle_special_combo(const int byte, int *mods)
     case '3': *mods |= td_key_alt; break;
     case '2': *mods |= td_key_shift; break;
     default:
-        return 1;
+        return td_false;
     }
-    return 0;
-}
-
-TD_INLINE td_bool handle_special_key(int *ch)
-{
-    switch (*ch) {
-    case '2': *ch = td_key_insert; break;
-    case '3': *ch = td_key_delete; break;
-    case '5': *ch = td_key_page_up; break;
-    case '6': *ch = td_key_page_down; break;
-    default:
-        return 1;
-    }
-    return 0;
+    return td_true;
 }
 
 #define BUF_SIZE 16  // physical buffer size
@@ -202,6 +193,7 @@ int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
     while (index > end_idx) {
         char tmp[BUF_SIZE];
 
+        if(index - end_idx > tdp_kbbyte_available) return -1;
         int n = (int)read(STDIN_FILENO, tmp, min((size_t)tdp_kbbyte_available, BUF_SIZE));
         if (n == 0) return -1;  // no more data
 
@@ -227,7 +219,7 @@ int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
     return rb->buffer[phys];
 }
 
-#define BUFFER_SIZE 12
+#define buffer_size 12
 void tdp_kbpoll(key_callback_func func)
 {
     if (!tdp_stdin_ready(0))
@@ -242,7 +234,7 @@ void tdp_kbpoll(key_callback_func func)
         int ch = 0, mods = 0;
         int b0 = tdp_rbuf_get(&rb, idx + 0);
         if(b0 == -1) break;
-        if(b0 != 0x1B) {
+        if(b0 != 0x1b) {
             idx++;
             if(handle_single_byte(b0, &ch, &mods))
                 continue;
@@ -251,8 +243,12 @@ void tdp_kbpoll(key_callback_func func)
         }
 
         int b1 = tdp_rbuf_get(&rb, idx + 1);
-        if(b1 == -1) break;
-        if(b1 != '[' && b1 != '0')
+        if(b1 == -1) {
+            raise_hand(func, td_key_escape, 0, td_key_press);
+            break;
+        }
+        // \x1bx
+        if(b1 != '[' && b1 != 'o')
         {
             idx += 2;
             mods |= td_key_alt;
@@ -261,81 +257,81 @@ void tdp_kbpoll(key_callback_func func)
             raise_hand(func, ch, mods, td_key_press);
             continue;
         }
-    }
 
-    /*
-    char buf[BUFFER_SIZE] = { 0 };
-    if (read(STDIN_FILENO, buf, (size_t)(bytes < BUFFER_SIZE ? bytes : BUFFER_SIZE))
-        == -1)
-        return;
-
-    if (buf[0] == 0x1B) {       // Escape sequence handling
-        switch (bytes) {
-        case 1:
-            ch = td_key_escape;
+        int b2 = tdp_rbuf_get(&rb, 2);
+        if(b2 == -1)
+        {
+            raise_hand(func, td_key_left_bracket, td_key_alt, td_key_press);
             break;
-        case 2:                // Alt modifier
-            mods |= td_key_alt;
-            handle_single_byte(buf[1], &ch, &mods);
-            break;
-        case 3:                // Navigation keys & F1-F4
-            if (buf[1] == '[') {
-                if (handle_nav_key(buf[2], &ch))
-                    return;
-            } else if (buf[1] == 'O') {
-                if (handle_f5_below(buf[2], &ch))
-                    return;
-            } else
-                return;
-            break;
-        case 4:                // Page Up / Page Down / Insert / Delete
-            if (buf[1] == '[' && buf[3] == '~') {
-                if (handle_nav_key(buf[2], &ch))
-                    return;
-            } else if (buf[1] == 'O') { // Ctrl/Shift/Alt + (F1 - F4) (Konsole case)
-                if (handle_special_combo(buf[2], &mods)
-                    || handle_f5_below(buf[3], &ch))
-                    return;
-            } else
-                return;
-            break;
-        case 5:                // Function keys F5 - F12
-            if (buf[1] != '[' || buf[4] != '~')
-                return;
-            if (handle_f5_above(buf[2], buf[3], &ch))
-                return;
-            break;
-        case 6:                // Ctrl/Shift/Alt + (F1 - F4) (Vscode terminal case) and Navigation keys
-            if (buf[1] != '[') {
-                if(buf[2] != '1' || buf[3] != ';')
-                    return;
-                if (handle_special_combo(buf[4], &mods))
-                    return;
-                if (!handle_f5_below(buf[5], &ch) ||
-                    !handle_nav_key(buf[5], &ch)
-                    )
-                    return;
-            }
-            break;
-        case 7:
-            if (buf[1] != '[' || buf[4] != ';' || buf[6] != '~')
-                return;
-            if (handle_single_byte(buf[0], &ch, &mods))
-                return;
-            if (handle_special_combo(buf[5], &mods)
-                || handle_f5_above(buf[2], buf[3], &ch))
-                return;
-            break;
-        default:
-            return;
         }
-    } else {                      // Single-byte characters
-        if (handle_single_byte(buf[0], &ch, &mods))
-            return;
+
+        // ansi escape sequence end indicator
+        int b3 = tdp_rbuf_get(&rb, idx + 3),
+            b4 = tdp_rbuf_get(&rb, idx + 4),
+            b5 = tdp_rbuf_get(&rb, idx + 5),
+            b6 = tdp_rbuf_get(&rb, idx + 6);
+        
+        // y is modifier, x is key
+        // \x1b([/0)x       - Navigation keys (arrow, etc) & F1 - F4
+        // \x1b([/0)x~      - PgUp/PgDown/Ins/Del if b1 == '['. Ctrl/Alt/Shift + F1-F4 (KDE Konsole)
+        // \x1b[xx~         - F5 - F12
+        // \x1b[x;y~        - Ctrl/Alt/Shift + Ins/Del (Android Termux)
+        // \x1b[1;yx        - Ctrl/Alt/Shift + F1 - F4 (vscode) / Navigation keys
+        // \x1b[xx;y~       - Ctrl/Alt/Shift + F5 - F12
+        
+        if(b3 == '~') {
+            // \x1b[x~
+            idx += 4;
+            if(b1 == '[' ?
+                !handle_nav_key(b2, &ch) :
+                    !handle_special_combo(b2, &ch) ||
+                    !handle_f5_below(b3, &ch))
+                        continue;
+            raise_hand(func, ch, mods, td_key_press);
+            continue;
+        } else if(b4 == '~') {
+            // \x1b[xx~
+            idx += 5;
+            if (!handle_f5_above(b2, b3, &ch))
+                continue;
+            raise_hand(func, ch, 0, td_key_press);
+        } else if(b5 == '~') {
+            idx += 6;
+            if(b3 != ';')
+                continue;
+            if(!handle_special_combo(b4, &mods) ||
+               !handle_nav_key(b2, &ch))
+                    continue;
+            raise_hand(func, ch, mods, td_key_press);
+        } else if(b6 == '~') {
+            idx += 7;
+            if (b4 != ';')
+                continue;
+            if (!(handle_special_combo(b5, &mods) ||
+                  handle_f5_above(b2, b3, &ch)))
+                    continue;
+            raise_hand(func, ch, mods, td_key_press);
+        } else {
+            if(b3 == ';') {
+                idx += 6;
+                if(b2 != '1' || b3 != ';')
+                    continue;
+                if (!handle_special_combo(b4, &mods) ||
+                    !(handle_f5_below(b5, &ch) ||
+                      handle_nav_key(b5, &ch)))
+                        continue;
+                raise_hand(func, ch, mods, td_key_press);
+            } else {
+                // \x1b[x
+                idx += 3;
+                if(b1 == '[' ? 
+                    !handle_nav_key(b2, &ch) : 
+                    !handle_f5_below(b2, &ch))
+                        continue;
+                raise_hand(func, ch, 0, td_key_press);
+            }
+        }
     }
-    if(func)
-        func(ch, mods, td_key_press);
-    */
 }
 
 

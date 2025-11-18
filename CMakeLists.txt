@@ -27,7 +27,9 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
             -Wno-variadic-macros -Wno-parentheses 
             -fdiagnostics-show-option -Wconversion
         )
+        set_target_properties(term-display PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
     endif()
 endif()
 
 add_subdirectory(example)
+add_subdirectory(tests)

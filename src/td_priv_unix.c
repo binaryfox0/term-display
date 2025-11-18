@@ -56,7 +56,7 @@ td_bool tdp_setup_env(const tdp_sighand handle)
     if (tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
         return td_false;
 
-    int sigs[] = { SIGINT, SIGTERM, SIGQUIT};
+    int sigs[] = { SIGINT,  SIGQUIT};
     for(unsigned long i = 0; i < sizeof(sigs) / sizeof(sigs[0]); i++) {
         if(tdp_set_sighand(sigs[i], handle)) {
             tdp_restore_env();

@@ -1,10 +1,18 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(Examples)
+project(example)
 
-        message(STATUS "AddressSanitizer supported — enabling for Debug build (C compiler)")
+option(TD_EXAMPLE_ASAN "Enable AddressSanitizer in examples")
+
+if(TD_EXAMPLE_ASAN)
+    if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        message(STATUS "AddressSanitizer support was found")
         add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
         add_link_options(-fsanitize=address)
+    else()
+        message(WARNING "AddressSanitizer support was not found")
+    endif()
+endif()
 
 set(EXTRA "")
 add_subdirectory(deps/aparse)
