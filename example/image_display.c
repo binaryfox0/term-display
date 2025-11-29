@@ -3,6 +3,7 @@
 #include "td_main.h"
 
 #include "example_utils.h"
+#include "td_texture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -16,21 +17,6 @@ static float vertices[] = {
     0.0f, 0.0f, 1.0f, 0.0f, // top-right
     0.0f, 0.0f, 0.0f, 0.0f  // top-left
 };
-
-char *get_program_name(char *in)
-{
-#ifdef TD_PLATFORM_UNIX
-#include <libgen.h>
-    return basename(in);
-#elif TD_PLATFORM_WINDOWS
-    static char out[_MAX_FNAME] = { 0 };
-    _splitpath_s(in, 0, 0, 0, 0, out, _MAX_FNAME, 0, 0);
-    _splitpath_s(in, 0, 0, 0, 0, 0, 0, &out[strlen(out)], _MAX_EXT);
-    return out;
-#else
-    return in;
-#endif
-}
 
 static td_texture *displayed_image = 0;
 static td_ivec2 imgsz = {0};
@@ -103,7 +89,7 @@ void display_image(const char* path)
     }
 
     displayed_image =
-        tdt_create(tmp, channel, (td_ivec2){.x=width, .y=height}, 1, 0);
+        td_texture_create(tmp, channel, (td_ivec2){.x=width, .y=height}, 1, 0);
     if (!displayed_image) {
         aparse_prog_error("unable to create texture from image.\n");
         free(tmp);
@@ -138,7 +124,7 @@ void display_image(const char* path)
         }
     }
 
-    tdt_free(displayed_image);
+    td_texture_destroy(displayed_image);
     displayed_image = 0;
 }
 

@@ -3,11 +3,11 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
-#define _getch(ch) if (((ch) = getchar()) == EOF) return
 #define raise_hand(hand, ...) if((hand)) (hand)(__VA_ARGS__)
 
-td_bool key_shift_translate(const td_i32 byte, int* ch, int* mods)
+td_bool tdp_handle_shift(const td_i32 byte, int* ch, int* mods)
 {
     switch(byte)
     {
@@ -47,7 +47,7 @@ td_bool key_shift_translate(const td_i32 byte, int* ch, int* mods)
 
 // Handle single-byte character input
 td_bool tdp_shift_translate = td_true;
-TD_INLINE td_bool handle_single_byte(const td_i32 byte, int *ch, int *mods)
+TD_INLINE td_bool tdp_handle_single_byte(const td_i32 byte, int *ch, int *mods)
 {
     switch (byte) {
     case '\0':
@@ -78,7 +78,7 @@ TD_INLINE td_bool handle_single_byte(const td_i32 byte, int *ch, int *mods)
             break;
         }
         if(tdp_shift_translate) {
-            if(!key_shift_translate(byte, ch, mods))
+            if(!tdp_handle_shift(byte, ch, mods))
                 break;
             if (IN_RANGE(byte, 'a', 'z')) {
                 *ch = byte - 32;
@@ -219,8 +219,22 @@ int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
     return rb->buffer[phys];
 }
 
-#define buffer_size 12
-void tdp_kbpoll(key_callback_func func)
+int tdp_stoi(tdp_ringbuf* rb, int *idx)
+{
+    int out = 0;
+    int c = 0;
+    while((c = tdp_rbuf_get(rb, (*idx)++)) != -1)
+    {
+        if(!isdigit(c)) {
+            (*idx)--;
+            break;
+        }
+        out = out * 10 + (c - '0');
+    }
+    return out;
+}
+
+void tdp_kbpoll(const td_key_callback keycb, const td_mouse_callback mousecb)
 {
     if (!tdp_stdin_ready(0))
         return;
@@ -236,32 +250,32 @@ void tdp_kbpoll(key_callback_func func)
         if(b0 == -1) break;
         if(b0 != 0x1b) {
             idx++;
-            if(handle_single_byte(b0, &ch, &mods))
+            if(tdp_handle_single_byte(b0, &ch, &mods))
                 continue;
-            raise_hand(func, ch, mods, td_key_press);
+            raise_hand(keycb, ch, mods, td_key_press);
             continue;
         }
 
         int b1 = tdp_rbuf_get(&rb, idx + 1);
         if(b1 == -1) {
-            raise_hand(func, td_key_escape, 0, td_key_press);
+            raise_hand(keycb, td_key_escape, 0, td_key_press);
             break;
         }
         // \x1bx
-        if(b1 != '[' && b1 != 'o')
+        if(b1 != '[' && b1 != '0')
         {
-            idx += 2;
+           idx += 2;
             mods |= td_key_alt;
-            if(handle_single_byte(b1, &ch, &mods))
+            if(tdp_handle_single_byte(b1, &ch, &mods))
                 continue;
-            raise_hand(func, ch, mods, td_key_press);
+            raise_hand(keycb, ch, mods, td_key_press);
             continue;
         }
 
-        int b2 = tdp_rbuf_get(&rb, 2);
+        int b2 = tdp_rbuf_get(&rb, idx + 2);
         if(b2 == -1)
         {
-            raise_hand(func, td_key_left_bracket, td_key_alt, td_key_press);
+            raise_hand(keycb, td_key_left_bracket, td_key_alt, td_key_press);
             break;
         }
 
@@ -287,14 +301,14 @@ void tdp_kbpoll(key_callback_func func)
                     !handle_special_combo(b2, &ch) ||
                     !handle_f5_below(b3, &ch))
                         continue;
-            raise_hand(func, ch, mods, td_key_press);
+            raise_hand(keycb, ch, mods, td_key_press);
             continue;
         } else if(b4 == '~') {
             // \x1b[xx~
             idx += 5;
             if (!handle_f5_above(b2, b3, &ch))
                 continue;
-            raise_hand(func, ch, 0, td_key_press);
+            raise_hand(keycb, ch, 0, td_key_press);
         } else if(b5 == '~') {
             idx += 6;
             if(b3 != ';')
@@ -302,7 +316,7 @@ void tdp_kbpoll(key_callback_func func)
             if(!handle_special_combo(b4, &mods) ||
                !handle_nav_key(b2, &ch))
                     continue;
-            raise_hand(func, ch, mods, td_key_press);
+            raise_hand(keycb, ch, mods, td_key_press);
         } else if(b6 == '~') {
             idx += 7;
             if (b4 != ';')
@@ -310,9 +324,26 @@ void tdp_kbpoll(key_callback_func func)
             if (!(handle_special_combo(b5, &mods) ||
                   handle_f5_above(b2, b3, &ch)))
                     continue;
-            raise_hand(func, ch, mods, td_key_press);
+            raise_hand(keycb, ch, mods, td_key_press);
         } else {
-            if(b3 == ';') {
+            if(b2 == '<') {
+                int old_idx = idx;
+                idx += 3; // skip '\x1b' '[' '<'
+                int cb = tdp_stoi(&rb, &idx);
+                // unexpected delimiter
+                //if(tdp_rbuf_get(&rb, idx) != ';') {
+                //    idx = old_idx + 2;
+                //    continue;
+                //}
+                idx++;
+                int cx = (tdp_stoi(&rb, &idx) - 1) / tdp_options[td_opt_pixel_width];
+                idx++;
+                int cy = (tdp_stoi(&rb, &idx) - 1) / tdp_options[td_opt_pixel_height];
+                int state = tdp_rbuf_get(&rb, idx) == 'M';
+                idx++;
+                raise_hand(mousecb, cx, cy, cb);
+                continue;
+            } else if(b3 == ';') {
                 idx += 6;
                 if(b2 != '1' || b3 != ';')
                     continue;
@@ -320,7 +351,7 @@ void tdp_kbpoll(key_callback_func func)
                     !(handle_f5_below(b5, &ch) ||
                       handle_nav_key(b5, &ch)))
                         continue;
-                raise_hand(func, ch, mods, td_key_press);
+                raise_hand(keycb, ch, mods, td_key_press);
             } else {
                 // \x1b[x
                 idx += 3;
@@ -328,7 +359,7 @@ void tdp_kbpoll(key_callback_func func)
                     !handle_nav_key(b2, &ch) : 
                     !handle_f5_below(b2, &ch))
                         continue;
-                raise_hand(func, ch, 0, td_key_press);
+                raise_hand(keycb, ch, 0, td_key_press);
             }
         }
     }
@@ -336,11 +367,11 @@ void tdp_kbpoll(key_callback_func func)
 
 
 // // Convert b to have the same type as a
-void convert(td_u8 *b_out, const td_u8 *b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *out_b)
+void tdp_convert_color(td_u8 *b_out, const td_u8 *b_in, td_i32 ch_a, td_i32 ch_b, td_i32 *out_b)
 {
     td_u8 a_g = IS_GRAYSCALE(ch_a);
     td_u8 b_g = IS_GRAYSCALE(ch_b);
-    td_u8 tmp;
+    td_i32 tmp;
     if(!out_b) { out_b = &tmp; }
 
     if (a_g && !b_g) { // A is grayscale, B is truecolor
@@ -365,11 +396,11 @@ void convert(td_u8 *b_out, const td_u8 *b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *out
 
 
 // Color b (foreground) er color a (background)
-void alpha_blend(td_u8 *a, const td_u8 *b, const td_u8 ch_a, const td_u8 ch_b)
+void tdp_blend(td_u8 *a, const td_u8 *b, const td_i32 ch_a, const td_i32 ch_b)
 {
     td_u8 out_a = IS_TRANSPARENT(ch_a);
-    td_u8 a_i = ch_a - 1;
-    td_u8 a_a = out_a ? a[a_i] : 255;
+    td_i32 a_i = ch_a - 1;
+    td_i32 a_a = out_a ? a[a_i] : 255;
     td_u16 a_b = IS_TRANSPARENT(ch_b) ? b[ch_b - 1] : 255, iva_b = 255 - a_b;
     if (ch_a < 5)
         a[0] = (td_u8)((a_b * b[0] + iva_b * a[0]) >> 8);
@@ -382,7 +413,7 @@ void alpha_blend(td_u8 *a, const td_u8 *b, const td_u8 ch_a, const td_u8 ch_b)
     a[a_i] = (td_u8)(!iva_b ? 255 : a_b + ((iva_b + a_a) >> 8));
 }
 
-void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz)
+void tdp_fill_buffer(void* dest, const void* src, td_u64 destsz, td_u64 srcsz)
 {
     if(!destsz || !srcsz || !dest || !src) return;
     if (destsz < srcsz) {

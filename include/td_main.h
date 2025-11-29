@@ -179,23 +179,29 @@ typedef enum {
 } td_key_token_t;
 
 /**
- * @typedef key_callback_func
+ * @typedef td_key_callback
  * @brief Typedef for key event callback function.
  * 
  * This typedef defines the function pointer type for handling key events.
  * The callback function is called when a key event occurs, passing the key code,
  * modifier keys, and key state (press, release, or hold).
  */
-typedef void (*key_callback_func)(int key, int mods, td_key_state_t actions);
+typedef void (*td_key_callback)(int key, int mods, td_key_state_t actions);
 
 /**
- * @typedef resize_callback_func
+ * @typedef td_mouse_callback
+ * @brief Typedef for mouse event callback function.
+ */
+typedef void (*td_mouse_callback)(int xpos, int ypos, int key);
+
+/**
+ * @typedef td_resize_callback
  * @brief Typedef for resize event callback function.
  * 
  * This typedef defines the function pointer type for handling resize events.
  * The callback function is called when term-display is resized and the option <b>is enabled</b>.
  */
-typedef void (*resize_callback_func)(td_ivec2 new_size);
+typedef void (*td_resize_callback)(td_ivec2 new_size);
 
 
 /**
@@ -247,14 +253,21 @@ void td_poll_events(void);
  * 
  * @param callback A function pointer to the key event handler.
  */
-void td_set_key_callback(key_callback_func callback);
+void td_set_key_callback(td_key_callback callback);
+
+/**
+ * @brief Sets the callback function to handle mouse events.
+ * 
+ * @param callback A function pointer to the mouse event handler.
+ */
+void td_set_mouse_callback(td_mouse_callback callback);
 
 /**
  * @brief Sets the callback function to handle resize events.
  * 
  * @param callback A function pointer to the resize event handler.
  */
-void td_set_resize_callback(resize_callback_func callback);
+void td_set_resize_callback(td_resize_callback callback);
 
 /**
  * @brief Frees any allocated resources used by the term-display library.

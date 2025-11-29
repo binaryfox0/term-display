@@ -53,16 +53,6 @@ typedef struct td_texture_s td_texture;
  */
 
 /**
- * @brief Modes for merging two textures.
- *
- * These modes control how `texture_b` is combined with `texture_a` in `tdt_merge()`.
- */
-enum tdt_merge_mode {
-    TDT_MERGE_CROP = 0,        ///< Crop B to fit inside A.
-    TDT_MERGE_RESIZE,          ///< Resize B to match size of A.
-};
-
-/**
  * @brief Create a new td_texture.
  *
  * @param texture The raw texture data (8-bit format).
@@ -79,11 +69,33 @@ enum tdt_merge_mode {
  * If `size.x` or `size.y` is 0, the function returns an empty td_texture object
  * without allocating any data.
  */
-td_texture *tdt_create(td_u8 * texture,
-                       const td_u8 channel,
+td_texture *td_texture_create(td_u8 * texture,
+                       const td_i32 channel,
                        const td_ivec2 size,
-                       const td_u8 freeable,
-                       const td_u8 copy);
+                       const td_bool freeable,
+                       const td_bool copy);
+
+/*
+ * @brief Replace the internal buffer of td_texture
+ *
+ * @param texture The existing td_texture created by \ref td_texture_create
+ * @param buffer The rae texture in 8-bit format
+ * @param size Width and height of texture in pixels
+ * @param channel Number of channels (1-4). See \ref color_channel
+ * @return The success of the function
+ *
+ * @details
+ * If `buffer` is NULL, the function replace the internal buffer with a newly
+ * allocated buffer with given size, adjust the settings if necessary. If specified
+ * `channel` with value `0`, default to texture's channel
+ * If `buffer` is not NULL, the function replace the internal buffer with given
+ * buffer without creating a copy of it, respect the current settings was specified
+ * by \ref td_texture_create
+ */
+td_bool td_texture_set_buffer(td_texture * texture,
+                              td_u8* buffer,
+                              const td_ivec2 size,
+                              const td_i32 channel);
 
 /**
  * @brief Create a deep copy of a texture.
@@ -91,16 +103,16 @@ td_texture *tdt_create(td_u8 * texture,
  * @param texture The texture to copy.
  * @return A newly allocated copy of the texture.
  */
-td_texture *tdt_copy(td_texture * texture);
+td_texture *td_texture_copy(const td_texture * texture);
 
 /**
  * @brief Get the address of a pixel at the given position.
  *
- * @param pos Pixel coordinates.
- * @param texture The texture to query.
+ * @param texture The texture to query
+ * @param pos The position of the pixel
  * @return Pointer to the pixel data (channel count depends on the texture).
  */
-td_u8 *tdt_get_location(const td_ivec2 pos, const td_texture * texture);
+td_u8 *td_texture_get_pixel(const td_texture * texture, const td_ivec2 pos);
 
 /**
  * @brief Get the dimensions of a texture.
@@ -108,7 +120,7 @@ td_u8 *tdt_get_location(const td_ivec2 pos, const td_texture * texture);
  * @param texture The texture to query.
  * @return A vector containing the width and height.
  */
-td_ivec2 tdt_get_size(const td_texture * texture);
+td_ivec2 td_texture_get_size(const td_texture * texture);
 
 /**
  * @brief Fill the entire texture with a single color.
@@ -116,7 +128,7 @@ td_ivec2 tdt_get_size(const td_texture * texture);
  * @param texture The target texture.
  * @param color The color to use. Alpha blending is supported.
  */
-void tdt_fill(const td_texture * texture, const td_rgba color);
+void td_texture_fill(const td_texture * texture, const td_rgba color);
 
 /**
  * @brief Change the texture to a new number of channels.
@@ -124,7 +136,7 @@ void tdt_fill(const td_texture * texture, const td_rgba color);
  * @param texture The texture to convert.
  * @param channel The desired number of channels (1–4).
  */
-void tdt_set_channel(td_texture * texture, td_u8 channel);
+void td_texture_convert(td_texture * texture, const td_i32 channel);
 
 /**
  * @brief Merge two textures together.
@@ -137,10 +149,9 @@ void tdt_set_channel(td_texture * texture, td_u8 channel);
  * @param mode Merge mode. See \ref tdt_merge_mode.
  * @param replace Whether to overwrite A directly (used with some modes).
  */
-void tdt_merge(const td_texture * texture_a,
+void td_texture_merge(const td_texture * texture_a,
                const td_texture * texture_b,
                const td_ivec2 placment_pos,
-               const enum tdt_merge_mode mode,
                const td_bool replace);
 
 /**
@@ -149,16 +160,7 @@ void tdt_merge(const td_texture * texture_a,
  * @param texture The texture to resize.
  * @param new_size The desired size.
  */
-void tdt_resize(td_texture * texture, const td_ivec2 new_size);
-
-/**
- * @brief Resize only the raw storage (no content update).
- *
- * @param texture The texture to resize.
- * @param new_size The new size.
- * @return True if successful.
- */
-td_bool tdt_resize_internal(td_texture * texture, const td_ivec2 new_size);
+void td_texture_resize(td_texture * texture, const td_ivec2 new_size);
 
 /**
  * @brief Crop the texture to a new size.
@@ -166,7 +168,7 @@ td_bool tdt_resize_internal(td_texture * texture, const td_ivec2 new_size);
  * @param texture The texture to crop.
  * @param new_size The new size.
  */
-void tdt_crop(td_texture * texture, const td_ivec2 new_size);
+void td_texture_crop(td_texture * texture, const td_ivec2 new_size);
 
 /**
  * @brief Draw a line onto a texture.
@@ -176,7 +178,7 @@ void tdt_crop(td_texture * texture, const td_ivec2 new_size);
  * @param p2 Ending point.
  * @param color Line color.
  */
-void tdt_draw_line(td_texture * texture,
+void td_texture_draw_line(td_texture * texture,
                    const td_ivec2 p1,
                    const td_ivec2 p2,
                    const td_rgba color);
@@ -186,7 +188,7 @@ void tdt_draw_line(td_texture * texture,
  *
  * @param texture The texture to free.
  */
-void tdt_free(td_texture * texture);
+void td_texture_destroy(td_texture * texture);
 
 /**
  * @brief Blend two pixels using alpha.
@@ -195,6 +197,6 @@ void tdt_free(td_texture * texture);
  * @param b Foreground pixel.
  * @return Result of blending B over A.
  */
-td_rgba pixel_blend(td_rgba a, td_rgba b);
+td_rgba td_pixel_blend(const td_rgba a, const td_rgba b);
 
 #endif // TD_TEXTURE_H

@@ -12,26 +12,19 @@ typedef struct
     td_f32 depth;
     td_rgba color;
     td_vec2 uv;
-} tdr_vertex;
+} tdp_vertex;
 
-__td_priv_create_constructor(vertex_init, tdr_vertex, pos, depth, color, uv)
-
-td_u8* ptexture_resize(const td_u8* old,
-                     const td_u8 channel,
-                     const td_ivec2 old_size,
-                     const td_ivec2 new_size);
-
-void tdr_draw_line(const td_texture* fb,
+void tdp_draw_line(const td_texture* fb,
                         td_f32* depth_buf,
                         const td_ivec2 p1,
                         const td_ivec2 p2,
                         const td_rgba color);
 
-void td_rasterize_triangle( const td_texture* fb,
+void tdp_rasterize_triangle( const td_texture* fb,
                             td_f32* depth_buf,
-                            const tdr_vertex v1,
-                            const tdr_vertex v2,
-                            const tdr_vertex v3,
+                            const tdp_vertex v1,
+                            const tdp_vertex v2,
+                            const tdp_vertex v3,
                             const td_texture* tex
                         );
 

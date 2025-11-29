@@ -9,10 +9,11 @@
 #include "td_rasterizer.h"
 #include "td_main.h"
 #include "td_priv.h"
+#include "td_texture.h"
 
 static const td_texture* tdp_current_tex = 0;
 static int tdp_vertex_index = 0;
-static tdr_vertex tdp_vertex_buffer[12] = {0};
+static tdp_vertex tdp_vertex_buffer[12] = {0};
 static td_ivec2 tdp_terminal_size = {0};
 td_display tdp_display = {0, 0, {0, 0}, {0, 0}};
 static td_rgba tdp_bg_color = {0};
@@ -63,7 +64,7 @@ td_ivec2 tdp_calculate_display_size(const td_ivec2 term_size)
 }
 
 TD_INLINE void tdp_reset_depth_buffer(void) {
-    fill_buffer(tdp_display.depth, &(td_f32){ FLT_MAX }, calculate_pos(
+    tdp_fill_buffer(tdp_display.depth, &(td_f32){ FLT_MAX }, calculate_pos(
         (td_ivec2){.y=tdp_display.fb->size.y}, tdp_display.fb->size.x, sizeof(td_f32)), sizeof(td_f32));
 }
 
@@ -93,9 +94,9 @@ void tdp_resize_depth_buffer(void)
 void tdp_resize_handle(const td_ivec2 term_size)
 {
     td_ivec2 new_size = tdp_calculate_display_size(term_size);
-    if (tdt_resize_internal(tdp_display.fb, new_size))
+    if(td_texture_set_buffer(tdp_display.fb, 0, new_size, 0) == td_false)
         return;                 // Uhhhh, how to continue processing without the tdp_display
-    tdt_fill(tdp_display.fb, tdp_clear_color);
+    td_texture_fill(tdp_display.fb, tdp_clear_color);
     tdr_clear_term();
     tdp_resize_depth_buffer();
 }
@@ -104,9 +105,10 @@ int tdp_renderer_init(const td_ivec2 term_size)
 {
     tdp_query_background();
     tdp_clear_color = tdp_bg_color; // No color yet
-    if (!(tdp_display.fb = tdt_create(0, 3, (td_ivec2){0}, 1, 0))) // Empty texture
+    if (!(tdp_display.fb = td_texture_create(0, 3, (td_ivec2){0}, 1, 0))) // Empty texture
         return 1;
-    _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15);     // Hide cursor and enable buffer
+    _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15); // Hide cursor and enable buffer
+    _pwrite(STDOUT_FILENO, "\x1b[?1000h\x1b[?1006h", 16);                              // Enable mouse reporting, SGR mode
     tdp_resize_handle(term_size);
     return 0;
 }
@@ -117,7 +119,8 @@ void tdp_renderer_exit(void)
     // Reset color / graphics mode
     fflush(stdout);             // Flush remaining data
     _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
-    tdt_free(tdp_display.fb);
+    _pwrite(STDOUT_FILENO, "\x1b[?1000l\x1b[?1006l", 16);
+    td_texture_destroy(tdp_display.fb);
     if(tdp_display.depth)
         free(tdp_display.depth);
 }
@@ -135,19 +138,29 @@ void tdr_clear_term(void) {
 
 void tdr_set_clear_color(const td_rgba clear_color)
 {
-    tdp_clear_color = pixel_blend(tdp_bg_color, clear_color);
-    tdt_fill(tdp_display.fb, tdp_clear_color);
+    tdp_clear_color = td_pixel_blend(tdp_bg_color, clear_color);
+    td_texture_fill(tdp_display.fb, tdp_clear_color);
 }
 
 void tdr_clear_framebuffer(void)
 {
-    tdt_fill(tdp_display.fb, tdp_clear_color);
+    td_texture_fill(tdp_display.fb, tdp_clear_color);
     tdp_reset_depth_buffer();
+}
+
+void tdr_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color)
+{
+    tdp_vertex tlv = (tdp_vertex){.pos = top_left, .color = color};
+    tdp_vertex trv = (tdp_vertex){.pos = (td_ivec2){.x = bottom_right.x, .y = top_left.y}, .color = color};
+    tdp_vertex blv = (tdp_vertex){.pos = (td_ivec2){.x = top_left.x, .y = bottom_right.y}, .color = color};
+    tdp_vertex brv = (tdp_vertex){.pos = bottom_right, .color = color};
+    tdp_rasterize_triangle(tdp_display.fb, 0, tlv, trv, blv, 0);
+    tdp_rasterize_triangle(tdp_display.fb, 0, trv, brv, blv, 0);
 }
 
 void tdr_copy_texture(const td_texture* tex, const td_ivec2 placement_pos)
 {
-    tdt_merge(tdp_display.fb, tex, placement_pos, TDT_MERGE_CROP, td_false);
+    td_texture_merge(tdp_display.fb, tex, placement_pos,td_false);
 }
 
 void tdr_bind_texture(const td_texture *tex)
@@ -159,7 +172,7 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
 {
     if(!attribs_count)
         return;
-    tdr_vertex* curr = tdp_vertex_buffer + tdp_vertex_index;
+    tdp_vertex* curr = tdp_vertex_buffer + tdp_vertex_index;
     for(int i = 0; i < attribs_count; i++)
     {
         switch(vertex_attribs[i])
@@ -211,7 +224,7 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
     if(finalize)
         tdp_vertex_index++;
     if(tdp_vertex_index == 3) {
-        td_rasterize_triangle(tdp_display.fb, tdp_display.depth,
+        tdp_rasterize_triangle(tdp_display.fb, tdp_display.depth,
             tdp_vertex_buffer[0], tdp_vertex_buffer[1], tdp_vertex_buffer[2],
             tdp_current_tex
         );
@@ -224,7 +237,7 @@ TD_INLINE td_u8 tdp_rgb_to_216(const td_u8 *c) {
     return (td_u8)(16 + (c[0] / 51 * 36) + (c[1] / 51 * 6) + (c[2] / 51));
 }
 
-TD_INLINE void tdp_tdp_display_cell(td_u8 *c)
+TD_INLINE void tdp_display_cell(td_u8 *c)
 {
     const int ch = tdp_display.fb->channel;
     const int dtype = tdp_options[td_opt_display_type];
@@ -267,9 +280,9 @@ void tdr_render(void)
 
                 td_u8* ptr = tdp_display.fb->data + 
                     calculate_pos((td_ivec2){.x=tx, .y=ty}, tdp_display.fb->size.x, tdp_display.fb->channel);
-                if (memcmp(prev, ptr, tdp_display.fb->channel)) {
-                    tdp_tdp_display_cell(ptr);
-                    memcpy(prev, ptr, tdp_display.fb->channel);
+                if (memcmp(prev, ptr, (td_u64)tdp_display.fb->channel)) {
+                    tdp_display_cell(ptr);
+                    memcpy(prev, ptr, (td_u64)tdp_display.fb->channel);
                 }
 
                 printf("%*s", tdp_options[td_opt_pixel_width], "");

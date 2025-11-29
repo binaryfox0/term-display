@@ -45,3 +45,5 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/cglm/include")
     add_subdirectory(deps/cglm)
     target_link_libraries(cube PRIVATE cglm m)
 endif()
+
+example_projects(mouse)

@@ -3,25 +3,17 @@
 
 #include <stdlib.h>
 
-#define TD_SWAP(a, b) do { tdr_vertex temp = a; a = b; b = temp; } while (0)
+#define TDP_SWAP(a, b) do { tdp_vertex temp = a; a = b; b = temp; } while (0)
 
 td_bool tdp_wireframe_enabled = td_false;
 
-TD_INLINE td_i32 td_floor(const float x) {
-    return (td_i32)x;
-}
-
-TD_INLINE td_i32 td_ceil(const float x) {
-    td_i32 i = (td_i32)x;
-    return i + (x > (td_f32)i);
-}
-
-static inline void td_rasterize_pixel(
+static inline void tdp_rasterize_pixel(
                                 const td_texture* fb,
                                 td_f32* depth_buf,
                                 const td_ivec2 pos,
                                 const td_f32 depth,
-                                const td_u8 color[4], const td_u8 cch)
+                                const td_u8 color[4],
+                                const td_i32 cch)
 {
     if(!IN_RANGE(pos.x, 0, fb->size.x -1 ) || !IN_RANGE(pos.y, 0, fb->size.y - 1)) return;
     const td_u64 wpos = calculate_pos(pos, fb->size.x, 1);
@@ -30,52 +22,18 @@ static inline void td_rasterize_pixel(
             return;
         depth_buf[wpos] = depth;
     }
-    alpha_blend(fb->data + (wpos * fb->channel), color, fb->channel, cch);
+    tdp_blend(fb->data + (wpos * (td_u64)fb->channel), color, fb->channel, cch);
 }
 
-td_u8* ptexture_resize(const td_u8 *old, const td_u8 channel, const td_ivec2 old_size, const td_ivec2 new_size)
-{
-    float
-        x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
-        y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
-    td_u8 *raw =
-        (td_u8 *) malloc(calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, channel)),
-        *start = raw;
-    if (!raw)
-        return 0;
-
-    for (td_i32 row = 0; row < new_size.y; row++) {
-        float tmp = (float)row * y_ratio;
-        td_i32 iyf = td_floor(tmp), iyc = td_ceil(tmp);
-        float ty = tmp - (td_f32)iyf;
-        for (td_i32 col = 0; col < new_size.x; col++) {
-            tmp = (float)col * x_ratio;
-            td_i32 ixf = td_floor(tmp), ixc = td_ceil(tmp);
-            float tx = tmp - (td_f32)ixf;
-
-            td_u64 
-                i00 = calculate_pos((td_ivec2){.x=ixf, .y=iyf}, old_size.x, channel),
-                i10 = calculate_pos((td_ivec2){.x=ixc, .y=iyf}, old_size.x, channel),
-                i01 = calculate_pos((td_ivec2){ixf, iyc}, old_size.x, channel),
-                i11 = calculate_pos((td_ivec2){ixc, iyc}, old_size.x, channel);
-
-            for (td_u8 c = 0; c < channel; c++, raw++)
-                raw[0] =
-                    bilerp(old[i00 + c], old[i10 + c], old[i01 + c],
-                           old[i11 + c], tx, ty);
-        }
-    }
-    return start;
-}
-
-void tdr_draw_line(const td_texture* fb,
+void tdp_draw_line(const td_texture* fb,
                         td_f32* depth_buf,
                         const td_ivec2 p1,
                         const td_ivec2 p2,
                         const td_rgba color)
 {
-    td_u8 cch = 4, raw[4] = { 0 };
-    convert(raw, (td_u8[4]) TD_EXPAND_RGBA(color), fb->channel, 4, &cch);
+    td_i32 cch = 4;
+    td_u8 raw[4] = { 0 };
+    tdp_convert_color(raw, (td_u8[4]) TD_EXPAND_RGBA(color), fb->channel, 4, &cch);
 
     int yLonger = 0;
     int incrementVal, endVal;
@@ -97,14 +55,14 @@ void tdr_draw_line(const td_texture* fb,
     int j = 0;
     if (yLonger) {
         for (int i = 0; i != endVal; i += incrementVal) {
-            td_rasterize_pixel(fb, depth_buf,
+            tdp_rasterize_pixel(fb, depth_buf,
                        (td_ivec2){.x=p1.x + (j >> 16), .y=p1.y + i}, 0,
                        raw, cch);
             j += decInc;
         }
     } else {
         for (int i = 0; i != endVal; i += incrementVal) {
-            td_rasterize_pixel(fb, depth_buf,
+            tdp_rasterize_pixel(fb, depth_buf,
                        (td_ivec2){.x=p1.x + i, .y=p1.y + (j >> 16)}, 0,
                        raw, cch);
             j += decInc;
@@ -116,33 +74,33 @@ TD_INLINE td_f32 edge_function(td_ivec2 v0, td_ivec2 v1, td_ivec2 v2) {
     return (td_f32)((v1.x - v0.x) * (v2.y - v0.y) - (v1.y - v0.y) * (v2.x - v0.x));
 }
 
-void td_rasterize_triangle(
+void tdp_rasterize_triangle(
     const td_texture* fb,
     td_f32* depth_buf,
-    const tdr_vertex v1,
-    const tdr_vertex v2,
-    const tdr_vertex v3,
+    const tdp_vertex v1,
+    const tdp_vertex v2,
+    const tdp_vertex v3,
     const td_texture* tex
 )
 {
-    tdr_vertex pv1 = v1, pv2 = v2, pv3 = v3;
+    tdp_vertex pv1 = v1, pv2 = v2, pv3 = v3;
     if(edge_function(pv1.pos, pv2.pos, pv3.pos) > 0)
-        TD_SWAP(pv2, pv3);
+        TDP_SWAP(pv2, pv3);
         // return;
     
-    td_u8 c_ch = 0;
-    convert(pv1.color.raw, pv1.color.raw, fb->channel, 4, &c_ch);
-    convert(pv2.color.raw, pv2.color.raw, fb->channel, 4, &c_ch);
-    convert(pv3.color.raw, pv3.color.raw, fb->channel, 4, &c_ch);
+    td_i32 c_ch = 0;
+    tdp_convert_color(pv1.color.raw, pv1.color.raw, fb->channel, 4, &c_ch);
+    tdp_convert_color(pv2.color.raw, pv2.color.raw, fb->channel, 4, &c_ch);
+    tdp_convert_color(pv3.color.raw, pv3.color.raw, fb->channel, 4, &c_ch);
 
     td_u8* texture_data = tex ? tex->data : 0;
     td_ivec2 texture_size = tex ? tex->size : (td_ivec2){0};
-    td_u8 texture_ch = tex ? tex->channel : 0;
+    td_i32 texture_ch = tex ? tex->channel : 0;
 
     if(tdp_wireframe_enabled) {
-        tdr_draw_line(fb, depth_buf, v1.pos, v2.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255 });
-        tdr_draw_line(fb, depth_buf, v2.pos, v3.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
-        tdr_draw_line(fb, depth_buf, v3.pos, v1.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
+        tdp_draw_line(fb, depth_buf, v1.pos, v2.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255 });
+        tdp_draw_line(fb, depth_buf, v2.pos, v3.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
+        tdp_draw_line(fb, depth_buf, v3.pos, v1.pos, (td_rgba){ .r = 255, .g = 255, .b = 255, .a = 255});
 
         return;
     }
@@ -192,9 +150,9 @@ void td_rasterize_triangle(
                     td_f32 tex_u = u * (float)(texture_size.x - 1);
                     td_f32 tex_v = (1.0f - v) * (float)(texture_size.y - 1);
 
-                    td_i32 ixf = td_floor(tex_u);
+                    td_i32 ixf = tdp_floor(tex_u);
                     td_i32 ixc = min(ixf + 1, texture_size.x - 1);
-                    td_i32 iyf = td_floor(tex_v);
+                    td_i32 iyf = tdp_floor(tex_v);
                     td_i32 iyc = min(iyf + 1, texture_size.y - 1);
 
                     td_f32 tx = tex_u - (td_f32)ixf;
@@ -215,11 +173,11 @@ void td_rasterize_triangle(
                             tx, ty
                         );
                     
-                    alpha_blend(final_color, texel, 4, texture_ch);
+                    tdp_blend(final_color, texel, 4, texture_ch);
                 }
 
                 // Set pixel
-                td_rasterize_pixel(fb, depth_buf, (td_ivec2){.x=x,.y=y}, pixel_depth, final_color, c_ch);
+                tdp_rasterize_pixel(fb, depth_buf, (td_ivec2){.x=x,.y=y}, pixel_depth, final_color, c_ch);
             }
             w0_row += A0;
             w1_row += A1;

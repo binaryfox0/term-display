@@ -41,9 +41,9 @@ typedef void (*tdp_sighand)(int);
 
 struct td_texture_s {
     td_u8 *data;
-    td_u8 channel;
+    td_i32 channel;
     td_ivec2 size;
-    td_u8 freeable;
+    td_bool freeable;
 };
 
 typedef struct td_display_s {
@@ -56,7 +56,16 @@ typedef struct td_display_s {
 } td_display;
 
 // Inline stuff
-TD_INLINE td_u64 calculate_pos(const td_ivec2 pos, const td_i32 width, const td_u8 ch){
+TD_INLINE td_i32 tdp_floor(const float x) {
+    return (td_i32)x;
+}
+
+TD_INLINE td_i32 tdp_ceil(const float x) {
+    td_i32 i = (td_i32)x;
+    return i + (x > (td_f32)i);
+}
+
+TD_INLINE td_u64 calculate_pos(const td_ivec2 pos, const td_i32 width, const td_i32 ch){
     return (td_u64)((pos.y * width + pos.x) * ch);
 }
 
@@ -80,7 +89,8 @@ void tdp_resize_handle(const td_ivec2 term_size);
 void tdp_resize_depth_buffer(void);
 
 extern volatile td_bool td_initialized; // td_main.c
-extern td_bool tdp_shift_translate; //td_priv.c
+extern td_i32 tdp_options[__td_opt_numeric_end__]; // td_main.c
+extern td_bool tdp_shift_translate;
 
 // Platform-dependent
 td_ivec2 tdp_get_termsz(void);
@@ -91,16 +101,16 @@ int tdp_stdin_available(void);
 td_bool tdp_enable_stop_sig(const td_bool enable);
 
 // Platform-independent
-void tdp_kbpoll(const key_callback_func func);
+void tdp_kbpoll(const td_key_callback keycb, const td_mouse_callback mousecb);
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)
 #define IS_TRUECOLOR(channel) ((channel) == 3 || (channel) == 4)
 
 
-void convert(td_u8 * b_out, const td_u8 * b_in, td_u8 ch_a, td_u8 ch_b, td_u8 *out_b);
-void alpha_blend(td_u8 * a, const td_u8 * b, td_u8 ch_a, td_u8 ch_b);
+void tdp_convert_color(td_u8 * b_out, const td_u8 * b_in, td_i32 ch_a, td_i32 ch_b, td_i32 *out_b);
+void tdp_blend(td_u8 * a, const td_u8 * b, td_i32 ch_a, td_i32 ch_b);
 
-void fill_buffer(void* dest, const void* src, size_t destsz, size_t srcsz);
+void tdp_fill_buffer(void* dest, const void* src, td_u64 destsz, td_u64 srcsz);
 
 #endif

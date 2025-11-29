@@ -80,7 +80,6 @@ void tdp_restore_env(void)
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 
     tdp_set_sighand(SIGINT, SIG_DFL);
-    tdp_set_sighand(SIGTERM, SIG_DFL);
     tdp_set_sighand(SIGQUIT, SIG_DFL);
 }
 

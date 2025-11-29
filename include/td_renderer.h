@@ -57,6 +57,11 @@ void tdr_set_clear_color(const td_rgba clear_color);
 void tdr_clear_framebuffer(void);
 
 /**
+ * @brief Draw a rectangle into framebuffer with given size
+ */
+void tdr_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color);
+
+/**
  * @brief Copy the given texture directly into the framebuffer with given placement position
  *
  * @param tex The texture to be copied into framebuffer

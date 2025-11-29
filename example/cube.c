@@ -6,6 +6,7 @@
 #include "td_font.h"
 
 #include "example_utils.h"
+#include "td_texture.h"
 
 static const float vertices[] = {
     -0.5f, -0.5f, -0.5f,
@@ -84,6 +85,8 @@ int main(int argc, char** argv)
     const double max_dt = 1.0 / p.max_fps;
 
     tdr_set_clear_color((td_rgba){.a=255});
+    td_font* white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
+    td_font* red_font = td_default_font((td_rgba){.r=255, .a=255}, (td_rgba){0});
 
     while (td_is_running()) {
         double start_frame = get_time();
@@ -94,12 +97,9 @@ int main(int argc, char** argv)
         tdr_clear_framebuffer();
 
         char *string = to_string("%f", fps);
-        td_texture *texture =
-            tdf_string_texture(string, strlen(string), &size,
-                                   (td_rgba){255, 255, 255, 255},
-                                   (td_rgba){0});
+        td_texture *texture = td_render_string(white_font, string, strlen(string), &size);
         tdr_copy_texture(texture, (td_ivec2){0});
-        tdt_free(texture);
+        td_texture_destroy(texture);
 
         td_option(td_opt_display_size, 1, &size);
             
@@ -130,9 +130,9 @@ int main(int argc, char** argv)
         td_option(td_opt_display_size, td_true, &display_size);
 
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
-        texture = tdf_string_texture(tmp, -1, &size, (td_rgba){255,0,0,255}, (td_rgba){0});
+        texture = td_render_string(red_font, tmp, -1, &size);
         tdr_copy_texture(texture, (td_ivec2){.y=display_size.y - size.y});
-        tdt_free(texture);
+        td_texture_destroy(texture);
         free(tmp);
 
         tdr_render();
@@ -145,6 +145,8 @@ int main(int argc, char** argv)
         }
         free(string);
     }
+    td_destroy_font(white_font);
+    td_destroy_font(red_font);
     td_free();
     stop_logging();
     return 0;

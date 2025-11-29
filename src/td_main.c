@@ -154,9 +154,13 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
         td_ivec2 tmp = *(td_ivec2*)option;
         if(!tmp.x || !tmp.y) return td_true;
         if(!td_initialized) return td_false;
-        if ((internal_failure = tdt_resize_internal(tdp_display.fb, tmp)))
-            return 1;
-        tdt_fill(tdp_display.fb, clear_color);
+        td_bool status = td_texture_set_buffer(tdp_display.fb, 0, tmp, 0);
+        if(status == td_false)
+        {
+            internal_failure = td_true;
+            return td_false;
+        }
+        td_texture_fill(tdp_display.fb, clear_color);
         tdr_clear_term();
         break;
     }
@@ -178,10 +182,10 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
         case td_display_truecolor_216:
         case td_display_truecolor: new_channel = 3; break;
         default:
-            return 1;
+            return td_false;
         }
         tdp_options[type] = (td_i32)tmp;
-        tdt_set_channel(tdp_display.fb, new_channel);
+        td_texture_convert(tdp_display.fb, new_channel);
         break;
     }
 
@@ -237,23 +241,24 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     return td_true;
 }
 
+#define __handler(name) __td_cat(__td_cat(tdp_, name), _callback)
 
-// so much macro
 #define __handler_helper(name) \
-    __td_cat(name, _callback_func) __td_cat(__td_cat(private_, name), _callback); \
-    void __td_cat(__td_cat(td_set_, name), _callback)(__td_cat(name, _callback_func) callback) { \
-        __td_cat(__td_cat(private_, name), _callback) = callback; \
+    __td_cat(__td_cat(td_, name), _callback)  __handler(name); \
+    void __td_cat(__td_cat(td_set_, name), _callback)(__td_cat(__td_cat(td_, name), _callback) callback) { \
+        __td_cat(__td_cat(tdp_, name), _callback) = callback; \
     }
 __handler_helper(key)
+__handler_helper(mouse)
 __handler_helper(resize)
 void td_poll_events(void)
 {
-    tdp_kbpoll(private_key_callback);
+    tdp_kbpoll(__handler(key), __handler(mouse));
     tdp_term_size = tdp_get_termsz();;
     if (tdp_prev_size.x != tdp_term_size.x || tdp_prev_size.y != tdp_term_size.y) {
         if (tdp_options[td_opt_auto_resize]) {
             tdp_resize_handle(tdp_term_size);
-            if(private_resize_callback) private_resize_callback(tdp_display.fb->size);
+            if(__handler(resize)) __handler(resize)(tdp_display.fb->size);
         } else
             tdr_clear_term();
         tdp_prev_size = tdp_term_size;

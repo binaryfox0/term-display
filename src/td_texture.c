@@ -24,15 +24,16 @@ SOFTWARE.
 
 #include "td_texture.h"
 
+#include "td_def.h"
 #include "td_priv.h"
 #include "td_rasterizer.h"
 
 #include <stdlib.h>
 #include <string.h>
 
-td_u8 convert_ch(td_u8 ch_a, td_u8 ch_b)
+static td_i32 tdp_convert_ch(const td_i32 ch_a, const td_i32 ch_b)
 {
-    td_u8 a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
+    td_bool a_g = IS_GRAYSCALE(ch_a), b_g = IS_GRAYSCALE(ch_b);
     if (!a_g && b_g)
         return ch_b - 2;
     if (a_g && !b_g)
@@ -40,12 +41,18 @@ td_u8 convert_ch(td_u8 ch_a, td_u8 ch_b)
     return ch_b;
 }
 
+TD_INLINE td_u64 tdp_calculate_size(const td_ivec2 size, const td_i32 channel)
+{
+    return calculate_pos((td_ivec2){.y = size.y}, size.x, channel);
+}
+
 /* Helper utilities end   */
 
-td_texture *tdt_create(td_u8 *texture,
-                             const td_u8 channel,
+td_texture *td_texture_create(td_u8 *texture,
+                             const td_i32 channel,
                              const td_ivec2 size,
-                             const td_u8 freeable, const td_u8 copy)
+                             const td_bool freeable, 
+                             const td_bool copy)
 {
     if (OUT_RANGE(channel, 1, 4))
         return 0;
@@ -62,7 +69,7 @@ td_texture *tdt_create(td_u8 *texture,
     if(!size.x || !size.y)
         return out;
 
-    td_u64 alloc_size = calculate_pos((td_ivec2){.y=size.y}, size.x, channel);
+    td_u64 alloc_size = tdp_calculate_size(size, channel);
 
     if (!texture || copy) {
         out->data = (td_u8 *) malloc(alloc_size);
@@ -82,31 +89,53 @@ td_texture *tdt_create(td_u8 *texture,
                 free(texture);
         } else if (!texture)
             memset(out->data, 0, alloc_size);
-    } else {
+} else {
         out->data = texture;
     }
 
     return out;
 }
 
-td_texture *tdt_copy(td_texture *texture)
+td_bool td_texture_set_buffer(td_texture * texture,
+                              td_u8* buffer,
+                              const td_ivec2 size,
+                              const td_i32 channel)
 {
-    td_texture *out = 0;
-    if (!(out = (td_texture *) malloc(sizeof(td_texture))))
-        return 0;
-    td_u64 size = calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.y, texture->channel);
-    if (!(out->data = (td_u8 *) malloc(size))) {
-        free(out);
-        return 0;
+    if(!texture)
+        return td_false;
+    if(OUT_RANGE(channel, 0, 4))
+        return td_false;
+    if(!buffer)
+    {
+        td_i32 ch = channel == 0 ? texture->channel : channel;
+        if(OUT_RANGE(ch, 1, 4))
+            return td_false;
+        td_u64 raw_sz = tdp_calculate_size(size, ch);
+        td_u8* new_buf = (td_u8*)calloc(1, raw_sz);
+        if(!new_buf)
+            return td_false;
+        if(texture->freeable)
+            free(texture->data);
+        texture->data = new_buf;
+        texture->freeable = td_true;
+    } else {
+        if(channel == 0)
+            return td_false;
+        if(texture->freeable)
+            free(texture->data);
+        texture->data = buffer;
+        texture->channel = channel;
     }
-    memcpy(out->data, texture->data, size);
-    out->freeable = 1;
-    out->size = texture->size;
-    out->channel = texture->channel;
-    return out;
+    texture->size = size;
+    return td_true;
 }
 
-td_u8 *tdt_get_location(const td_ivec2 pos, const td_texture *texture)
+td_texture *td_texture_copy(const td_texture *texture)
+{
+    return td_texture_create(texture->data, texture->channel, texture->size, td_true, td_true);
+}
+
+td_u8 *td_texture_get_pixel(const td_texture* texture, const td_ivec2 pos)
 {
     if (!texture || pos.x >= texture->size.x || pos.y >= texture->size.y)
         return 0;
@@ -121,27 +150,28 @@ td_ivec2 tdt_get_size(const td_texture *texture)
     return texture->size;
 }
 
-void tdt_fill(const td_texture *texture, const td_rgba color)
+void td_texture_fill(const td_texture *texture, const td_rgba color)
 {
     if (!texture || !color.a)
         return;
-    td_u8 c[4] = TD_EXPAND_RGBA(color), tmp = 4;
+    td_u8 c[4] = TD_EXPAND_RGBA(color); 
+    td_i32 tmp = 4;
     td_ivec2 size = texture->size;
     td_u8 *data = texture->data;
-    td_u8 ch = texture->channel;
+    td_i32 ch = texture->channel;
 
-    convert(c, c, ch, 4, &tmp);
+    tdp_convert_color(c, c, ch, 4, &tmp);
     if (IS_TRANSPARENT(ch) || color.a != 255) {
         for (td_i32 row = 0; row < size.y; row++) {
             for (td_i32 col = 0; col < size.x; col++, data += ch)
-                alpha_blend(data, c, ch, 4);
+                tdp_blend(data, c, ch, 4);
         }
         return;
     }
-    fill_buffer(data, c, calculate_pos((td_ivec2){.y=size.y}, size.x, ch), ch);
+    tdp_fill_buffer(data, c, tdp_calculate_size(size, ch), (td_u64)ch);
 }
 
-void tdt_set_channel(td_texture* texture, td_u8 channel)
+void td_texture_convert(td_texture* texture, const td_i32 channel)
 {
     td_u64 pix_count = calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, 1);
 
@@ -149,83 +179,108 @@ void tdt_set_channel(td_texture* texture, td_u8 channel)
     td_u8* tmp = (td_u8*)malloc(calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, channel));
     if(!tmp) return;
     texture->data = tmp;
-    td_u8 old_channel = texture->channel;
+    td_i32 old_channel = texture->channel;
     texture->channel = channel;
 
     if(IS_GRAYSCALE(texture->channel) == IS_GRAYSCALE(channel)) // Same type
     {
         if(!IS_TRANSPARENT(texture->channel) && IS_TRANSPARENT(channel)) {
-            td_u8 a_i = channel - 1;
+            td_i32 a_i = channel - 1;
             for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel) {
-                memcpy(tmp, old_ptr, old_channel);
+                memcpy(tmp, old_ptr, (td_u64)old_channel);
                 tmp[a_i] = 255;
             }
         } else if (IS_TRANSPARENT(texture->channel) && !IS_TRANSPARENT(channel)) {
             for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
-                memcpy(tmp, old_ptr, channel);
+                memcpy(tmp, old_ptr, (td_u64)channel);
         }
     } else {
         for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
-            convert(tmp, old_ptr, channel, old_channel, 0);
+            tdp_convert_color(tmp, old_ptr, channel, old_channel, 0);
     }
     free(old_ptr);
 }
 
-// Forward declaration section
-td_u8 *crop_texture(td_u8 * old, td_u8 channel, td_ivec2 old_size,
-                 td_ivec2 new_size);
-td_u8 *resize_texture(const td_u8 * old, td_u8 channel, td_ivec2 old_size,
-                   td_ivec2 new_size);
+td_u8 *tdp_texture_crop_raw(const td_u8 * old, const td_i32 channel,
+                            const td_ivec2 old_size, const td_ivec2 new_size);
 
-void tdt_merge(const td_texture *texture_a,
+void td_texture_merge(const td_texture *texture_a,
                    const td_texture *texture_b,
                    const td_ivec2 placement_pos,
-                   const enum tdt_merge_mode mode, const td_bool replace)
+                   const td_bool replace)
 {
     if (!texture_a || !texture_b)
         return;
     if (placement_pos.x > texture_a->size.x ||
         placement_pos.y > texture_a->size.y)
         return;
-    td_u8 cha = texture_a->channel, chb = texture_b->channel;
-    td_ivec2 sa = texture_a->size, sb = texture_b->size;
-    td_u8 *ta =
-        &texture_a->data[(placement_pos.y * sa.x + placement_pos.x) * cha],
-        *tb = texture_b->data, *old = 0;
 
-    // Apply size thersehold
-    td_i32 max_space_x = sa.x - placement_pos.x, max_space_y =
-        sa.y - placement_pos.y;
-    td_u8 b_freeable = sb.x > max_space_x || sb.y > max_space_y;
-    if (b_freeable) {
-        td_ivec2 new_size = (td_ivec2){
-            .x = sb.x > max_space_x ? max_space_x : sb.x,
-            .y = sb.y > max_space_y ? max_space_y : sb.y
-        };
-        if (mode == TDT_MERGE_RESIZE)
-            tb = resize_texture(tb, chb, sb, new_size);
-        else
-            tb = crop_texture(tb, chb, sb, new_size);
-        old = tb;
-        sb = new_size;
-    }
+    td_i32  ch_a = texture_a->channel, ch_b = texture_b->channel,
+            new_ch_b = tdp_convert_ch(ch_a, ch_b);
 
-    td_i32 space = (sa.x - sb.x) * cha;
-    for (td_i32 row = 0; row < sb.y; row++, ta += space) {
-        for (td_i32 col = 0; col < sb.x; col++, ta += cha, tb += chb) {
-            td_u8 tmp[4] = { 0 }, tmp_1 = chb;
-            convert(tmp, tb, cha, chb, &tmp_1);
-            if(replace) 
-                memcpy(ta, tmp, cha);
-            else 
-                alpha_blend(ta, tmp, cha, tmp_1);
+    td_i32 remaining_x = texture_a->size.x - placement_pos.x;
+    td_i32 remaining_y = texture_a->size.y - placement_pos.y;
+    td_i32 cp_row = min(remaining_y, texture_b->size.y);
+    td_i32 cp_col = min(remaining_x, texture_b->size.x);
+
+    td_u8   *ptr_a = texture_a->data + calculate_pos(placement_pos, texture_a->size.x, ch_a), 
+            *ptr_b = texture_b->data;
+
+    td_i32 inc_a = (texture_a->size.x - cp_col) * ch_a;
+    td_i32 inc_b = (texture_b->size.x - cp_col) * ch_b;
+
+    td_u8 color[4] = {0};
+    for(td_i32 row = 0; row < cp_row; row++, ptr_a += inc_a, ptr_b += inc_b)
+    {
+        for(td_i32 col = 0; col < cp_col; col++, ptr_a += ch_a, ptr_b += ch_b)
+        {
+            tdp_convert_color(color, ptr_b, texture_a->channel, texture_b->channel, 0);
+            if(replace)
+                memcpy(ptr_a, color, (td_u64)new_ch_b);
+            else
+                tdp_blend(ptr_a, color, texture_a->channel, new_ch_b);
+
         }
     }
-    if (b_freeable)
-        free(old);
 }
 
-td_ivec2 calculate_new_size(const td_ivec2 old, const td_ivec2 size)
+td_u8* tdp_texture_resize_impl(const td_u8 *old, const td_i32 channel, const td_ivec2 old_size, const td_ivec2 new_size)
+{
+    float
+        x_ratio = (float)(old_size.x - 1) / (float)(new_size.x - 1),
+        y_ratio = (float)(old_size.y - 1) / (float)(new_size.y - 1);
+    td_u8 *raw =
+        (td_u8 *) malloc(calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, channel)),
+        *start = raw;
+    if (!raw)
+        return 0;
+
+    for (td_i32 row = 0; row < new_size.y; row++) {
+        float tmp = (float)row * y_ratio;
+        td_i32 iyf = tdp_floor(tmp), iyc = tdp_ceil(tmp);
+        float ty = tmp - (td_f32)iyf;
+        for (td_i32 col = 0; col < new_size.x; col++) {
+            tmp = (float)col * x_ratio;
+            td_i32 ixf = tdp_floor(tmp), ixc = tdp_ceil(tmp);
+            float tx = tmp - (td_f32)ixf;
+
+            td_u64 
+                i00 = calculate_pos((td_ivec2){.x=ixf, .y=iyf}, old_size.x, channel),
+                i10 = calculate_pos((td_ivec2){.x=ixc, .y=iyf}, old_size.x, channel),
+                i01 = calculate_pos((td_ivec2){ixf, iyc}, old_size.x, channel),
+                i11 = calculate_pos((td_ivec2){ixc, iyc}, old_size.x, channel);
+
+            for (td_u8 c = 0; c < channel; c++, raw++)
+                raw[0] =
+                    bilerp(old[i00 + c], old[i10 + c], old[i01 + c],
+                           old[i11 + c], tx, ty);
+        }
+    }
+    return start;
+}
+
+
+td_ivec2 tdp_ratio_size(const td_ivec2 old, const td_ivec2 size)
 {
     if (!size.x)
         return (td_ivec2){.x=(old.x * size.y) / old.y, .y=size.y};
@@ -234,12 +289,11 @@ td_ivec2 calculate_new_size(const td_ivec2 old, const td_ivec2 size)
     return size;
 }
 
-td_u8 *resize_texture(const td_u8 *old, td_u8 channel, td_ivec2 old_size,
-                   td_ivec2 new_size)
+td_u8 *tdp_texture_resize_raw(const td_u8 *old, const td_i32 channel, const td_ivec2 old_size,
+                      const td_ivec2 new_size)
 {
-    if (!new_size.x || !new_size.y)
-        new_size = calculate_new_size(old_size, new_size);
-    return ptexture_resize(old, channel, old_size, new_size);
+    td_ivec2 size = tdp_ratio_size(old_size, new_size);
+    return tdp_texture_resize_impl(old, channel, old_size, size);
 }
 
 void tdt_resize(td_texture *texture, const td_ivec2 size)
@@ -247,13 +301,13 @@ void tdt_resize(td_texture *texture, const td_ivec2 size)
     if (!texture)
         return;
     td_u8 *tmp =
-        resize_texture(texture->data, texture->channel, texture->size,
+        tdp_texture_resize_raw(texture->data, texture->channel, texture->size,
                        size);
     if (!tmp)
         return;
     free(texture->data);
     texture->data = tmp;
-    texture->size = calculate_new_size(texture->size, size);
+    texture->size = tdp_ratio_size(texture->size, size);
 }
 
 td_bool tdt_resize_internal(td_texture *texture,
@@ -278,15 +332,16 @@ td_bool tdt_resize_internal(td_texture *texture,
     return 0;
 }
 
-td_u8 *crop_texture(td_u8 *old, td_u8 channel, td_ivec2 old_size,
-                 td_ivec2 new_size)
+td_u8 *tdp_texture_crop_raw(const td_u8 *old, const td_i32 channel, 
+                            const td_ivec2 old_size, const td_ivec2 new_size)
 {
-    td_u8 *raw = 0;
+    td_u8 *raw = 0, *start = 0;
     if (!
         (raw =
          (td_u8 *) malloc(calculate_pos((td_ivec2){.y=new_size.y}, new_size.x, channel))))
         return 0;
-    td_u8 *ptr = old, *start = raw;
+    const td_u8 *ptr = old;
+    start = raw;
     td_u64 row_length = (td_u64)(new_size.x * channel), old_length =
         (td_u64)(old_size.x * channel);
     for (td_i32 row = 0; row < new_size.y;
@@ -295,13 +350,13 @@ td_u8 *crop_texture(td_u8 *old, td_u8 channel, td_ivec2 old_size,
     return start;
 }
 
-void tdt_crop(td_texture *texture, const td_ivec2 new_size)
+void td_texture_crop(td_texture *texture, const td_ivec2 new_size)
 {
     if (!texture || new_size.x >= texture->size.x
         || new_size.y >= texture->size.y)
         return;
     td_u8 *tmp =
-        crop_texture(texture->data, texture->channel, texture->size,
+        tdp_texture_crop_raw(texture->data, texture->channel, texture->size,
                      new_size);
     if (!tmp)
         return;
@@ -310,7 +365,7 @@ void tdt_crop(td_texture *texture, const td_ivec2 new_size)
     texture->size = new_size;
 }
 
-void tdt_free(td_texture *texture)
+void td_texture_destroy(td_texture *texture)
 {
     if (!texture)
         return;
@@ -319,9 +374,9 @@ void tdt_free(td_texture *texture)
     free(texture);
 }
 
-td_rgba pixel_blend(td_rgba a, td_rgba b)
+td_rgba td_pixel_blend(const td_rgba a, const td_rgba b)
 {
     td_u8 ar[4] = TD_EXPAND_RGBA(a), br[4] = TD_EXPAND_RGBA(b);
-    alpha_blend(ar, br, 4, 4);
+    tdp_blend(ar, br, 4, 4);
     return (td_rgba){.raw = {ar[0], ar[1], ar[2], ar[3]}};
 }

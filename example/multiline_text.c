@@ -2,22 +2,22 @@
 #include <stdlib.h>             // free
 #include <math.h>               // sin
 
-// Non-standard stuffs
-#include <pthread.h>
-
 #include "td_main.h"
 #include "td_font.h"
 
 #include "example_utils.h"
+#include "td_texture.h"
+
+// Non-standard stuffs
+#if defined(TD_PLATFORM_WINDOWS)
+#   include <windows.h>
+#elif defined(TD_PLATFORM_UNIX)
+#   include <pthread.h>
+#endif
 
 #define KSTROK_BUFSIZ 48
 #define KSTROK_FREQ 24
 #define KSTROK_INTERVAL 0.25 // in secs
-
-int kstork_texh = 0;
-
-char* buffer = 0;
-int current_size = 0, current_index = 0;
 
 static const struct {
     int mod;
@@ -32,21 +32,23 @@ static const char *fkey_name[] = {
     "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
 };
 
+int kstork_texh = 0;
+char* buffer = 0;
+int current_size = 0, current_index = 0;
+td_font* font = 0;
 td_texture* textinput_tex = 0;
 td_texture* keystroke_tex = 0;
-
 td_ivec2 fbsz = {0};
 
 void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
 {
     if(!tex) return;
     if(*tex) {
-        tdt_free(*tex);
+        td_texture_destroy(*tex);
         *tex = 0;
     }
 
-    *tex = tdf_string_texture(str, -1, 
-        texsz, (td_rgba){255,255,255,255}, (td_rgba){0});
+    *tex = td_render_string(font, str, -1, texsz);
 }
 
 void append_char_textin(const int key)
@@ -104,13 +106,13 @@ const char* map_special_key(const int key)
     return ""; 
 }
 
-void build_keystrok_str(const int key, const int mods)
+const char* build_keystrok_str(const int key, const int mods)
 {
     static int repeat_count = 0;
     static int prev_k = 0, prev_mods = 0;
+    static char buf[KSTROK_BUFSIZ] = {0};
 
-    char buf[KSTROK_BUFSIZ] = {0};
-    td_ivec2 texsz = {0};
+    memset(buf, 0, KSTROK_BUFSIZ);
 
     if(prev_k == key && prev_mods == mods)
         repeat_count++;
@@ -148,14 +150,16 @@ void build_keystrok_str(const int key, const int mods)
 
     *(end - 1) = '\0';
     
-    refresh_texture(&keystroke_tex, buf, &texsz);
-    kstork_texh = texsz.y;
+    return buf;
 }
 
 void process_input(int key, int mods, td_key_state_t actions)
 {
     append_char_textin(key);
-    build_keystrok_str(key, mods);
+    const char* str = build_keystrok_str(key, mods);
+    td_ivec2 texsz = {0};
+    refresh_texture(&keystroke_tex, str, &texsz);
+    kstork_texh = texsz.y;
 }
 
 void resize_handle(td_ivec2 new_size) {
@@ -170,6 +174,8 @@ void normal_routine(const int max_fps)
     td_option(td_opt_display_size, td_true, &fbsz);
     td_set_key_callback(process_input);
     td_set_resize_callback(resize_handle);
+
+    font = td_default_font((td_rgba){{255,255,255,255}}, (td_rgba){0});
 
     td_ivec2 size = { 0 };
     td_u64 frame_count = 0;
@@ -187,10 +193,9 @@ void normal_routine(const int max_fps)
 
         char *string = to_string("%f", fps);
         td_texture *texture =
-            tdf_string_texture(string, strlen(string), &size,
-                                (td_rgba){.a=255}, (td_rgba){255, 255, 255, 255});
+            td_render_string(font, string, strlen(string), &size);
         tdr_copy_texture(texture, (td_ivec2){0});
-        tdt_free(texture);
+        td_texture_destroy(texture);
 
         tdr_copy_texture(textinput_tex, (td_ivec2){.y=size.y + 1});
         tdr_copy_texture(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
@@ -204,13 +209,38 @@ void normal_routine(const int max_fps)
         }
         free(string);
     }
+    td_destroy_font(font);
 
-    tdt_free(textinput_tex);
-    tdt_free(keystroke_tex);
+    td_texture_destroy(textinput_tex);
+    td_texture_destroy(keystroke_tex);
 }
 
 volatile double kstrok_frame_start = 0;
 volatile int kstrok_thread_running = 1;
+volatile int being_debugged = 0;
+
+int is_being_debugged()
+{
+#if defined(TD_PLATFORM_WINDOWS)
+    return IsDebuggerPresent();
+#elif defined(TD_PLATFORM_UNIX)
+    FILE *f = fopen("/proc/self/status", "r");
+    if (!f) return 0;
+
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "TracerPid:", 10) == 0) {
+            int tracer = atoi(line + 10);
+            fclose(f);
+            return tracer != 0;
+        }
+    }
+
+    fclose(f);
+    return 0;
+#endif
+}
+
 void* kstrok_watchdog(void* userdata)
 {
     (void)userdata;
@@ -219,6 +249,10 @@ void* kstrok_watchdog(void* userdata)
     {
         double start_frame = get_time();
         if(get_time() - kstrok_frame_start > KSTROK_INTERVAL) {
+            if(being_debugged) {
+                kstrok_frame_start = get_time();
+                continue;
+            }
             td_free();
             aparse_prog_error("program has crashed due to an unsupported keystroke");
             exit(127);
@@ -228,14 +262,21 @@ void* kstrok_watchdog(void* userdata)
     pthread_exit(0);
 }
 
+int keystroke_readable = 0;
+
+
 void kstrok_logger(int key, int mods, td_key_state_t state)
 {
-    printf("%d, %d, %d\n", key, mods, state);
+    printf("%d, %d, %d", key, mods, state);
+    if(keystroke_readable)
+        printf(" (%s)", build_keystrok_str(key, mods));
+    printf("\n");
 }
 
 void kstrok_test_routine(const int max_fps)
 {
     pthread_t watchdog = 0;
+    being_debugged = is_being_debugged();
     if(pthread_create(&watchdog, 0, kstrok_watchdog, 0) != 0) {
         td_free();
         exit(127);
@@ -256,10 +297,12 @@ void kstrok_test_routine(const int max_fps)
 int main(int argc, char** argv)
 {
     int is_keystroke_test = 0;
-    example_params p = parse_argv(argc, argv, (aparse_arg[1]){
+    example_params p = parse_argv(argc, argv, (aparse_arg[]){
             aparse_arg_option(0, "--keystroke-test", &is_keystroke_test, sizeof(is_keystroke_test),
-                              APARSE_ARG_TYPE_BOOL, "enable keystroke test")
-        }, 1, 0
+                              APARSE_ARG_TYPE_BOOL, "enable keystroke test"),
+            aparse_arg_option(0, "--keystroke-readable", &keystroke_readable, sizeof(keystroke_readable),
+                              APARSE_ARG_TYPE_BOOL, "print readable keystroke in test")
+        }, 2, 0
     );
 
     if (td_init() || start_logging("statics.txt"))
