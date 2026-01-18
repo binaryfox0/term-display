@@ -163,7 +163,7 @@ TD_INLINE td_bool handle_special_combo(const int byte, int *mods)
     return td_true;
 }
 
-#define BUF_SIZE 16  // physical buffer size
+#define BUF_SIZE 256  // physical buffer size
 typedef struct {
     char buffer[BUF_SIZE];        // physical storage
     int start_idx;          // logical index of buffer[0]
@@ -187,7 +187,7 @@ int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
 
     int end_idx = rb->start_idx + rb->count - 1;
 
-    if (index < rb->start_idx) return -1; // too old
+    if (rb->count > 0 && index < rb->start_idx) return -1; // too old
 
     // If index beyond current buffer, refill
     while (index > end_idx) {
@@ -215,7 +215,7 @@ int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
         tdp_kbbyte_available -= n;
     }
 
-    int phys = index % BUF_SIZE;
+    int phys = (index - rb->start_idx) % BUF_SIZE;
     return rb->buffer[phys];
 }
 
@@ -234,7 +234,9 @@ int tdp_stoi(tdp_ringbuf* rb, int *idx)
     return out;
 }
 
-void tdp_kbpoll(const td_key_callback keycb, const td_mouse_callback mousecb)
+void tdp_kbpoll(
+        const td_key_callback keycb,
+        const td_mouse_callback mousecb)
 {
     if (!tdp_stdin_ready(0))
         return;
@@ -245,126 +247,129 @@ void tdp_kbpoll(const td_key_callback keycb, const td_mouse_callback mousecb)
     int idx = 0;
     for(;;)
     {
+        int probe = idx;
         int ch = 0, mods = 0;
-        int b0 = tdp_rbuf_get(&rb, idx + 0);
-        if(b0 == -1) break;
-        if(b0 != 0x1b) {
-            idx++;
-            if(tdp_handle_single_byte(b0, &ch, &mods))
-                continue;
-            raise_hand(keycb, ch, mods, td_key_press);
-            continue;
-        }
 
-        int b1 = tdp_rbuf_get(&rb, idx + 1);
-        if(b1 == -1) {
-            raise_hand(keycb, td_key_escape, 0, td_key_press);
+        int b0 = tdp_rbuf_get(&rb, probe);
+        if (b0 == -1)
             break;
-        }
-        // \x1bx
-        if(b1 != '[' && b1 != '0')
-        {
-           idx += 2;
-            mods |= td_key_alt;
-            if(tdp_handle_single_byte(b1, &ch, &mods))
-                continue;
-            raise_hand(keycb, ch, mods, td_key_press);
-            continue;
-        }
 
-        int b2 = tdp_rbuf_get(&rb, idx + 2);
-        if(b2 == -1)
-        {
-            raise_hand(keycb, td_key_left_bracket, td_key_alt, td_key_press);
-            break;
-        }
-
-        // ansi escape sequence end indicator
-        int b3 = tdp_rbuf_get(&rb, idx + 3),
-            b4 = tdp_rbuf_get(&rb, idx + 4),
-            b5 = tdp_rbuf_get(&rb, idx + 5),
-            b6 = tdp_rbuf_get(&rb, idx + 6);
-        
-        // y is modifier, x is key
-        // \x1b([/0)x       - Navigation keys (arrow, etc) & F1 - F4
-        // \x1b([/0)x~      - PgUp/PgDown/Ins/Del if b1 == '['. Ctrl/Alt/Shift + F1-F4 (KDE Konsole)
-        // \x1b[xx~         - F5 - F12
-        // \x1b[x;y~        - Ctrl/Alt/Shift + Ins/Del (Android Termux)
-        // \x1b[1;yx        - Ctrl/Alt/Shift + F1 - F4 (vscode) / Navigation keys
-        // \x1b[xx;y~       - Ctrl/Alt/Shift + F5 - F12
-        
-        if(b3 == '~') {
-            // \x1b[x~
-            idx += 4;
-            if(b1 == '[' ?
-                !handle_nav_key(b2, &ch) :
-                    !handle_special_combo(b2, &ch) ||
-                    !handle_f5_below(b3, &ch))
-                        continue;
-            raise_hand(keycb, ch, mods, td_key_press);
-            continue;
-        } else if(b4 == '~') {
-            // \x1b[xx~
-            idx += 5;
-            if (!handle_f5_above(b2, b3, &ch))
-                continue;
-            raise_hand(keycb, ch, 0, td_key_press);
-        } else if(b5 == '~') {
-            idx += 6;
-            if(b3 != ';')
-                continue;
-            if(!handle_special_combo(b4, &mods) ||
-               !handle_nav_key(b2, &ch))
-                    continue;
-            raise_hand(keycb, ch, mods, td_key_press);
-        } else if(b6 == '~') {
-            idx += 7;
-            if (b4 != ';')
-                continue;
-            if (!(handle_special_combo(b5, &mods) ||
-                  handle_f5_above(b2, b3, &ch)))
-                    continue;
-            raise_hand(keycb, ch, mods, td_key_press);
-        } else {
-            if(b2 == '<') {
-                int old_idx = idx;
-                idx += 3; // skip '\x1b' '[' '<'
-                int cb = tdp_stoi(&rb, &idx);
-                // unexpected delimiter
-                //if(tdp_rbuf_get(&rb, idx) != ';') {
-                //    idx = old_idx + 2;
-                //    continue;
-                //}
-                idx++;
-                int cx = (tdp_stoi(&rb, &idx) - 1) / tdp_options[td_opt_pixel_width];
-                idx++;
-                int cy = (tdp_stoi(&rb, &idx) - 1) / tdp_options[td_opt_pixel_height];
-                int state = tdp_rbuf_get(&rb, idx) == 'M';
-                idx++;
-                raise_hand(mousecb, cx, cy, cb);
-                continue;
-            } else if(b3 == ';') {
-                idx += 6;
-                if(b2 != '1' || b3 != ';')
-                    continue;
-                if (!handle_special_combo(b4, &mods) ||
-                    !(handle_f5_below(b5, &ch) ||
-                      handle_nav_key(b5, &ch)))
-                        continue;
+        if (b0 != 0x1b) {
+            probe++;
+            if (!tdp_handle_single_byte(b0, &ch, &mods))
                 raise_hand(keycb, ch, mods, td_key_press);
-            } else {
-                // \x1b[x
-                idx += 3;
-                if(b1 == '[' ? 
-                    !handle_nav_key(b2, &ch) : 
-                    !handle_f5_below(b2, &ch))
-                        continue;
-                raise_hand(keycb, ch, 0, td_key_press);
+            idx = probe;
+            continue;
+        }
+
+        int b1 = tdp_rbuf_get(&rb, probe + 1);
+        if (b1 == -1)
+            break; /* wait */
+
+        /* Alt + key */
+        if (b1 != '[' && b1 != 'O') {
+            int b = tdp_rbuf_get(&rb, probe + 1);
+            if (b == -1)
+                break;
+
+            probe += 2;
+            mods = td_key_alt;
+            if (!tdp_handle_single_byte(b, &ch, &mods))
+                raise_hand(keycb, ch, mods, td_key_press);
+            idx = probe;
+            continue;
+        }
+
+        int b2 = tdp_rbuf_get(&rb, probe + 2);
+        if (b2 == -1)
+            break;
+
+
+        /* ESC [ x */
+        if (handle_nav_key(b2, &ch)) {
+            probe += 3;
+            idx = probe;
+            raise_hand(keycb, ch, 0, td_key_press);
+            continue;
+        }
+
+        /* ESC O P..S  (F1–F4) */
+        if (b1 == 'O' && handle_f5_below(b2, &ch)) {
+            probe += 3;
+            idx = probe;
+            raise_hand(keycb, ch, 0, td_key_press);
+            continue;
+        }
+
+        int b3 = tdp_rbuf_get(&rb, probe + 3);
+        if (b3 == -1)
+            break;
+
+        /* ESC [ x ~ */
+        if (b3 == '~' && handle_f5_below(b2, &ch)) {
+            probe += 4;
+            idx = probe;
+            raise_hand(keycb, ch, 0, td_key_press);
+            continue;
+        }
+
+        int b4 = tdp_rbuf_get(&rb, probe + 4);
+        if (b4 == -1)
+            break;
+
+        /* ESC [ xx ~  (F5–F12) */
+        if (b4 == '~' && handle_f5_above(b2, b3, &ch)) {
+            probe += 5;
+            idx = probe;
+            raise_hand(keycb, ch, 0, td_key_press);
+            continue;
+        }
+
+        /* ESC [ 1 ; y x   (mod + nav / F1–F4) */
+        if (b2 == '1' && b3 == ';') {
+            int b5 = tdp_rbuf_get(&rb, probe + 5);
+            if (b5 == -1)
+                break;
+
+            if (handle_special_combo(b4, &mods) &&
+                (handle_nav_key(b5, &ch) ||
+                 handle_f5_below(b5, &ch))) {
+                probe += 6;
+                idx = probe;
+                raise_hand(keycb, ch, mods, td_key_press);
+                continue;
             }
         }
+
+
+        /* ---------- mouse ---------- */
+        if (b2 == '<') {
+            probe += 3;
+            int cb = tdp_stoi(&rb, &probe);
+            if (tdp_rbuf_get(&rb, probe++) != ';')
+                goto fallback;
+
+            int cx = (tdp_stoi(&rb, &probe) - 1) /
+                     tdp_options[td_opt_pixel_width];
+            probe++; /* ; */
+
+            int cy = (tdp_stoi(&rb, &probe) - 1) /
+                     tdp_options[td_opt_pixel_height];
+
+            int type = tdp_rbuf_get(&rb, probe++);
+            if (type == -1)
+                break;
+
+            idx = probe;
+            raise_hand(mousecb, cx, cy, cb);
+            continue;
+        }
+
+fallback:
+        idx++;
+        raise_hand(keycb, td_key_escape, 0, td_key_press);
     }
 }
-
 
 // // Convert b to have the same type as a
 void tdp_convert_color(td_u8 *b_out, const td_u8 *b_in, td_i32 ch_a, td_i32 ch_b, td_i32 *out_b)

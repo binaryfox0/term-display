@@ -52,7 +52,7 @@ int main(int argc, char** argv)
         return 1;
     }
     td_u8 enable = 1;
-    if (td_init() || start_logging("statics.txt"))
+    if (td_init() == td_false || start_logging("statics.txt"))
         return 1;
 
     use_params(p);
@@ -70,16 +70,16 @@ int main(int argc, char** argv)
 
         td_option(td_opt_display_size, 1, &size);
         td_texture *noise = generate_noise(size);
-        tdr_copy_texture(noise, (td_ivec2){0});
+        td_copy_texture(noise, (td_ivec2){0});
         td_texture_destroy(noise);
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             td_render_string(font, string, strlen(string), &size);
-        tdr_copy_texture(texture, (td_ivec2){0});
+        td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
-        tdr_render();
+        td_render();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
         free(string);
     }
     td_destroy_font(font);
-    td_free();
+    td_quit();
     stop_logging();
     return 0;
 }

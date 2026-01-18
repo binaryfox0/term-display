@@ -56,12 +56,12 @@ int main(int argc, char** argv)
         }
     }
  
-    if (td_init() || start_logging("statics.txt"))
+    if (td_init() == td_false || start_logging("statics.txt"))
         return 1;
  
     use_params(p);
 
-    tdr_vertex_attrib attribs[] = { TDRVA_POSITION_2D, TDRVA_UV_COORDS};
+    td_vertex_attrib attribs[] = { TDVA_POSITION_2D, TDVA_UV_COORDS};
     td_font* font = td_default_font((td_rgba){255, 255, 255, 255}, (td_rgba){0});
 
     td_ivec2 size = { 0 };
@@ -74,13 +74,13 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        tdr_set_clear_color(calculate_rgb(elapsed));
+        td_set_clear_color(calculate_rgb(elapsed));
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             td_render_string(font, string, strlen(string), &size);
 
-        tdr_bind_texture(texture);
+        td_bind_texture(texture);
         td_ivec2 display_sz = {0};
         td_option(td_opt_display_size, td_true, &display_sz);
         td_vec2 right_pos = pos_to_ndc((td_ivec2){.x=size.x} , display_sz);
@@ -92,10 +92,10 @@ int main(int argc, char** argv)
         vertices[4 * 4 + 1] = bottom_pos.y;
         vertices[5 * 4 + 1] = bottom_pos.y;
         for(int i = 0; i < sizeof(vertices) / sizeof(float) / 4; i++)
-            tdr_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]), td_true);
+            td_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]), td_true);
         td_texture_destroy(texture);
 
-        tdr_render();
+        td_render();
         elapsed += delta_time * speed;
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
@@ -106,7 +106,7 @@ int main(int argc, char** argv)
         free(string);
     }
     td_destroy_font(font);
-    td_free();
+    td_quit();
     stop_logging();
     return 0;
 }

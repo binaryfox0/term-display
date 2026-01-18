@@ -197,6 +197,6 @@ void td_texture_destroy(td_texture * texture);
  * @param b Foreground pixel.
  * @return Result of blending B over A.
  */
-td_rgba td_pixel_blend(const td_rgba a, const td_rgba b);
+td_rgba td_blend_pixel(const td_rgba a, const td_rgba b);
 
 #endif // TD_TEXTURE_H

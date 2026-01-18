@@ -97,7 +97,7 @@ void tdp_resize_handle(const td_ivec2 term_size)
     if(td_texture_set_buffer(tdp_display.fb, 0, new_size, 0) == td_false)
         return;                 // Uhhhh, how to continue processing without the tdp_display
     td_texture_fill(tdp_display.fb, tdp_clear_color);
-    tdr_clear_term();
+    td_clear_term();
     tdp_resize_depth_buffer();
 }
 
@@ -125,7 +125,7 @@ void tdp_renderer_exit(void)
         free(tdp_display.depth);
 }
 
-void tdr_clear_term(void) {
+void td_clear_term(void) {
     fflush(stdout);
     _pwrite(STDOUT_FILENO, 
         "\x1b[0m"                       // Reset colors mode
@@ -136,19 +136,19 @@ void tdr_clear_term(void) {
     );
 }
 
-void tdr_set_clear_color(const td_rgba clear_color)
+void td_set_clear_color(const td_rgba clear_color)
 {
-    tdp_clear_color = td_pixel_blend(tdp_bg_color, clear_color);
+    tdp_clear_color = td_blend_pixel(tdp_bg_color, clear_color);
     td_texture_fill(tdp_display.fb, tdp_clear_color);
 }
 
-void tdr_clear_framebuffer(void)
+void td_clear_framebuffer(void)
 {
     td_texture_fill(tdp_display.fb, tdp_clear_color);
     tdp_reset_depth_buffer();
 }
 
-void tdr_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color)
+void td_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color)
 {
     tdp_vertex tlv = (tdp_vertex){.pos = top_left, .color = color};
     tdp_vertex trv = (tdp_vertex){.pos = (td_ivec2){.x = bottom_right.x, .y = top_left.y}, .color = color};
@@ -158,17 +158,17 @@ void tdr_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const t
     tdp_rasterize_triangle(tdp_display.fb, 0, trv, brv, blv, 0);
 }
 
-void tdr_copy_texture(const td_texture* tex, const td_ivec2 placement_pos)
+void td_copy_texture(const td_texture* tex, const td_ivec2 placement_pos)
 {
     td_texture_merge(tdp_display.fb, tex, placement_pos,td_false);
 }
 
-void tdr_bind_texture(const td_texture *tex)
+void td_bind_texture(const td_texture *tex)
 {
     tdp_current_tex = tex;
 }
 
-void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize)
+void td_add_vertex(const td_f32 *vertex, const td_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize)
 {
     if(!attribs_count)
         return;
@@ -177,24 +177,24 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
     {
         switch(vertex_attribs[i])
         {
-        case TDRVA_POSITION_4D:
+        case TDVA_POSITION_4D:
             curr->pos = ndc_to_pos((td_vec2){.x=vertex[0] / vertex[3], .y=vertex[1] / vertex[3]}, tdp_display.fb->size);
             curr->depth = vertex[2];
             vertex += 4;
             break;
 
-        case TDRVA_POSITION_3D:
+        case TDVA_POSITION_3D:
             curr->pos = ndc_to_pos((td_vec2){.x=vertex[0], .y=vertex[1]}, tdp_display.fb->size);
             curr->depth = vertex[2];
             vertex += 3;
             break;
         
-        case TDRVA_POSITION_2D:
+        case TDVA_POSITION_2D:
             curr->pos = ndc_to_pos((td_vec2){.x=vertex[0], .y=vertex[1]}, tdp_display.fb->size);
             vertex += 2;
             break;
 
-        case TDRVA_COLOR_RGBA:
+        case TDVA_COLOR_RGBA:
             curr->color = (td_rgba){
                 .r = (td_u8)(vertex[0] * 255),
                 .g = (td_u8)(vertex[1] * 255),
@@ -204,7 +204,7 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
             vertex += 4;
             break;
 
-        case TDRVA_COLOR_RGB:
+        case TDVA_COLOR_RGB:
             curr->color = (td_rgba){
                 .r = (td_u8)(vertex[0] * 255),
                 .g = (td_u8)(vertex[1] * 255),
@@ -215,7 +215,7 @@ void tdr_add_vertex(const td_f32 *vertex, const tdr_vertex_attrib* vertex_attrib
             break;
 
         
-        case TDRVA_UV_COORDS:
+        case TDVA_UV_COORDS:
             curr->uv = (td_vec2){.x=vertex[0], .y=vertex[1]};
             vertex += 2;
             break;
@@ -259,7 +259,7 @@ TD_INLINE void tdp_display_cell(td_u8 *c)
 }
 
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
-void tdr_render(void)
+void td_render(void)
 {
     printf("\x1b[H");
     int rot = tdp_options[td_opt_display_rotate];

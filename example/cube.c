@@ -69,7 +69,7 @@ void processInput(int key, int mods, td_key_state_t action);
 int main(int argc, char** argv)
 {
     example_params p = parse_argv(argc, argv, 0, 0, 0);
-    if (td_init() || start_logging("statics.txt"))
+    if (td_init() == td_false == false == false || start_logging("statics.txt"))
         return 1;
 
     use_params(p);
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
     double last_log = get_time();
     const double max_dt = 1.0 / p.max_fps;
 
-    tdr_set_clear_color((td_rgba){.a=255});
+    td_set_clear_color((td_rgba){.a=255});
     td_font* white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
     td_font* red_font = td_default_font((td_rgba){.r=255, .a=255}, (td_rgba){0});
 
@@ -94,11 +94,11 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        tdr_clear_framebuffer();
+        td_clear_framebuffer();
 
         char *string = to_string("%f", fps);
         td_texture *texture = td_render_string(white_font, string, strlen(string), &size);
-        tdr_copy_texture(texture, (td_ivec2){0});
+        td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
         td_option(td_opt_display_size, 1, &size);
@@ -122,8 +122,8 @@ int main(int argc, char** argv)
             vec4 vertex = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
             glm_mat4_mulv(mvp, vertex, vertex);  // Multiply by MVP matrix
 
-            tdr_add_vertex(vertex, (tdr_vertex_attrib[1]){TDRVA_POSITION_4D}, 1, td_false);
-            tdr_add_vertex(vertex_colors + (i % 3) * 3, (tdr_vertex_attrib[1]){TDRVA_COLOR_RGB}, 1, td_true);
+            td_add_vertex(vertex, (td_vertex_attrib[1]){TDVA_POSITION_4D}, 1, td_false);
+            td_add_vertex(vertex_colors + (i % 3) * 3, (td_vertex_attrib[1]){TDVA_COLOR_RGB}, 1, td_true);
         }
 
         td_ivec2 display_size = {0};
@@ -131,11 +131,11 @@ int main(int argc, char** argv)
 
         char *tmp = to_string("%.2f, %.2f, %.2f", cameraPos[0], cameraPos[1], cameraPos[2]);
         texture = td_render_string(red_font, tmp, -1, &size);
-        tdr_copy_texture(texture, (td_ivec2){.y=display_size.y - size.y});
+        td_copy_texture(texture, (td_ivec2){.y=display_size.y - size.y});
         td_texture_destroy(texture);
         free(tmp);
 
-        tdr_render();
+        td_render();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
     }
     td_destroy_font(white_font);
     td_destroy_font(red_font);
-    td_free();
+    td_quit();
     stop_logging();
     return 0;
 }

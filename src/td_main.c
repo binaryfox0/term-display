@@ -31,8 +31,6 @@ SOFTWARE.
 
 #include "td_priv.h"
 
-#include "td_black_magic.h"
-
 /* Global variable begin */
 static td_ivec2 tdp_term_size = { 0, 0 }, tdp_prev_size = { 0, 0 };
 // Display clear color
@@ -101,16 +99,18 @@ td_bool td_init(void)
 {
     if(td_initialized) return td_true;
     if (!_pisatty(STDOUT_FILENO)) // Need stdout
-        return 1;
+        return td_false;
     if (tdp_setup_env(tdp_stop_handle) == td_false)
-        return 1;
+        return td_false;
     
     tdp_term_size = tdp_prev_size = tdp_get_termsz();      // Disable calling callback on the first time
     if(tdp_renderer_init(tdp_term_size))
-        return 1;
+        return td_false;
     __display_is_running = td_true;
+    if(tdp_debug(init, ) == 1)
+        return td_false;
     td_initialized = td_true;
-    return 0;
+    return td_true;
 }
 
 TD_INLINE td_bool opt_get(td_bool get, void *option, void *value, size_t s) {
@@ -161,7 +161,7 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
             return td_false;
         }
         td_texture_fill(tdp_display.fb, clear_color);
-        tdr_clear_term();
+        td_clear_term();
         break;
     }
 
@@ -260,15 +260,16 @@ void td_poll_events(void)
             tdp_resize_handle(tdp_term_size);
             if(__handler(resize)) __handler(resize)(tdp_display.fb->size);
         } else
-            tdr_clear_term();
+            td_clear_term();
         tdp_prev_size = tdp_term_size;
     }
 }
 
-void td_free(void)
+void td_quit(void)
 {
     if(!td_initialized) return;
     tdp_renderer_exit();
     tdp_restore_env();
+    tdp_debug(quit, );
     td_initialized = td_false;
 }

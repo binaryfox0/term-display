@@ -30,14 +30,20 @@ SOFTWARE.
  * @brief Core type definitions, platform macros, and color utilities for the td_display system.
  */
 
-#include "td_black_magic.h"
-
 /**
  * @def TD_EXPAND_RGBA(c)
  * @brief Expands a `td_rgba` struct into its four channel values.
  * @param c The `td_rgba` struct to expand.
  */
 #define TD_EXPAND_RGBA(c) { (c).r, (c).g, (c).b, (c).a }
+
+#define TD_RGBA(col)                                   \
+    ((td_rgba){                                        \
+        .r = (td_u8)(((col) >> 24) & 0xFF),            \
+        .g = (td_u8)(((col) >> 16) & 0xFF),            \
+        .b = (td_u8)(((col) >>  8) & 0xFF),            \
+        .a = (td_u8)(((col)      ) & 0xFF)             \
+    })
 
 /**
  * @def IN_RANGE(value, first, last)
@@ -145,12 +151,12 @@ typedef struct {
  */
 typedef union {
     struct {
-        td_u8 r; ///< Red component
-        td_u8 g; ///< Green component
-        td_u8 b; ///< Blue component
-        td_u8 a; ///< Alpha (transparency) component
+        td_u8 r;    ///< Red component
+        td_u8 g;    ///< Green component
+        td_u8 b;    ///< Blue component
+        td_u8 a;    ///< Alpha (transparency) component
     };
-    td_u8 raw[4]; ///< Raw access to RGBA bytes
+    td_u8 raw[4];   ///< Raw access to RGBA bytes
 } td_rgba;
 
 typedef struct {

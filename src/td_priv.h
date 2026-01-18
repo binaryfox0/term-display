@@ -4,6 +4,9 @@
 #include "td_def.h"
 #include "td_main.h"
 
+#include "td_rasterizer.h"
+#include "td_debug.h" // IWYU pragma: export
+
 #ifdef TD_PLATFORM_WINDOWS
 #include <io.h>
 #include <windows.h>
@@ -26,8 +29,6 @@ typedef BOOL (*tdp_sighand)(DWORD);
 
 #ifdef TD_PLATFORM_UNIX
 #include <unistd.h>
-
-#include "td_rasterizer.h"
 
 #define _pread read
 #define _pwrite write

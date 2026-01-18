@@ -189,18 +189,18 @@ void normal_routine(const int max_fps)
         td_poll_events();
 
         float brightness = 0.5f * (sin((double)frame_count / 32) + 1.0f);
-        tdr_set_clear_color((td_rgba){109 * brightness, 154 * brightness, 140 * brightness, 255});   // Approximtely patina
+        td_set_clear_color((td_rgba){109 * brightness, 154 * brightness, 140 * brightness, 255});   // Approximtely patina
 
         char *string = to_string("%f", fps);
         td_texture *texture =
             td_render_string(font, string, strlen(string), &size);
-        tdr_copy_texture(texture, (td_ivec2){0});
+        td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
-        tdr_copy_texture(textinput_tex, (td_ivec2){.y=size.y + 1});
-        tdr_copy_texture(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
+        td_copy_texture(textinput_tex, (td_ivec2){.y=size.y + 1});
+        td_copy_texture(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
 
-        tdr_render();
+        td_render();
 
         while ((delta_time = get_time() - start_frame) < max_dt) {}
         if (start_frame - last_log >= LOG_INTERVAL) {
@@ -253,7 +253,7 @@ void* kstrok_watchdog(void* userdata)
                 kstrok_frame_start = get_time();
                 continue;
             }
-            td_free();
+            td_quit();
             aparse_prog_error("program has crashed due to an unsupported keystroke");
             exit(127);
         }
@@ -278,7 +278,7 @@ void kstrok_test_routine(const int max_fps)
     pthread_t watchdog = 0;
     being_debugged = is_being_debugged();
     if(pthread_create(&watchdog, 0, kstrok_watchdog, 0) != 0) {
-        td_free();
+        td_quit();
         exit(127);
     }
     td_set_key_callback(kstrok_logger);
@@ -305,7 +305,7 @@ int main(int argc, char** argv)
         }, 2, 0
     );
 
-    if (td_init() || start_logging("statics.txt"))
+    if (td_init() == td_false || start_logging("statics.txt"))
         return 1;
 
     use_params(p);
@@ -315,7 +315,7 @@ int main(int argc, char** argv)
         normal_routine(p.max_fps);
 
     stop_logging();
-    td_free();
+    td_quit();
 
     return 0;
 }

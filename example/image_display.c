@@ -37,7 +37,7 @@ TD_INLINE td_bool vec2_larger(td_ivec2 vec1, td_ivec2 vec2)
 
 void resize_callback(td_ivec2 new_size)
 {    
-    static const tdr_vertex_attrib attribs[] = {TDRVA_POSITION_2D, TDRVA_UV_COORDS };
+    static const td_vertex_attrib attribs[] = {TDVA_POSITION_2D, TDVA_UV_COORDS };
 
     td_ivec2 tmp = ratio_new_size(imgsz, (td_ivec2){.x=new_size.x});
     if(vec2_larger(tmp, new_size))
@@ -57,11 +57,11 @@ void resize_callback(td_ivec2 new_size)
     memcpy(vertices + 16, top_right.raw,    sizeof(float) * 2);  // v4
     memcpy(vertices + 20, top_left.raw,     sizeof(float) * 2);  // v5
 
-    tdr_clear_framebuffer();
-    tdr_bind_texture(displayed_image);
+    td_clear_framebuffer();
+    td_bind_texture(displayed_image);
     for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 4; i++)
-        tdr_add_vertex(vertices + i * 4, attribs, 2, td_true);
-    tdr_render();
+        td_add_vertex(vertices + i * 4, attribs, 2, td_true);
+    td_render();
     fflush(stdout);
 }
 
@@ -97,7 +97,7 @@ void display_image(const char* path)
     }
     imgsz = (td_ivec2){.x=width, .y=height};
 
-    tdr_clear_term();
+    td_clear_term();
 
     td_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
@@ -139,13 +139,13 @@ int main(int argc, char **argv)
     int images_count = main_args[0].size;
     free(main_args);
 
-    if (td_init() || start_logging("statics.txt")) {
+    if (td_init() == td_false || start_logging("statics.txt")) {
         return 1;
     }
 
     use_params(p);
 
-    tdr_set_clear_color((td_rgba){0, 0, 0, 255});
+    td_set_clear_color((td_rgba){0, 0, 0, 255});
     td_set_resize_callback(resize_callback);
     td_set_key_callback(key_callback);
     for(int i = 0; i < images_count && images && !force_stop; i++)
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
     if(images)
         free(images);
 
-    td_free();
+    td_quit();
     stop_logging();
 
     return 0;

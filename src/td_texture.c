@@ -171,34 +171,65 @@ void td_texture_fill(const td_texture *texture, const td_rgba color)
     tdp_fill_buffer(data, c, tdp_calculate_size(size, ch), (td_u64)ch);
 }
 
-void td_texture_convert(td_texture* texture, const td_i32 channel)
+void td_texture_convert(td_texture* texture, td_i32 new_channel)
 {
-    td_u64 pix_count = calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, 1);
+    if (!texture || !texture->data)
+        return;
 
-    td_u8* old_ptr = texture->data;
-    td_u8* tmp = (td_u8*)malloc(calculate_pos((td_ivec2){.y=texture->size.y}, texture->size.x, channel));
-    if(!tmp) return;
-    texture->data = tmp;
-    td_i32 old_channel = texture->channel;
-    texture->channel = channel;
+    const td_i32 old_channel = texture->channel;
+    const td_u64 pixel_count = (td_u64)texture->size.x * (td_u64)texture->size.y;
 
-    if(IS_GRAYSCALE(texture->channel) == IS_GRAYSCALE(channel)) // Same type
-    {
-        if(!IS_TRANSPARENT(texture->channel) && IS_TRANSPARENT(channel)) {
-            td_i32 a_i = channel - 1;
-            for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel) {
-                memcpy(tmp, old_ptr, (td_u64)old_channel);
-                tmp[a_i] = 255;
+    td_u8* old_data = texture->data;
+    td_u8* new_data = malloc(pixel_count * (td_u64)new_channel);
+    if (!new_data)
+        return;
+
+    td_u8* src = old_data;
+    td_u8* dst = new_data;
+
+    /* Same grayscale type */
+    if (IS_GRAYSCALE(old_channel) == IS_GRAYSCALE(new_channel)) {
+
+        /* Add alpha */
+        if (!IS_TRANSPARENT(old_channel) && IS_TRANSPARENT(new_channel)) {
+            const td_i32 alpha_index = new_channel - 1;
+
+            for (td_u64 i = 0; i < pixel_count; ++i) {
+                memcpy(dst, src, (td_u64)old_channel);
+                dst[alpha_index] = 255;
+
+                src += old_channel;
+                dst += new_channel;
             }
-        } else if (IS_TRANSPARENT(texture->channel) && !IS_TRANSPARENT(channel)) {
-            for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
-                memcpy(tmp, old_ptr, (td_u64)channel);
+
+        /* Remove alpha */
+        } else if (IS_TRANSPARENT(old_channel) && !IS_TRANSPARENT(new_channel)) {
+
+            for (td_u64 i = 0; i < pixel_count; ++i) {
+                memcpy(dst, src, (td_u64)new_channel);
+
+                src += old_channel;
+                dst += new_channel;
+            }
+
+        /* Same format, direct copy */
+        } else {
+            memcpy(dst, src, pixel_count * (td_u64)new_channel);
         }
+
+    /* Different color space */
     } else {
-        for(td_u64 i = 0; i < pix_count; i++, old_ptr += old_channel, tmp += channel)
-            tdp_convert_color(tmp, old_ptr, channel, old_channel, 0);
+        for (td_u64 i = 0; i < pixel_count; ++i) {
+            tdp_convert_color(dst, src, new_channel, old_channel, 0);
+
+            src += old_channel;
+            dst += new_channel;
+        }
     }
-    free(old_ptr);
+
+    free(old_data);
+    texture->data = new_data;
+    texture->channel = new_channel;
 }
 
 td_u8 *tdp_texture_crop_raw(const td_u8 * old, const td_i32 channel,
@@ -374,7 +405,7 @@ void td_texture_destroy(td_texture *texture)
     free(texture);
 }
 
-td_rgba td_pixel_blend(const td_rgba a, const td_rgba b)
+td_rgba td_blend_pixel(const td_rgba a, const td_rgba b)
 {
     td_u8 ar[4] = TD_EXPAND_RGBA(a), br[4] = TD_EXPAND_RGBA(b);
     tdp_blend(ar, br, 4, 4);

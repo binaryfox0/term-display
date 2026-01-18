@@ -272,6 +272,6 @@ void td_set_resize_callback(td_resize_callback callback);
 /**
  * @brief Frees any allocated resources used by the term-display library.
  */
-void td_free(void);
+void td_quit(void);
 
 #endif /* TD_MAIN_H */
