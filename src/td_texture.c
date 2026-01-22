@@ -101,9 +101,11 @@ td_bool td_texture_set_buffer(td_texture * texture,
                               const td_ivec2 size,
                               const td_i32 channel)
 {
-    if(!texture)
-        return td_false;
-    if(OUT_RANGE(channel, 0, 4))
+    if(
+        !texture ||
+        OUT_RANGE(channel, 0, 4) ||
+        size.x < 0 || size.y < 0
+      )
         return td_false;
     if(!buffer)
     {

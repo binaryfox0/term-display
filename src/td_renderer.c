@@ -15,7 +15,7 @@ static const td_texture* tdp_current_tex = 0;
 static int tdp_vertex_index = 0;
 static tdp_vertex tdp_vertex_buffer[12] = {0};
 static td_ivec2 tdp_terminal_size = {0};
-td_display tdp_display = {0, 0, {0, 0}, {0, 0}};
+tdp_display_t tdp_display = {0};
 static td_rgba tdp_bg_color = {0};
 static td_rgba tdp_clear_color = {0};
 
@@ -49,17 +49,19 @@ td_ivec2 tdp_calculate_display_size(const td_ivec2 term_size)
             .x = term_size.x / tdp_options[td_opt_pixel_width],
             .y = term_size.y / tdp_options[td_opt_pixel_height]
         };
-        tdp_display.sprop.yend = new_size.y;
-        tdp_display.sprop.xend = new_size.x;
     } else {
         new_size = (td_ivec2){
-            .x = term_size.y / tdp_options[td_opt_pixel_height],
-            .y = term_size.x / tdp_options[td_opt_pixel_width]
+            .x = term_size.x / tdp_options[td_opt_pixel_width],
+            .y = term_size.y / tdp_options[td_opt_pixel_height]
         };
-        tdp_display.sprop.yend = new_size.x;
-        tdp_display.sprop.xend = new_size.y;
     }
-    //tdp_display.size = td_ivec2_subtract(tdp_display.size, tdp_display.pos);
+
+    new_size = (td_ivec2){
+        .x = new_size.x - tdp_display.pos.x,
+        .y = new_size.y - tdp_display.pos.y 
+    };
+    tdp_display.sprop.xend = new_size.x;
+    tdp_display.sprop.yend = new_size.y;
     return new_size;
 }
 
@@ -261,35 +263,84 @@ TD_INLINE void tdp_display_cell(td_u8 *c)
 // ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
 void td_render(void)
 {
-    printf("\x1b[H");
-    int rot = tdp_options[td_opt_display_rotate];
-    static td_u8 prev[3] = {0};
+    const int rot = tdp_options[td_opt_display_rotate];
+    const int px_w = tdp_options[td_opt_pixel_width];
+    const int px_h = tdp_options[td_opt_pixel_height];
 
-    for (int y = 0; y < tdp_display.sprop.yend; y++) {
-        for (int yt = 0; yt < tdp_options[td_opt_pixel_height]; yt++) {
+    const int fb_w = tdp_display.fb->size.x;
+    const int fb_h = tdp_display.fb->size.y;
+    const int ch   = tdp_display.fb->channel;
 
-            for (int x = 0; x < tdp_display.sprop.xend; x++) {
-                int tx = x, ty = y;
+    const int xend = tdp_display.sprop.xend;
+    const int yend = tdp_display.sprop.yend;
 
-                switch (rot) {
-                    case 1: /* 90 deg clockwise */      tx = y; ty = tdp_display.fb->size.y - 1 - x; break;
-                    case 2: /* 180 deg */               tx = tdp_display.fb->size.x - 1 - x; ty = tdp_display.fb->size.y - 1 - y; break;
-                    case 3: /* 270 deg clockwise */     tx = tdp_display.fb->size.x - 1 - y; ty = x; break;
-                    default:                         break;
+    const int x_stride = ch;
+    const int y_stride = fb_w * ch;
+
+    static td_u8 prev[4] = {0}; /* safe for up to RGBA */
+
+    for (int y = 0; y < yend; y++) {
+        const int term_y_base =
+            (tdp_display.pos.y + y) * px_h + 1;
+
+        for (int yt = 0; yt < px_h; yt++) {
+
+            printf("\x1b[%d;%dH",
+                   term_y_base + yt,
+                   (tdp_display.pos.x * px_w) + 1);
+
+            /* rotation-dependent setup */
+            td_u8 *row_ptr;
+            int dx, dy;
+
+            switch (rot) {
+                /* 90° CW */
+                case 1:
+                    row_ptr = tdp_display.fb->data
+                            + (y * x_stride)
+                            + ((fb_h - 1) * y_stride);
+                    dx = -y_stride;
+                    dy =  x_stride;
+                    break;
+
+                /* 180° */
+                case 2:
+                    row_ptr = tdp_display.fb->data
+                            + ((fb_w - 1) * x_stride)
+                            + ((fb_h - 1 - y) * y_stride);
+                    dx = -x_stride;
+                    dy = 0;
+                    break;
+
+                /* 270° CW */
+                case 3:
+                    row_ptr = tdp_display.fb->data
+                            + ((fb_w - 1 - y) * x_stride);
+                    dx =  y_stride;
+                    dy =  x_stride;
+                    break;
+
+                /* no rotation */
+                default:
+                    row_ptr = tdp_display.fb->data
+                            + (y * y_stride);
+                    dx =  x_stride;
+                    dy = 0;
+                    break;
+            }
+
+            for (int x = 0; x < xend; x++) {
+
+                if (memcmp(prev, row_ptr, (td_u64)ch) != 0) {
+                    tdp_display_cell(row_ptr);
+                    memcpy(prev, row_ptr, (td_u64)ch);
                 }
 
-                td_u8* ptr = tdp_display.fb->data + 
-                    calculate_pos((td_ivec2){.x=tx, .y=ty}, tdp_display.fb->size.x, tdp_display.fb->channel);
-                if (memcmp(prev, ptr, (td_u64)tdp_display.fb->channel)) {
-                    tdp_display_cell(ptr);
-                    memcpy(prev, ptr, (td_u64)tdp_display.fb->channel);
-                }
-
-                printf("%*s", tdp_options[td_opt_pixel_width], "");
+                printf("%*s", px_w, "");
+                row_ptr += dx;
             }
 
             printf("\x1b[1E");
         }
     }
 }
-

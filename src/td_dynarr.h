@@ -1,5 +1,5 @@
-#ifndef TDP_DYNAMIC_ARRAY
-#define TDP_DYNAMIC_ARRAY
+#ifndef TD_DYNAMIC_ARRAY
+#define TD_DYNAMIC_ARRAY
 
 #include "td_def.h"
 

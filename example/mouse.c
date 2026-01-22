@@ -12,10 +12,11 @@
 
 // #define CURSOR_SIZE 3
 
-#define WHITE 0xff, 0xff
-#define GRAY  0x00, 0x80
-#define BLACK 0x00, 0xff
-#define EMPTY 0x00, 0x00
+#define WHITE   0xff, 0xff
+#define GRAY    0x80, 0xff
+#define SHADOW  0x00, 0x80
+#define BLACK   0x00, 0xff
+#define EMPTY   0x00, 0x00
 
 #define BGCOL TD_RGBA(0xefe6d8ff)
 #define FGCOL TD_RGBA(0x3a3a36ff)
@@ -64,16 +65,16 @@ int load_cursor()
 {
     // grayscale, alpha
     uint8_t bitmap[] = {
-        BLACK, BLACK, GRAY,  EMPTY, EMPTY, EMPTY, EMPTY,
-        BLACK, WHITE, BLACK, GRAY,  EMPTY, EMPTY, EMPTY,
-        BLACK, WHITE, WHITE, BLACK, GRAY,  EMPTY, EMPTY,
-        BLACK, WHITE, WHITE, WHITE, BLACK, GRAY,  EMPTY,
-        BLACK, WHITE, WHITE, WHITE, WHITE, BLACK, GRAY,
-        BLACK, WHITE, WHITE, WHITE, WHITE, GRAY,  BLACK,
-        BLACK, WHITE, WHITE, WHITE, BLACK, BLACK, BLACK,
-        BLACK, GRAY,  BLACK, WHITE, WHITE, BLACK, GRAY,
-        BLACK, BLACK, BLACK, GRAY,  WHITE, BLACK, EMPTY,
-        EMPTY, EMPTY, GRAY,  BLACK, BLACK, GRAY, EMPTY
+        BLACK, BLACK, SHADOW, EMPTY,  EMPTY,  EMPTY,  EMPTY,
+        BLACK, WHITE, BLACK,  SHADOW, EMPTY,  EMPTY,  EMPTY,
+        BLACK, WHITE, WHITE,  BLACK,  SHADOW, EMPTY,  EMPTY,
+        BLACK, WHITE, WHITE,  WHITE,  BLACK,  SHADOW, EMPTY,
+        BLACK, WHITE, WHITE,  WHITE,  WHITE,  BLACK,  SHADOW,
+        BLACK, WHITE, WHITE,  WHITE,  WHITE,  SHADOW, BLACK,
+        BLACK, WHITE, WHITE,  WHITE,  BLACK,  BLACK,  BLACK,
+        BLACK, GRAY,  BLACK,  WHITE,  WHITE,  BLACK,  SHADOW,
+        BLACK, BLACK, BLACK,  SHADOW, WHITE,  BLACK,  EMPTY,
+        EMPTY, EMPTY, SHADOW, BLACK,  BLACK,  SHADOW, EMPTY
     };
     cursor_tex = td_texture_create(bitmap, 2, (td_ivec2){.x=7,.y=10}, 
             td_false, td_true);
@@ -93,7 +94,7 @@ int main(int argc, char** argv)
     if(load_cursor() == -1)
         goto cleanup;
 
-    use_params(p);
+    use_params(&p);
 
     td_set_mouse_callback(mousecb);
     font = td_default_font(FGCOL, BGCOL);

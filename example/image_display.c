@@ -70,7 +70,7 @@ td_bool force_stop = td_false;
 
 void key_callback(int key, int mods, td_key_state_t state){
     if(key == td_key_x && state == td_key_press) {
-        if(mods == td_key_ctrl)
+        if(mods == td_mod_ctrl)
             force_stop = true;
         stop = td_true;
     }
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    use_params(p);
+    use_params(&p);
 
     td_set_clear_color((td_rgba){0, 0, 0, 255});
     td_set_resize_callback(resize_callback);

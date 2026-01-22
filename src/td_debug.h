@@ -1,5 +1,5 @@
-#ifndef TD_PRIVATE_DEBUG
-#define TD_PRIVATE_DEBUG
+#ifndef TD_DEBUG
+#define TD_DEBUG
 
 #include "td_black_magic.h"
 

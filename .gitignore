@@ -1,4 +1,4 @@
-Makefile
-*.make
-build/
-.vscode/
+build
+*.tmp
+**/td_log.txt
+**/statics.txt

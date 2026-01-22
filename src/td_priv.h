@@ -1,5 +1,5 @@
-#ifndef TD_PLATFORM_PRIVATE_H
-#define TD_PLATFORM_PRIVATE_H
+#ifndef TD_PRIVATE_H
+#define TD_PRIVATE_H
 
 #include "td_def.h"
 #include "td_main.h"
@@ -47,14 +47,15 @@ struct td_texture_s {
     td_bool freeable;
 };
 
-typedef struct td_display_s {
+typedef struct {
     td_texture* fb;
+    td_ivec2 size;
     td_f32* depth;
     td_ivec2 pos;
     struct {
         int xend, yend;
     } sprop;
-} td_display;
+} tdp_display_t;
 
 // Inline stuff
 TD_INLINE td_i32 tdp_floor(const float x) {

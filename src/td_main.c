@@ -54,7 +54,7 @@ td_i32 tdp_options[__td_opt_numeric_end__] = {
 
 td_f32 supersampling_buffer_ratio = 2.0f;
 
-extern td_display tdp_display;
+extern tdp_display_t tdp_display;
 
 /* Utils function end */
 

@@ -23,9 +23,9 @@ static const struct {
     int mod;
     const char *text;
 } mods_lookup[] = {
-    { td_key_ctrl, "Ctrl + " },
-    { td_key_alt, "Alt + " },
-    { td_key_shift, "Shift + " }
+    { td_mod_ctrl, "Ctrl + " },
+    { td_mod_alt, "Alt + " },
+    { td_mod_shift, "Shift + " }
 };
 
 static const char *fkey_name[] = {
@@ -308,7 +308,7 @@ int main(int argc, char** argv)
     if (td_init() == td_false || start_logging("statics.txt"))
         return 1;
 
-    use_params(p);
+    use_params(&p);
     if(is_keystroke_test)
         kstrok_test_routine(p.max_fps);
     else

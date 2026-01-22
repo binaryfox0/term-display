@@ -20,6 +20,8 @@ td_bool stop_logging();
 
 typedef struct example_params {
     td_bool auto_resize;
+    td_ivec2 display_pos;
+    td_ivec2 display_size;
     td_u8 px_w, px_h;
     int display_type;
     td_u8 display_orientation;
@@ -35,6 +37,6 @@ example_params parse_argv(
     aparse_arg* custom_args, int args_count, aparse_arg** merged_args
 );
 
-void use_params(example_params p);
+void use_params(const example_params *p);
 
 #endif

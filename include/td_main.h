@@ -93,9 +93,9 @@ typedef enum {
  * These represent modifier keys that can be combined with other keys.
  */
 typedef enum {
-    td_key_shift = 1, /**< Shift modifier key */
-    td_key_ctrl = 2,  /**< Control modifier key */
-    td_key_alt = 4    /**< Alt modifier key */
+    td_mod_shift = 1, /**< Shift modifier key */
+    td_mod_ctrl = 2,  /**< Control modifier key */
+    td_mod_alt = 4    /**< Alt modifier key */
 } td_key_mod_t;
 
 /**
@@ -105,10 +105,13 @@ typedef enum {
  * These values represent various key codes for keyboard keys.
  */
 typedef enum {
-    td_key_space = 32,        /**< Space key */
-    td_key_astrophe = 39,     /**< Apostrophe key */
-    td_key_minus = 45,        /**< Minus key */
-    td_key_0 = 48,            /**< '0' key */
+    td_key_space = 32,        /**< Space ' ' key */
+    td_key_astrophe = 39,     /**< Apostrophe '\'' key */
+    td_key_comma = 44,        /**< Comma ',' key */
+    td_key_minus,             /**< Minus '-' key */
+    td_key_period,            /**< Period '.' key */
+    td_key_slash,             /**< Slash '/' key */
+    td_key_0,                 /**< '0' key */
     td_key_1,                 /**< '1' key */
     td_key_2,                 /**< '2' key */
     td_key_3,                 /**< '3' key */

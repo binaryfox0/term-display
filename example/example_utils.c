@@ -108,59 +108,139 @@ char *to_timestamp(double time)
                      (td_u32) (time * 1000000) % 1000000);
 }
 
-
 example_params parse_argv(
-    const int argc, char** argv, 
-    aparse_arg* custom_args, int args_count, aparse_arg** merged_args
+    int argc, char **argv,
+    aparse_arg *custom_args,
+    int custom_count,
+    aparse_arg **merged_args
 )
 {
     example_params p = {
-        td_false,
-        2, 1,
-        td_display_truecolor,
-        0,
-        60
+        .auto_resize = td_false,
+        .px_w = 2,
+        .px_h = 1,
+        .display_type = td_display_truecolor,
+        .display_orientation = 0,
+        .max_fps = 60
     };
+
+    const char *pos_raw = 0;
+    const char *size_raw = 0;
+
     const aparse_arg example_args[] = {
-        aparse_arg_option(0, "--auto-resize", &p.auto_resize, sizeof(p.auto_resize), APARSE_ARG_TYPE_BOOL, "Automatic resizing the display"),
-        aparse_arg_option(0, "--pixel-width", &p.px_w, sizeof(p.px_w), APARSE_ARG_TYPE_UNSIGNED, "Pixel width of display in terminal cells"),
-        aparse_arg_option(0, "--pixel-height", &p.px_h, sizeof(p.px_h), APARSE_ARG_TYPE_UNSIGNED, "Pixel height of display in terminal cells"),
-        aparse_arg_option(0, "--display-type", &p.display_type, sizeof(p.display_type), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
-        aparse_arg_option(0, "--display-rotate", &p.display_orientation, sizeof(p.display_orientation), APARSE_ARG_TYPE_UNSIGNED, "Type of display (grayscale, truecolor, etc."),
-        aparse_arg_option(0, "--maximum-fps", &p.max_fps, sizeof(p.max_fps), APARSE_ARG_TYPE_UNSIGNED, "Maximum Frame-per-Second of display"),
+        aparse_arg_option(
+            "-autorsz", "--auto-resize",
+            &p.auto_resize, sizeof(p.auto_resize),
+            APARSE_ARG_TYPE_BOOL,
+            "Automatic resizing the display"
+        ),
+        aparse_arg_option(
+            "-pos", "--display-pos",
+            &pos_raw, 0,
+            APARSE_ARG_TYPE_STRING,
+            "The position of display (x,y)"
+        ),
+        aparse_arg_option(
+            "-sz", "--display-size",
+            &size_raw, 0,
+            APARSE_ARG_TYPE_STRING,
+            "The size of display (wxh)"
+        ),
+        aparse_arg_option(
+            "-pxw", "--pixel-width",
+            &p.px_w, sizeof(p.px_w),
+            APARSE_ARG_TYPE_UNSIGNED,
+            "Pixel width of display in terminal cells"
+        ),
+        aparse_arg_option(
+            "-pxh", "--pixel-height",
+            &p.px_h, sizeof(p.px_h),
+            APARSE_ARG_TYPE_UNSIGNED,
+            "Pixel height of display in terminal cells"
+        ),
+        aparse_arg_option(
+            "-type", "--display-type",
+            &p.display_type, sizeof(p.display_type),
+            APARSE_ARG_TYPE_UNSIGNED,
+            "Type of display (grayscale, truecolor, etc.)"
+        ),
+        aparse_arg_option(
+            "-rot", "--display-rotate",
+            &p.display_orientation, sizeof(p.display_orientation),
+            APARSE_ARG_TYPE_UNSIGNED,
+            "Display orientation / rotation"
+        ),
+        aparse_arg_option(
+            "-fps", "--maximum-fps",
+            &p.max_fps, sizeof(p.max_fps),
+            APARSE_ARG_TYPE_UNSIGNED,
+            "Maximum Frame-per-Second of display"
+        ),
         aparse_arg_end_marker
     };
-    int example_args_size = (sizeof(example_args) / sizeof(example_args[0])); // Exclude the end marker
-    int _args_count = example_args_size + args_count + 1;
-    aparse_arg* main_args = malloc(_args_count* sizeof(aparse_arg));
-    memcpy(main_args, custom_args, args_count * sizeof(aparse_arg));
-    memcpy(main_args + args_count, example_args, example_args_size * sizeof(aparse_arg));
-    
-    if(aparse_parse(argc, argv, main_args, "Example program of term-display library") == APARSE_STATUS_FAILURE) {
-        free(main_args);
+
+    const int example_count =
+        (int)(sizeof(example_args) / sizeof(example_args[0])) - 1;
+
+    const int total_count = custom_count + example_count + 1;
+    aparse_arg *args = calloc(total_count, sizeof(*args));
+    if (!args)
+        exit(EXIT_FAILURE);
+
+    memcpy(args, custom_args, custom_count * sizeof(*args));
+    memcpy(args + custom_count, example_args, example_count * sizeof(*args));
+
+    if (aparse_parse(argc, argv, args,
+            "Example program of term-display library")
+        == APARSE_STATUS_FAILURE)
+    {
+        free(args);
         exit(EXIT_FAILURE);
     }
 
-    if(p.max_fps == 0) {
+    if (pos_raw &&
+        sscanf(pos_raw, "%d,%d",
+               &p.display_pos.x,
+               &p.display_pos.y) != 2)
+    {
+        aparse_prog_error("invalid display position: \"%s\"", pos_raw);
+        free(args);
+        exit(EXIT_FAILURE);
+    }
+
+    if (size_raw &&
+        sscanf(size_raw, "%dx%d",
+               &p.display_size.x,
+               &p.display_size.y) != 2)
+    {
+        aparse_prog_error("invalid display size: \"%s\"", size_raw);
+        free(args);
+        exit(EXIT_FAILURE);
+    }
+
+    if (p.max_fps == 0) {
         aparse_prog_error("invalid max fps was specified");
         aparse_prog_info("this can make this example unable to exit");
-        free(main_args);
+        free(args);
         exit(EXIT_FAILURE);
     }
 
-    if(!merged_args)
-        free(main_args);
+    if (merged_args)
+        *merged_args = args;
     else
-        *merged_args = main_args;
+        free(args);
 
     return p;
 }
 
-void use_params(example_params p)
+void use_params(const example_params *p)
 {
-    td_option(td_opt_auto_resize, td_false, &p.auto_resize);
-    td_option(td_opt_pixel_width, td_false, &p.px_w);
-    td_option(td_opt_pixel_height, td_false, &p.px_h);
-    td_option(td_opt_display_type, td_false, &p.display_type);
-    td_option(td_opt_display_rotate, 0, &p.display_orientation);
+    /* gurantee value will not be changed if get = td_false */
+    td_option(td_opt_auto_resize, td_false, (void*)&p->auto_resize);
+    td_option(td_opt_display_pos, td_false, (void*)&p->display_pos);
+    td_option(td_opt_display_size, td_false, (void*)&p->display_size);
+    td_option(td_opt_pixel_width, td_false, (void*)&p->px_w);
+    td_option(td_opt_pixel_height, td_false, (void*)&p->px_h);
+    td_option(td_opt_display_type, td_false, (void*)&p->display_type);
+    td_option(td_opt_display_rotate, 0, (void*)&p->display_orientation);
 }

@@ -72,7 +72,7 @@ int main(int argc, char** argv)
     if (td_init() == td_false == false == false || start_logging("statics.txt"))
         return 1;
 
-    use_params(p);
+    use_params(&p);
 
     td_u8 enable = 1;
     td_option(td_opt_depth_buffer, 0, &enable);

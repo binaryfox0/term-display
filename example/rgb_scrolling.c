@@ -59,7 +59,7 @@ int main(int argc, char** argv)
     if (td_init() == td_false || start_logging("statics.txt"))
         return 1;
  
-    use_params(p);
+    use_params(&p);
 
     td_vertex_attrib attribs[] = { TDVA_POSITION_2D, TDVA_UV_COORDS};
     td_font* font = td_default_font((td_rgba){255, 255, 255, 255}, (td_rgba){0});

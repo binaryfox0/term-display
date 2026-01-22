@@ -1,6 +1,3 @@
-[submodule "example/deps/stb"]
-	path = example/deps/stb
-	url = https://github.com/nothings/stb.git
 [submodule "example/deps/cglm"]
 	path = example/deps/cglm
 	url = https://github.com/recp/cglm.git
