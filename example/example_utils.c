@@ -34,8 +34,8 @@ double get_time()
 #endif
 
 #ifdef EXAMPLE_LOGGING
-double program_start = 0;
-FILE *file = 0;
+static double program_start = 0;
+static FILE *file = 0;
 td_bool start_logging(const char *filename)
 {
     if (!(file = fopen(filename, "w")))

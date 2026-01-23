@@ -166,9 +166,13 @@ td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // L
             if (*line_count >= current_size) {
                 size_t new_size = (size_t)current_size + min_realloc;
                 td_u32 *temp =
-                    (td_u32 *) realloc(*lines_length, new_size * sizeof(td_i32));
+                    (td_u32 *) realloc(*lines_length, new_size * sizeof(*temp));
                 if (!temp)
+                {
+                    free(*lines_length);
+                    *lines_length = 0;
                     return 1;   // Allocation failed
+                }
                 *lines_length = temp;
                 current_size = (td_u32)new_size;
             }
@@ -188,9 +192,13 @@ td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // L
         if (*line_count >= current_size) {
             size_t new_size = (size_t)(current_size + 1);    // Allocate just for the last line
             td_u32 *temp =
-                (td_u32 *) realloc(*lines_length, new_size * sizeof(td_i32));
+                (td_u32 *) realloc(*lines_length, new_size * sizeof(*temp));
             if (!temp)
+            {
+                free(*lines_length);
+                *lines_length = 0;
                 return 1;
+            }
             *lines_length = temp;
         }
         (*lines_length)[*line_count] = line_len;
@@ -233,7 +241,7 @@ td_texture* tdp_codepoint_resolve(
         if(ch < range.x)
             continue;
         if(ch > range.y)
-            return 0; // no texture for specific codepoint exist
+            break; // no texture for specific codepoint exist
         td_texture** row = ((td_texture***)font->characters.ptr)[i];
         return row[ch - range.x];
     }

@@ -124,6 +124,9 @@ TD_INLINE td_bool opt_get(td_bool get, void *option, void *value, size_t s) {
 #define OPT_GET(type, value) \
     if (opt_get(get, option, &(value), sizeof(type))) return 0;
 
+#define OPT_SET_NUMBER(type, target) \
+    (target) = (td_i32)*(type*)option
+
 #define OPT_SET(type, target) \
     (target) = *(type*)option
 
@@ -135,13 +138,13 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     switch (type) {
     case td_opt_auto_resize: {
         OPT_GET(td_u8, tdp_options[type]);
-        OPT_SET(td_u8, tdp_options[type]);
+        OPT_SET_NUMBER(td_bool, tdp_options[type]);
         break;
     }
 
     case td_opt_pixel_width:
     case td_opt_pixel_height: {
-        OPT_GET(td_u8, tdp_options[type]);
+        OPT_GET(td_display_types, tdp_options[type]);
         td_u8 tmp = *(td_u8*)option;
         if(!tmp) return td_true;
         tdp_options[type] = tmp;

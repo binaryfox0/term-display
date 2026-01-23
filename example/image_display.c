@@ -137,6 +137,8 @@ int main(int argc, char **argv)
     }, 1, &main_args);
 
     int images_count = main_args[0].size;
+    for(int i = 0; i < images_count; i++)
+        aparse_prog_info("[%d]: \"%s\"", i, images[i]);
     free(main_args);
 
     if (td_init() == td_false || start_logging("statics.txt")) {

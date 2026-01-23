@@ -41,27 +41,30 @@ TD_INLINE void tdp_query_background(void)
     };
 }
 
+/* Return the size that the framebuffer will be resized to */
 td_ivec2 tdp_calculate_display_size(const td_ivec2 term_size)
 {
     td_ivec2 new_size = {0};
-    if(tdp_options[td_opt_display_rotate] % 2 == 0) {
-        new_size = (td_ivec2){
-            .x = term_size.x / tdp_options[td_opt_pixel_width],
-            .y = term_size.y / tdp_options[td_opt_pixel_height]
-        };
+    new_size.x = term_size.x / tdp_options[td_opt_pixel_width];
+    new_size.y = term_size.y / tdp_options[td_opt_pixel_height];
+
+
+    if(tdp_options[td_opt_display_rotate] % 2 == 0) { 
+        new_size.x -= tdp_display.pos.x;
+        new_size.y -= tdp_display.pos.y;
+
+        tdp_display.sprop.xend = new_size.x;
+        tdp_display.sprop.yend = new_size.y;
     } else {
-        new_size = (td_ivec2){
-            .x = term_size.x / tdp_options[td_opt_pixel_width],
-            .y = term_size.y / tdp_options[td_opt_pixel_height]
-        };
+        int tmp = new_size.y;
+        new_size.y = new_size.x;
+        new_size.x = tmp;
+
+        tdp_display.sprop.xend = new_size.y;
+        tdp_display.sprop.yend = new_size.x;
     }
 
-    new_size = (td_ivec2){
-        .x = new_size.x - tdp_display.pos.x,
-        .y = new_size.y - tdp_display.pos.y 
-    };
-    tdp_display.sprop.xend = new_size.x;
-    tdp_display.sprop.yend = new_size.y;
+    //tdp_display.size = td_ivec2_subtract(tdp_display.size, tdp_display.pos);
     return new_size;
 }
 
@@ -109,8 +112,18 @@ int tdp_renderer_init(const td_ivec2 term_size)
     tdp_clear_color = tdp_bg_color; // No color yet
     if (!(tdp_display.fb = td_texture_create(0, 3, (td_ivec2){0}, 1, 0))) // Empty texture
         return 1;
-    _pwrite(STDOUT_FILENO, "\x1b[?25l\x1b[?1049h", 15); // Hide cursor and enable buffer
-    _pwrite(STDOUT_FILENO, "\x1b[?1000h\x1b[?1006h", 16);                              // Enable mouse reporting, SGR mode
+    _pwrite(
+        STDOUT_FILENO, 
+        "\x1b[?25l" // hide cursor
+        "\x1b[?1049h", // enable alternative buffer
+        15
+    );
+    _pwrite(
+        STDOUT_FILENO, 
+        "\x1b[?1000h" // enable mouse reporting
+        "\x1b[?1006h", // enable SGR mode
+        16
+    );
     tdp_resize_handle(term_size);
     return 0;
 }
@@ -150,7 +163,11 @@ void td_clear_framebuffer(void)
     tdp_reset_depth_buffer();
 }
 
-void td_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color)
+void td_draw_rect(
+        const td_ivec2 top_left, 
+        const td_ivec2 bottom_right, 
+        const td_rgba color
+)
 {
     tdp_vertex tlv = (tdp_vertex){.pos = top_left, .color = color};
     tdp_vertex trv = (tdp_vertex){.pos = (td_ivec2){.x = bottom_right.x, .y = top_left.y}, .color = color};
@@ -170,7 +187,12 @@ void td_bind_texture(const td_texture *tex)
     tdp_current_tex = tex;
 }
 
-void td_add_vertex(const td_f32 *vertex, const td_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize)
+void td_add_vertex(
+        const td_f32 *vertex, 
+        const td_vertex_attrib* vertex_attribs, 
+        const int attribs_count, 
+        const td_bool finalize
+)
 {
     if(!attribs_count)
         return;
@@ -180,7 +202,13 @@ void td_add_vertex(const td_f32 *vertex, const td_vertex_attrib* vertex_attribs,
         switch(vertex_attribs[i])
         {
         case TDVA_POSITION_4D:
-            curr->pos = ndc_to_pos((td_vec2){.x=vertex[0] / vertex[3], .y=vertex[1] / vertex[3]}, tdp_display.fb->size);
+            curr->pos = ndc_to_pos(
+                (td_vec2){
+                    .x = vertex[0] / vertex[3], 
+                    .y = vertex[1] / vertex[3]
+                },
+                tdp_display.fb->size
+            );
             curr->depth = vertex[2];
             vertex += 4;
             break;
@@ -260,7 +288,6 @@ TD_INLINE void tdp_display_cell(td_u8 *c)
     }
 }
 
-// ANSI escape sequence https://gist.github.com/fnky/458719343aabd01cfb17a3a4f7296797
 void td_render(void)
 {
     const int rot = tdp_options[td_opt_display_rotate];
@@ -276,61 +303,57 @@ void td_render(void)
 
     const int x_stride = ch;
     const int y_stride = fb_w * ch;
+   
+    // 1-based index for terminal coordinate
+    const int term_x_base = tdp_display.pos.x * px_w + 1;
+    int term_y_base = tdp_display.pos.y * px_h + 1;
 
     static td_u8 prev[4] = {0}; /* safe for up to RGBA */
 
-    for (int y = 0; y < yend; y++) {
-        const int term_y_base =
-            (tdp_display.pos.y + y) * px_h + 1;
-
+    for (int y = 0; y < yend; y++, term_y_base += px_h) {
         for (int yt = 0; yt < px_h; yt++) {
 
             printf("\x1b[%d;%dH",
                    term_y_base + yt,
-                   (tdp_display.pos.x * px_w) + 1);
+                   term_x_base);
 
             /* rotation-dependent setup */
-            td_u8 *row_ptr;
-            int dx, dy;
+            td_u8 *row_ptr = 0;
+            int dx = 0;
 
             switch (rot) {
-                /* 90° CW */
+                /* 90deg CW */
                 case 1:
                     row_ptr = tdp_display.fb->data
                             + (y * x_stride)
                             + ((fb_h - 1) * y_stride);
                     dx = -y_stride;
-                    dy =  x_stride;
                     break;
 
-                /* 180° */
+                /* 180deg */
                 case 2:
                     row_ptr = tdp_display.fb->data
                             + ((fb_w - 1) * x_stride)
                             + ((fb_h - 1 - y) * y_stride);
                     dx = -x_stride;
-                    dy = 0;
                     break;
 
-                /* 270° CW */
+                /* 270deg CW */
                 case 3:
                     row_ptr = tdp_display.fb->data
                             + ((fb_w - 1 - y) * x_stride);
                     dx =  y_stride;
-                    dy =  x_stride;
                     break;
 
-                /* no rotation */
+                /* 0deg */
                 default:
                     row_ptr = tdp_display.fb->data
                             + (y * y_stride);
                     dx =  x_stride;
-                    dy = 0;
                     break;
             }
 
             for (int x = 0; x < xend; x++) {
-
                 if (memcmp(prev, row_ptr, (td_u64)ch) != 0) {
                     tdp_display_cell(row_ptr);
                     memcpy(prev, row_ptr, (td_u64)ch);
