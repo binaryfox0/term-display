@@ -30,6 +30,7 @@ SOFTWARE.
 #include <fcntl.h>
 #include <termios.h>
 #include <poll.h>
+#define _POSIX_C_SOURCE 200809L
 #include <signal.h>
 
 static struct termios old, cur;

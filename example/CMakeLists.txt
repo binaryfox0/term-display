@@ -46,4 +46,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/cglm/include")
     target_link_libraries(cube PRIVATE cglm m)
 endif()
 
+if(UNIX)
+    set(EXTRA "m")
+endif()
 example_projects(mouse)

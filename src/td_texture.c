@@ -197,7 +197,7 @@ void td_texture_convert(td_texture* texture, td_i32 new_channel)
             const td_i32 alpha_index = new_channel - 1;
 
             for (td_u64 i = 0; i < pixel_count; ++i) {
-                memcpy(dst, src, (td_u64)old_channel);
+                memcpy(dst, src, (size_t)old_channel);
                 dst[alpha_index] = 255;
 
                 src += old_channel;
@@ -208,7 +208,7 @@ void td_texture_convert(td_texture* texture, td_i32 new_channel)
         } else if (IS_TRANSPARENT(old_channel) && !IS_TRANSPARENT(new_channel)) {
 
             for (td_u64 i = 0; i < pixel_count; ++i) {
-                memcpy(dst, src, (td_u64)new_channel);
+                memcpy(dst, src, (size_t)new_channel);
 
                 src += old_channel;
                 dst += new_channel;
@@ -269,7 +269,7 @@ void td_texture_merge(const td_texture *texture_a,
         {
             tdp_convert_color(color, ptr_b, texture_a->channel, texture_b->channel, 0);
             if(replace)
-                memcpy(ptr_a, color, (td_u64)new_ch_b);
+                memcpy(ptr_a, color, (size_t)new_ch_b);
             else
                 tdp_blend(ptr_a, color, texture_a->channel, new_ch_b);
 

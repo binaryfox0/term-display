@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <termios.h>
 #include <unistd.h>
@@ -9,6 +10,7 @@
 #include <pty.h>
 #include <termios.h>
 #include <libgen.h>
+#include <limits.h>
 
 #define error(fmt, ...) fprintf(stderr, "\x1b[1;31merror\x1b[0m: " fmt "\n", ##__VA_ARGS__)
 #define info(fmt, ...) fprintf(stderr, "\x1b[1;34minfo\x1b[0m: " fmt "\n", ##__VA_ARGS__)

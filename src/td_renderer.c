@@ -354,9 +354,9 @@ void td_render(void)
             }
 
             for (int x = 0; x < xend; x++) {
-                if (memcmp(prev, row_ptr, (td_u64)ch) != 0) {
+                if (memcmp(prev, row_ptr, (size_t)ch) != 0) {
                     tdp_display_cell(row_ptr);
-                    memcpy(prev, row_ptr, (td_u64)ch);
+                    memcpy(prev, row_ptr, (size_t)ch);
                 }
 
                 printf("%*s", px_w, "");

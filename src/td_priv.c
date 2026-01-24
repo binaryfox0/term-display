@@ -153,7 +153,7 @@ td_bool tdp_handle_single_byte(const td_i32 byte, int *ch, int *mods)
             ke.mod & td_mod_shift)
         {
             ke.key = (td_u8)byte;
-            ke.mod &= ~td_mod_shift;
+            ke.mod &= (td_u8)~td_mod_shift;
         }
         *ch = ke.key;
         *mods = ke.mod;

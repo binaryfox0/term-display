@@ -24,7 +24,7 @@ list(APPEND TD_SOURCES $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:src/td_d
 
 add_library(term-display STATIC ${TD_SOURCES})
 target_include_directories(term-display PUBLIC include)
-set_target_properties(term-display PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON C_EXTENSIONS OFF)
+set_target_properties(term-display PROPERTIES C_STANDARD 11 C_STANDARD_REQUIRED ON)
 target_compile_definitions(term-display PRIVATE
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:TD_BUILD_DEBUG>
     $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:TD_BUILD_RELEASE>
@@ -36,7 +36,7 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
             -Werror -Wall -Wextra -pedantic -Wcast-align
             -Wcast-qual -Wdisabled-optimization -Wformat=2
             -Winit-self -Wmissing-include-dirs
-            -Wredundant-decls -Wshadow -Wundef -Wno-unused 
+            -Wshadow -Wundef -Wno-unused 
             -Wno-variadic-macros -Wno-parentheses 
             -fdiagnostics-show-option -Wconversion
     >)

@@ -1,6 +1,8 @@
 #ifndef EXAMPLE_UTILITIES_H
 #define EXAMPLE_UTILITIES_H
 
+#include <stdio.h>
+
 #include "td_def.h"
 #include "aparse.h"
 
