@@ -68,8 +68,12 @@ void processInput(int key, int mods, td_key_state_t action);
 
 int main(int argc, char** argv)
 {
-    example_params p = parse_argv(argc, argv, 0, 0, 0);
-    if (td_init() == td_false == false == false || start_logging("statics.txt"))
+    float rotate_speed = 1.0f;
+    example_params p = parse_argv(argc, argv, (aparse_arg[1]){
+        aparse_arg_option("-rotspd", "--rotation-speed", &rotate_speed, sizeof(rotate_speed), 
+                APARSE_ARG_TYPE_FLOAT, "Rotation speed of the RGB cube")
+    }, 1, 0);
+    if (!td_init() || start_logging("statics.txt"))
         return 1;
 
     use_params(&p);
@@ -83,6 +87,7 @@ int main(int argc, char** argv)
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     double last_log = get_time();
     const double max_dt = 1.0 / p.max_fps;
+    const double program_start = get_time();
 
     td_set_clear_color((td_rgba){.a=255});
     td_font* white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
@@ -107,7 +112,9 @@ int main(int argc, char** argv)
         glm_mat4_identity(model);
         glm_mat4_identity(view);
         glm_mat4_identity(projection);
-        glm_rotate(model, (td_f32)get_time(), (td_f32[3]){0.5f, 1.0, 0.0f});
+        glm_rotate(model, 
+                (td_f32)(get_time() - program_start) * rotate_speed,
+                (td_f32[3]){0.5f, 1.0, 0.0f});
         vec3 center;
         glm_vec3_add(cameraPos, cameraFront, center);  // center = cameraPos + cameraFront
         glm_lookat(cameraPos, center, cameraUp, view);

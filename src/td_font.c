@@ -42,10 +42,10 @@ SOFTWARE.
 #define TDF_ARRSZ(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 #define TDF_COMPRESS(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) \
-    { \
-        (a) | (b << 1) | (c << 2) | (d << 3) | (e << 4) | (f << 5) | (g << 6) | (h << 7), \
-        (i) | (j << 1) | (k << 2) | (l << 3) | (m << 4) | (n << 5) | (o << 6) \
-    }
+        (a << 0) | (b << 1) | (c << 2) | (d << 3) | \
+        (e << 4) | (f << 5) | (g << 6) | (h << 7) | \
+        (i << 8) | (j << 9) | (k << 10) | (l << 11) | \
+        (m << 12) | (n << 13) | (o << 14)
 
 typedef struct tdp_map {
     int s1, s2; // source start, source end
@@ -58,8 +58,13 @@ typedef struct td_font {
     tdp_dynarr mapper; // tdp_map
 } td_font;
 
-// Atlas of font character pattern, will be populated later
-static const td_u8 tdp_template[2][ATLAS_SIZE][2] = {
+typedef struct tdp_font_template {
+    td_u16 *template;
+    td_ivec2 range;
+} tdp_font_template;
+
+static const tdp_font_template tdp_template_no1 = {
+    .template = (td_u16[])    
     {
         TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Space
         TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0),    // Exclamation mark
@@ -126,14 +131,20 @@ static const td_u8 tdp_template[2][ATLAS_SIZE][2] = {
         TDF_COMPRESS(0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1),    // Right square bracket
         TDF_COMPRESS(0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Caret
         TDF_COMPRESS(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1),    // Underscore 
-        TDF_COMPRESS(1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Grave accent
+        TDF_COMPRESS(1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),    // Grave ac
     },
+    .range = { .x = ' ', .y = '`' }
+};
+
+static const tdp_font_template tdp_template_no2 = {
+    .template = (td_u16[])
     {
         TDF_COMPRESS(0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1),    // Left curly brace
         TDF_COMPRESS(0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0),    // Vertical bar
         TDF_COMPRESS(1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0),    // Right curly brace
         TDF_COMPRESS(0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0)     // Tilde 
-    }
+    },
+    .range = { .x = '{', .y = '~' }
 };
 
 TD_INLINE td_u32 calculate_pad(td_u32 ch)
@@ -152,32 +163,25 @@ td_u8 is_newline(const td_i8 *str, td_u32 *current, td_u32 max)
     return 0;
 }
 
-td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // Lines length info
-                 td_u32 *line_count, td_u32 *longest_line)
+
+
+void tdp_query_lines_length(
+        const td_i8 *str, td_u32 len, 
+        td_u32 *fixed_buf, const td_u64 fixed_buf_size,
+        td_u32 *line_count, td_u32 *longest_line)
 {
     static const size_t min_realloc = 10;
 
     td_u32 line_len = 0, current_size = 0;
+    td_u64 idx = 0;
     *line_count = 0;
     *longest_line = 0;
 
     for (td_u32 i = 0; i < len && str[i]; i++) {
         if (is_newline(str, &i, len)) {
-            if (*line_count >= current_size) {
-                size_t new_size = (size_t)current_size + min_realloc;
-                td_u32 *temp =
-                    (td_u32 *) realloc(*lines_length, new_size * sizeof(*temp));
-                if (!temp)
-                {
-                    free(*lines_length);
-                    *lines_length = 0;
-                    return 1;   // Allocation failed
-                }
-                *lines_length = temp;
-                current_size = (td_u32)new_size;
-            }
-
-            (*lines_length)[*line_count] = line_len;
+            if(*line_count >= fixed_buf_size)
+                return;
+            fixed_buf[*line_count] = line_len;
             if (line_len > *longest_line)
                 *longest_line = line_len;
             (*line_count)++;
@@ -189,37 +193,14 @@ td_u8 query_newline(const td_i8 *str, td_u32 len, td_u32 **lines_length,    // L
 
     // Handle last line if it exists
     if (line_len > 0) {
-        if (*line_count >= current_size) {
-            size_t new_size = (size_t)(current_size + 1);    // Allocate just for the last line
-            td_u32 *temp =
-                (td_u32 *) realloc(*lines_length, new_size * sizeof(*temp));
-            if (!temp)
-            {
-                free(*lines_length);
-                *lines_length = 0;
-                return 1;
-            }
-            *lines_length = temp;
-        }
-        (*lines_length)[*line_count] = line_len;
+        fixed_buf[*line_count] = line_len;
         if (line_len > *longest_line)
             *longest_line = line_len;
         (*line_count)++;
     }
-
-    return 0;
 }
 
 
-TD_INLINE td_i8 mapped_ch(td_i8 ch)
-{
-    // Uppercase only
-    if (IN_RANGE(ch, 'a', 'z'))
-        return ch - 'a' + 'A';  // To uppercase (how this font mapped)
-    if (ch > '`')
-        return ch - '{' + 'a';
-    return ch;
-}
 
 td_texture* tdp_codepoint_resolve(
     const td_font* font, const int character)
@@ -259,43 +240,63 @@ td_font* td_font_create(void)
     return out;
 }
 
+static void tdp_append_textures_from_template(
+        td_font *font, const tdp_font_template *template,
+        const td_rgba background, const td_rgba foreground
+)
+{
+    if(!font || !template)
+        return;
+    const td_ivec2 range = template->range;
+    if(!tdp_dynarr_add(&font->ranges, &template->range))
+        return;
+    
+    size_t chars_count = (size_t)(range.y - range.x + 1);      
+    td_texture** chars_range = calloc(chars_count, sizeof(*chars_range));
+    if(!chars_range)
+        goto fail;
+
+    for(size_t j = 0; j < chars_count; j++)
+    {
+        // leak was here
+        chars_range[j] = td_texture_create(
+            0, 4, (td_ivec2){CHAR_WIDTH, CHAR_HEIGHT}, 0, 0);
+        if(!chars_range[j]) continue;
+
+        td_u8 a[4] = TD_EXPAND_RGBA(foreground), b[4] = TD_EXPAND_RGBA(background);
+        const td_u16 char_template = template->template[j];
+        int bitmask = 1;
+        td_u8* raw = chars_range[j]->data;
+
+        for (td_u8 k = 0; k < CHAR_PIXEL; k++, bitmask <<= 1) {
+            td_bool is_pix = char_template & bitmask;
+            for (td_u8 l = 0; l < 4; l++, raw++)
+                *raw = is_pix ? a[l] : b[l];
+        }
+    }
+    if(!tdp_dynarr_add(&font->characters, &chars_range))
+        goto fail;
+
+    return;
+
+fail:
+    if(chars_range)
+        free(chars_range);
+    font->ranges.used--;
+}
+
 td_font* td_default_font(const td_rgba foreground, const td_rgba background)
 {
     td_font* out = td_font_create();
     if(!out)
         return 0;
+
+    tdp_append_textures_from_template(out, &tdp_template_no1, background, foreground);
+    tdp_append_textures_from_template(out, &tdp_template_no2, background, foreground);
     
-    tdp_dynarr_add(&out->ranges, (td_ivec2[1]){{' ', '`'}});
-    tdp_dynarr_add(&out->ranges, (td_ivec2[1]){{'{', '~'}});
     // Lowercase to uppercase
     tdp_dynarr_add(&out->mapper, (tdp_map[1]){{ 'a', 'z', 'A'}});
     
-    for(size_t i = 0; i < TDF_ARRSZ(tdp_template); i++)
-    {
-        size_t chars_count = TDF_ARRSZ(tdp_template[i]);
-        td_texture** chars_range = malloc(sizeof(*chars_range) * chars_count);
-        if(!chars_range) {
-            td_destroy_font(out);
-            return 0;
-        }
-        for(size_t j = 0; j < chars_count; j++)
-        {
-            chars_range[j] = td_texture_create(
-                0, 4, (td_ivec2){CHAR_WIDTH, CHAR_HEIGHT}, 0, 0);
-            if(!chars_range[j]) continue;
-
-            td_u8 a[4] = TD_EXPAND_RGBA(foreground), b[4] = TD_EXPAND_RGBA(background);
-            const td_u8* template = tdp_template[i][j];
-            td_u8* raw = chars_range[j]->data;
-
-            for (td_u8 k = 0; k < CHAR_PIXEL; k++) {
-                td_bool is_pix = template[k / 8] & (1 << (k % 8));
-                for (td_u8 l = 0; l < 4; l++, raw++)
-                    *raw = is_pix ? a[l] : b[l];
-            }
-        }
-        tdp_dynarr_add(&out->characters, &chars_range);
-    }
     return out;
 }
 
@@ -330,11 +331,14 @@ td_texture *td_render_string(const td_font* font,
         return 0;
     td_u32 plen = (td_u32)len;
     td_u32 lines_count = 0, longest_line = 0;
-    td_u32 *lines_length = 0;      // Filling gaps
-    if (query_newline
-        (str, plen, &lines_length, &lines_count, &longest_line)) {
-        return 0;
-    }
+    td_u32 lines_length[64] = {0};
+
+    tdp_query_lines_length(
+            str, plen, 
+            lines_length, TDF_ARRSZ(lines_length), 
+            &lines_count, &longest_line
+    );
+
     // s->x is maximum character in one line, s->y is the line in the input text
     td_ivec2 texture_size = {
         (int)(longest_line * CHAR_WIDTH + calculate_pad(longest_line)),
@@ -345,7 +349,6 @@ td_texture *td_render_string(const td_font* font,
     }
     td_texture *out = td_texture_create(0, 4, texture_size, 0, 0);
     if (!out) {
-        free(lines_length);
         return 0;
     }
     td_texture* empty = tdp_codepoint_resolve(font, ' ');
@@ -369,6 +372,5 @@ td_texture *td_render_string(const td_font* font,
         if (is_newline(str, &current_index, plen))
             current_index++;    // Skip newline now
     }
-    free(lines_length);
     return out;
 }

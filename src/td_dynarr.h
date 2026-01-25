@@ -8,6 +8,6 @@ typedef struct tdp_dynarr {
     void* ptr;
 } tdp_dynarr;
 
-void tdp_dynarr_add(tdp_dynarr* arr, const void* item);
+td_bool tdp_dynarr_add(tdp_dynarr* arr, const void* item);
 
 #endif
