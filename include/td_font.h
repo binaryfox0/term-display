@@ -43,15 +43,23 @@ SOFTWARE.
 #ifndef TD_FONT_H
 #define TD_FONT_H
 
-#include "td_def.h"
-#include "td_texture.h"
+#include <td_def.h>
+#include <td_err.h>
+#include <td_texture.h>
 
 typedef struct td_font td_font;
 
 td_font* td_create_font(void);
 td_font* td_default_font(const td_rgba foreground, const td_rgba background);
 void td_destroy_font(td_font* font);
-td_bool td_add_character(td_font* font, const td_ivec2 range, const td_texture* tex_atlas);
+
+td_err td_font_insert_char(
+        td_font *font,
+        const td_i32 codepoint,
+        const td_texture *tex
+);
+
+td_ivec2 td_calc_text_size(const td_font *font, const char *str, const td_u64 str_len);
 
 /**
  * @brief Generate a texture from a single character.
@@ -64,6 +72,15 @@ td_bool td_add_character(td_font* font, const td_ivec2 range, const td_texture* 
  */
 td_texture *td_render_char(const td_font* font, const td_i32 ch);
 
+td_err td_render_string_into(
+        const td_font *font,
+        const td_ivec2 pos,
+        const char *str,
+        const td_u64 str_len,
+        td_texture *tex_out
+);
+    
+
 /**
  * @brief Generate a texture from a string.
  *
@@ -74,9 +91,11 @@ td_texture *td_render_char(const td_font* font, const td_i32 ch);
  * @param bg Background color.
  * @return A pointer to a new `td_texture` containing the rendered string.
  */
-td_texture *td_render_string(const td_font* font,
-                              const char *str, const td_u32 len,
-                              td_ivec2 *size);
+td_texture *td_render_string(
+        const td_font* font,
+        const char *str,
+        const td_u64 len
+);
 
 /** @} */ // end of td_font
 

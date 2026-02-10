@@ -7,44 +7,46 @@
 #include "td_rasterizer.h"
 #include "td_debug.h" // IWYU pragma: export
 
-#ifdef TD_PLATFORM_WINDOWS
-#include <io.h>
-#include <windows.h>
+#if defined(TD_PLATFORM_WINDOWS)
+#   include <io.h>
+#   include <windows.h>
 
-#ifndef STDIN_FILENO
-#define STDIN_FILENO _fileno(stdin)
-#endif
+#   ifndef STDIN_FILENO
+#       define STDIN_FILENO _fileno(stdin)
+#   endif
 
-#ifndef STDOUT_FILENO
-#define STDOUT_FILENO _fileno(stdout)
-#endif
+#   ifndef STDOUT_FILENO
+#       define STDOUT_FILENO _fileno(stdout)
+#   endif
 
-#define _pread _read
-#define _pwrite _write
-#define _pisatty _isatty
+#   define _pread _read
+#   define _pwrite _write
+#   define _pisatty _isatty
 
 typedef BOOL (*tdp_sighand)(DWORD);
 
-#endif
+#elif defined(TD_PLATFORM_UNIX)
+#   include <unistd.h>
 
-#ifdef TD_PLATFORM_UNIX
-#include <unistd.h>
-
-#define _pread read
-#define _pwrite write
-#define _pisatty isatty
+#   define _pread read
+#   define _pwrite write
+#   define _pisatty isatty
 
 typedef void (*tdp_sighand)(int);
+
+#else
+#   error "term-display haven't added support for this platform"
 #endif
 
-#define min(x, y) (((x) < (y)) ? (x) : (y))
-#define max(x, y) (((x) > (y)) ? (x) : (y))
+#define tdp_min(x, y) (((x) < (y)) ? (x) : (y))
+#define tdp_max(x, y) (((x) > (y)) ? (x) : (y))
 
 struct td_texture_s {
     td_u8 *data;
     td_i32 channel;
     td_ivec2 size;
-    td_bool freeable;
+    td_bool freeable : 1;
+    td_bool lib_owned : 1; 
 };
 
 typedef struct {
@@ -102,8 +104,7 @@ td_bool tdp_stdin_ready(const int ms);
 int tdp_stdin_available(void);
 td_bool tdp_enable_stop_sig(const td_bool enable);
 
-// Platform-independent
-void tdp_kbpoll(const td_key_callback keycb, const td_mouse_callback mousecb);
+void tdp_kbpoll(void);
 
 #define IS_TRANSPARENT(channel) ((channel) == 2 || (channel) == 4)
 #define IS_GRAYSCALE(channel) ((channel) == 1 || (channel) == 2)

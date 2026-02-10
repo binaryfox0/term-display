@@ -33,7 +33,8 @@ SOFTWARE.
 #ifndef TD_TEXTURE_H
 #define TD_TEXTURE_H
 
-#include "td_def.h"
+#include <td_def.h>
+#include <td_err.h>
 
 struct td_texture_s;
 typedef struct td_texture_s td_texture;
@@ -188,7 +189,7 @@ void td_texture_draw_line(td_texture * texture,
  *
  * @param texture The texture to free.
  */
-void td_texture_destroy(td_texture * texture);
+td_err td_texture_destroy(td_texture * texture);
 
 /**
  * @brief Blend two pixels using alpha.

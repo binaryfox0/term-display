@@ -5,8 +5,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-#include "aparse.h"
-#include "td_main.h"
+#include <td_main.h>
 
 #if defined(_WIN64) || defined(_WIN32)
 #include <windows.h>

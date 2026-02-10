@@ -2,11 +2,9 @@
 #include <stdlib.h>             // free
 #include <math.h>               // sin
 
-#include "td_main.h"
-#include "td_font.h"
+#include <td_main.h>
 
 #include "example_utils.h"
-#include "td_texture.h"
 
 // Non-standard stuffs
 #if defined(TD_PLATFORM_WINDOWS)
@@ -32,13 +30,13 @@ static const char *fkey_name[] = {
     "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
 };
 
-int kstork_texh = 0;
-char* buffer = 0;
-int current_size = 0, current_index = 0;
-td_font* font = 0;
-td_texture* textinput_tex = 0;
-td_texture* keystroke_tex = 0;
-td_ivec2 fbsz = {0};
+static int kstork_texh = 0;
+static char* buffer = 0;
+static int current_size = 0, current_index = 0;
+static td_font* font = 0;
+static td_texture* textinput_tex = 0;
+static td_texture* keystroke_tex = 0;
+static td_ivec2 fbsz = {0};
 
 void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
 {
@@ -48,7 +46,9 @@ void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
         *tex = 0;
     }
 
-    *tex = td_render_string(font, str, -1, texsz);
+    *tex = td_render_string(font, str, -1);
+    if(texsz)
+        *texsz = td_texture_get_size(*tex);
 }
 
 void append_char_textin(const int key)
@@ -106,7 +106,9 @@ const char* map_special_key(const int key)
     return ""; 
 }
 
-const char* build_keystrok_str(const int key, const int mods)
+const char* build_keystrok_str(
+        const td_key_token_t key, 
+        const td_key_mod_t mods)
 {
     static int repeat_count = 0;
     static int prev_k = 0, prev_mods = 0;
@@ -153,7 +155,7 @@ const char* build_keystrok_str(const int key, const int mods)
     return buf;
 }
 
-void process_input(int key, int mods, td_key_state_t actions)
+void process_input(td_key_token_t key, td_key_action_t actions, td_key_mod_t mods)
 {
     append_char_textin(key);
     const char* str = build_keystrok_str(key, mods);
@@ -193,7 +195,9 @@ void normal_routine(const int max_fps)
 
         char *string = to_string("%f", fps);
         td_texture *texture =
-            td_render_string(font, string, strlen(string), &size);
+            td_render_string(font, string, strlen(string));
+        size = td_texture_get_size(texture);
+
         td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
@@ -262,10 +266,8 @@ void* kstrok_watchdog(void* userdata)
     pthread_exit(0);
 }
 
-int keystroke_readable = 0;
-
-
-void kstrok_logger(int key, int mods, td_key_state_t state)
+static int keystroke_readable = 0;
+void kstrok_logger(td_key_token_t key, td_key_action_t state, td_key_mod_t mods)
 {
     printf("%d, %d, %d", key, mods, state);
     if(keystroke_readable)

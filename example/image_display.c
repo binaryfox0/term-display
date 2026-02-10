@@ -1,21 +1,23 @@
 #include <stdlib.h>
 
-#include "td_main.h"
+#include <td_main.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "example_utils.h"
-#include "td_texture.h"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+static float vertices_uv[] = {
+    0.0f, 1.0f, // bottom-left
+    1.0f, 1.0f, // bottom-right
+    1.0f, 0.0f, // top-right
+    0.0f, 1.0f, // bottom-left
+    1.0f, 0.0f, // top-right
+    0.0f, 0.0f  // top-left
+};
 
-static float vertices[] = {
-    // x, y, u, v
-    0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
-    0.0f, 0.0f, 1.0f, 1.0f, // bottom-right
-    0.0f, 0.0f, 1.0f, 0.0f, // top-right
-    0.0f, 0.0f, 0.0f, 1.0f, // bottom-left
-    0.0f, 0.0f, 1.0f, 0.0f, // top-right
-    0.0f, 0.0f, 0.0f, 0.0f  // top-left
+static const int indices[] = {
+    2, 3, 1,
+    2, 1, 0
 };
 
 static td_texture *displayed_image = 0;
@@ -43,24 +45,32 @@ void resize_callback(td_ivec2 new_size)
     if(vec2_larger(tmp, new_size))
         tmp = ratio_new_size(imgsz, (td_ivec2){.y=new_size.y});
 
-    // compute corners in NDC
-    td_vec2 bottom_left  = pos_to_ndc((td_ivec2){.y=tmp.y - 1}, new_size);
-    td_vec2 bottom_right = pos_to_ndc((td_ivec2){.x=tmp.x - 1, .y=tmp.y - 1}, new_size);
-    td_vec2 top_right    = pos_to_ndc((td_ivec2){.x=tmp.x - 1}, new_size);
-    td_vec2 top_left     = pos_to_ndc((td_ivec2){0}, new_size);
-
-    // copy positions correctly (2 floats each)
-    memcpy(vertices + 0,  bottom_left.raw,  sizeof(float) * 2);  // v0
-    memcpy(vertices + 4,  bottom_right.raw, sizeof(float) * 2);  // v1
-    memcpy(vertices + 8,  top_right.raw,    sizeof(float) * 2);  // v2
-    memcpy(vertices + 12, bottom_left.raw,  sizeof(float) * 2);  // v3
-    memcpy(vertices + 16, top_right.raw,    sizeof(float) * 2);  // v4
-    memcpy(vertices + 20, top_left.raw,     sizeof(float) * 2);  // v5
-
+    td_ivec2 vertices_int[4] = {
+        { .x = (new_size.x - tmp.x) / 2, .y = (new_size.y - tmp.y) / 2 }, // tl
+        { .x = vertices_int[0].x + tmp.x, .y = vertices_int[0].y }, // tr
+        { .x = vertices_int[0].x, .y = vertices_int[0].y + tmp.y }, // bl
+        { .x = vertices_int[0].x + tmp.x, .y = vertices_int[0].y + tmp.y } // br
+    };
+    
     td_clear_framebuffer();
     td_bind_texture(displayed_image);
-    for(int i = 0; i < sizeof(vertices) / sizeof(vertices[0]) / 4; i++)
-        td_add_vertex(vertices + i * 4, attribs, 2, td_true);
+
+    float new_vertices[4 * 2] = {0};
+    for(int i = 0; i < ARRSZ(indices); i++)
+    {
+        int vidx = indices[i];
+        td_add_vertex(
+                pos_to_ndc(vertices_int[vidx], new_size).raw,
+                (td_vertex_attrib[1]){TDVA_POSITION_2D},
+                1, td_false
+        );
+        td_add_vertex(
+                &vertices_uv[vidx * 2],
+                (td_vertex_attrib[1]){TDVA_UV_COORDS},
+                1, td_true
+        );
+    }
+
     td_render();
     fflush(stdout);
 }
@@ -68,15 +78,17 @@ void resize_callback(td_ivec2 new_size)
 td_bool stop = td_false;
 td_bool force_stop = td_false;
 
-void key_callback(int key, int mods, td_key_state_t state){
-    if(key == td_key_x && state == td_key_press) {
+void key_callback(td_key_token_t key, td_key_action_t action, td_key_mod_t mods)
+{
+    if(key == td_key_x && action == td_key_press)
+    {
         if(mods == td_mod_ctrl)
             force_stop = true;
         stop = td_true;
     }
 }
 
-char* program_name = 0;
+static char* program_name = 0;
 void display_image(const char* path)
 {
     int channel, width, height;

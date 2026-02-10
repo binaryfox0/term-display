@@ -4,12 +4,13 @@ project(term-display C)
 
 set(TD_SOURCES
     src/td_dynarr.c
-    src/td_main.c
     src/td_priv.c
     src/td_texture.c
-    src/td_font.c
     src/td_rasterizer.c
     src/td_renderer.c
+    src/td_font.c
+    src/td_input.c
+    src/td_main.c
 )
 
 if(WIN32)

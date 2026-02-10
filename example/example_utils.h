@@ -1,10 +1,8 @@
 #ifndef EXAMPLE_UTILITIES_H
 #define EXAMPLE_UTILITIES_H
 
-#include <stdio.h>
-
-#include "td_def.h"
-#include "aparse.h"
+#include <td_def.h>
+#include <aparse.h>
 
 #define EXAMPLE_LOGGING
 
@@ -19,6 +17,7 @@ td_bool stop_logging();
 #endif
 
 #define LOG_INTERVAL 0.1 // In seconds
+#define ARRSZ(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
 typedef struct example_params {
     td_bool auto_resize;

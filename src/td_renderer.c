@@ -112,6 +112,7 @@ int tdp_renderer_init(const td_ivec2 term_size)
     tdp_clear_color = tdp_bg_color; // No color yet
     if (!(tdp_display.fb = td_texture_create(0, 3, (td_ivec2){0}, 1, 0))) // Empty texture
         return 1;
+    tdp_display.fb->lib_owned = td_true;
     _pwrite(
         STDOUT_FILENO, 
         "\x1b[?25l" // hide cursor
@@ -121,10 +122,12 @@ int tdp_renderer_init(const td_ivec2 term_size)
     _pwrite(
         STDOUT_FILENO, 
         "\x1b[?1000h" // enable mouse reporting
+        "\x1b[?1003h"
         "\x1b[?1006h", // enable SGR mode
-        16
+        24
     );
     tdp_resize_handle(term_size);
+    
     return 0;
 }
 
@@ -134,7 +137,11 @@ void tdp_renderer_exit(void)
     // Reset color / graphics mode
     fflush(stdout);             // Flush remaining data
     _pwrite(STDOUT_FILENO, "\x1b[?25h\x1b[0m\x1b[?1049l", 19);
-    _pwrite(STDOUT_FILENO, "\x1b[?1000l\x1b[?1006l", 16);
+    _pwrite(STDOUT_FILENO, 
+            "\x1b[?1000l"
+            "\x1b[?1003l"
+            "\x1b[?1006l", 24);
+    tdp_display.fb->lib_owned = td_false;
     td_texture_destroy(tdp_display.fb);
     if(tdp_display.depth)
         free(tdp_display.depth);
@@ -161,6 +168,10 @@ void td_clear_framebuffer(void)
 {
     td_texture_fill(tdp_display.fb, tdp_clear_color);
     tdp_reset_depth_buffer();
+}
+
+td_texture* td_get_framebuffer(void) {
+    return tdp_display.fb;
 }
 
 void td_draw_rect(

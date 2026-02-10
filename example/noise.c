@@ -3,15 +3,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "aparse.h"
-#include "td_main.h"
-#include "td_font.h"
+#ifdef TD_PLATFORM_WINDOWS
+#   include <bcrypt.h>
+#endif
+
+#include <aparse.h>
+#include <td_main.h>
 
 #include "example_utils.h"
-
-#ifdef TD_PLATFORM_WINDOWS
-#include <bcrypt.h>
-#endif
 
 static td_u8 desired_channel = 3;
 td_texture *generate_noise(td_ivec2 size)
@@ -75,7 +74,9 @@ int main(int argc, char** argv)
 
         char *string = to_string("%f", fps);
         td_texture *texture =
-            td_render_string(font, string, strlen(string), &size);
+            td_render_string(font, string, strlen(string));
+        size = td_texture_get_size(texture);
+
         td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 

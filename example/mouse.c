@@ -37,18 +37,18 @@ void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
         *tex = 0;
     }
 
-    *tex = td_render_string(font, str, -1, texsz);
+    *tex = td_render_string(font, str, -1);
+    *texsz = td_texture_get_size(*tex);
 }
 
 static int repeat_count = 0, prev_key = -1;
-void mousecb(int xpos, int ypos, int key)
+void cursor_pos_callback(int xpos, int ypos)
 {
-    if(prev_key != key || 
+    if(
             mousepos_prev.x != xpos ||
             mousepos_prev.y != ypos)
     {
         repeat_count = 0;
-        prev_key = key;
         mousepos_prev = (td_ivec2){.x=xpos,.y=ypos};
     } else {
         repeat_count++;
@@ -57,8 +57,8 @@ void mousecb(int xpos, int ypos, int key)
     char buf[32] = {0};
     snprintf(buf, sizeof(buf), "%d, %d", xpos, ypos);
     refresh_texture(&cursorpos_tex, buf, &cursorpos_textsz);
-    snprintf(buf, sizeof(buf), "%d x %d", key, repeat_count);
-    refresh_texture(&cursorkey_tex, buf, &cursorkey_textsz);
+//    snprintf(buf, sizeof(buf), "%d x %d", key, repeat_count);
+//    refresh_texture(&cursorkey_tex, buf, &cursorkey_textsz);
 }
 
 int load_cursor()
@@ -96,7 +96,7 @@ int main(int argc, char** argv)
 
     use_params(&p);
 
-    td_set_mouse_callback(mousecb);
+    td_set_cursor_pos_callback(cursor_pos_callback);
     font = td_default_font(FGCOL, BGCOL);
 
     td_ivec2 size = { 0 };    // Temporary
@@ -115,7 +115,8 @@ int main(int argc, char** argv)
 
         char *string = to_string("%f", fps);
         td_texture *texture =
-            td_render_string(font, string, strlen(string), &size);
+            td_render_string(font, string, strlen(string));
+        size = td_texture_get_size(texture);
         td_copy_texture(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 

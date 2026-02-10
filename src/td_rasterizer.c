@@ -106,10 +106,10 @@ void tdp_rasterize_triangle(
     }
 
     // The bounding box
-    int minX = max(0, min(v1.pos.x, min(v2.pos.x, v3.pos.x)));
-    int minY = max(0, min(v1.pos.y, min(v2.pos.y, v3.pos.y)));
-    int maxX = min(fb->size.x - 1, max(v1.pos.x, max(v2.pos.x, v3.pos.x)));
-    int maxY = min(fb->size.y - 1, max(v1.pos.y, max(v2.pos.y, v3.pos.y)));
+    int minX = tdp_max(0, tdp_min(v1.pos.x, tdp_min(v2.pos.x, v3.pos.x)));
+    int minY = tdp_max(0, tdp_min(v1.pos.y, tdp_min(v2.pos.y, v3.pos.y)));
+    int maxX = tdp_min(fb->size.x - 1, tdp_max(v1.pos.x, tdp_max(v2.pos.x, v3.pos.x)));
+    int maxY = tdp_min(fb->size.y - 1, tdp_max(v1.pos.y, tdp_max(v2.pos.y, v3.pos.y)));
 
     int A0 = pv2.pos.y - pv3.pos.y, B0 = pv3.pos.x - pv2.pos.x, C0 = pv2.pos.x * pv3.pos.y - pv3.pos.x * pv2.pos.y;
     int A1 = pv3.pos.y - pv1.pos.y, B1 = pv1.pos.x - pv3.pos.x, C1 = pv3.pos.x * pv1.pos.y - pv1.pos.x * pv3.pos.y;
@@ -151,9 +151,9 @@ void tdp_rasterize_triangle(
                     td_f32 tex_v = (1.0f - v) * (float)(texture_size.y - 1);
 
                     td_i32 ixf = tdp_floor(tex_u);
-                    td_i32 ixc = min(ixf + 1, texture_size.x - 1);
+                    td_i32 ixc = tdp_min(ixf + 1, texture_size.x - 1);
                     td_i32 iyf = tdp_floor(tex_v);
-                    td_i32 iyc = min(iyf + 1, texture_size.y - 1);
+                    td_i32 iyc = tdp_min(iyf + 1, texture_size.y - 1);
 
                     td_f32 tx = tex_u - (td_f32)ixf;
                     td_f32 ty = tex_v - (td_f32)iyf;

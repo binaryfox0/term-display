@@ -145,7 +145,7 @@ td_u8 *td_texture_get_pixel(const td_texture* texture, const td_ivec2 pos)
              data[(pos.y * texture->size.x + pos.x) * texture->channel]);
 }
 
-td_ivec2 tdt_get_size(const td_texture *texture)
+td_ivec2 td_texture_get_size(const td_texture *texture)
 {
     if (!texture)
         return (td_ivec2){0};
@@ -253,8 +253,8 @@ void td_texture_merge(const td_texture *texture_a,
 
     td_i32 remaining_x = texture_a->size.x - placement_pos.x;
     td_i32 remaining_y = texture_a->size.y - placement_pos.y;
-    td_i32 cp_row = min(remaining_y, texture_b->size.y);
-    td_i32 cp_col = min(remaining_x, texture_b->size.x);
+    td_i32 cp_row = tdp_min(remaining_y, texture_b->size.y);
+    td_i32 cp_col = tdp_min(remaining_x, texture_b->size.x);
 
     td_u8   *ptr_a = texture_a->data + calculate_pos(placement_pos, texture_a->size.x, ch_a), 
             *ptr_b = texture_b->data;
@@ -398,13 +398,16 @@ void td_texture_crop(td_texture *texture, const td_ivec2 new_size)
     texture->size = new_size;
 }
 
-void td_texture_destroy(td_texture *texture)
+td_err td_texture_destroy(td_texture *texture)
 {
     if (!texture)
-        return;
+        return TD_ERR_INVALID_ARG;
+    if(texture->lib_owned)
+        return TD_ERR_FORBIDDEN;
     if (texture->freeable)
         free(texture->data);
     free(texture);
+    return TD_ERR_OK;
 }
 
 td_rgba td_blend_pixel(const td_rgba a, const td_rgba b)

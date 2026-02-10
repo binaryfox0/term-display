@@ -56,6 +56,8 @@ void td_set_clear_color(const td_rgba clear_color);
  */
 void td_clear_framebuffer(void);
 
+
+td_texture* td_get_framebuffer(void);
 /**
  * @brief Draw a rectangle into framebuffer with given size
  */

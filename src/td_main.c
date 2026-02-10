@@ -244,24 +244,20 @@ td_bool td_option(td_settings_t type, td_bool get, void *option) {
     return td_true;
 }
 
-#define __handler(name) __td_cat(__td_cat(tdp_, name), _callback)
+static td_resize_callback tdp_resize_callback = 0;
+void td_set_resize_callback(td_resize_callback callback) {
+    tdp_resize_callback = callback;
+}
 
-#define __handler_helper(name) \
-    __td_cat(__td_cat(td_, name), _callback)  __handler(name); \
-    void __td_cat(__td_cat(td_set_, name), _callback)(__td_cat(__td_cat(td_, name), _callback) callback) { \
-        __td_cat(__td_cat(tdp_, name), _callback) = callback; \
-    }
-__handler_helper(key)
-__handler_helper(mouse)
-__handler_helper(resize)
 void td_poll_events(void)
 {
-    tdp_kbpoll(__handler(key), __handler(mouse));
+    tdp_kbpoll();
     tdp_term_size = tdp_get_termsz();;
     if (tdp_prev_size.x != tdp_term_size.x || tdp_prev_size.y != tdp_term_size.y) {
         if (tdp_options[td_opt_auto_resize]) {
             tdp_resize_handle(tdp_term_size);
-            if(__handler(resize)) __handler(resize)(tdp_display.fb->size);
+            if(tdp_resize_callback) 
+                tdp_resize_callback(tdp_display.fb->size);
         } else
             td_clear_term();
         tdp_prev_size = tdp_term_size;

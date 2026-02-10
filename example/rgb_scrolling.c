@@ -78,7 +78,8 @@ int main(int argc, char** argv)
 
         char *string = to_string("%f", fps);
         td_texture *texture =
-            td_render_string(font, string, strlen(string), &size);
+            td_render_string(font, string, strlen(string));
+        size = td_texture_get_size(texture);
 
         td_bind_texture(texture);
         td_ivec2 display_sz = {0};
