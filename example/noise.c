@@ -13,9 +13,9 @@
 #include "example_utils.h"
 
 static td_u8 desired_channel = 3;
-td_texture *generate_noise(td_ivec2 size)
+td_texture_t *generate_noise(td_ivec2 size)
 {
-    td_texture *out = td_texture_create(0, desired_channel, size, 0, 0);
+    td_texture_t *out = td_texture_create(0, desired_channel, size, 0, 0);
     td_u8 *raw = td_texture_get_pixel(out, (td_ivec2){0});
     td_u64 byte = size.x * size.y * desired_channel;
 #ifdef TD_PLATFORM_WINDOWS
@@ -51,7 +51,7 @@ int main(int argc, char** argv)
         return 1;
     }
     td_u8 enable = 1;
-    if (td_init() == td_false || start_logging("statics.txt"))
+    if (td_init() == TD_FALSE || start_logging("statics.txt"))
         return 1;
 
     use_params(&p);
@@ -68,16 +68,16 @@ int main(int argc, char** argv)
         td_poll_events();
 
         td_option(td_opt_display_size, 1, &size);
-        td_texture *noise = generate_noise(size);
-        td_copy_texture(noise, (td_ivec2){0});
+        td_texture_t *noise = generate_noise(size);
+        td_renderer_copy(noise, (td_ivec2){0});
         td_texture_destroy(noise);
 
         char *string = to_string("%f", fps);
-        td_texture *texture =
+        td_texture_t *texture =
             td_render_string(font, string, strlen(string));
         size = td_texture_get_size(texture);
 
-        td_copy_texture(texture, (td_ivec2){0});
+        td_renderer_copy(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
         td_render();

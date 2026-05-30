@@ -27,9 +27,9 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
-#include "td_priv.h"
+#include "td_utils.h"
 #include "td_dynarr.h"
-#include "td_texture.h"
+#include "td_texture_priv.h"
 
 // Macro (cuz c don't allow using const in size)
 #define ATLAS_SIZE 69
@@ -56,9 +56,9 @@ typedef struct td_font {
     td_i32 glyph_height; // auto update when insert chatacters
     td_i32 max_height_count;
 
-    tdp_dynarr characters; // td_dynarr* -> td_texture**
-    tdp_dynarr ranges; // td_ivec2
-    tdp_dynarr mapper; // tdp_map
+    tdp_dynarr_t characters; // td_dynarr* -> td_texture**
+    tdp_dynarr_t ranges; // td_ivec2
+    tdp_dynarr_t mapper; // tdp_map
 } td_font;
 
 typedef struct tdp_font_template {
@@ -150,11 +150,11 @@ static const tdp_font_template tdp_template_no2 = {
     .range = { .x = '{', .y = '~' }
 };
 
-td_texture* tdp_codepoint_resolve(
+td_texture_t* tdp_codepoint_resolve(
     const td_font* font, const int character)
 {
     int ch = character;
-    for(size_t i = 0; i < font->mapper.used; i++)
+    for(size_t i = 0; i < font->mapper.size; i++)
     {
         tdp_map map = ((tdp_map*)font->mapper.ptr)[i];
         if(ch < map.s1 || ch > map.s2)
@@ -162,13 +162,13 @@ td_texture* tdp_codepoint_resolve(
         ch = ch - map.s1 + map.d;
     }
     
-    for(size_t i = 0; i < font->ranges.used; i++)
+    for(size_t i = 0; i < font->ranges.size; i++)
     {
         td_ivec2 range = ((td_ivec2*)font->ranges.ptr)[i];
         if(ch < range.x || ch > range.y)
             continue;
-        tdp_dynarr chs = tdp_dynarr_get(&font->characters, tdp_dynarr, i); 
-        return tdp_dynarr_get(&chs, td_texture*, ch - range.x);
+        tdp_dynarr_t chs = tdp_dynarr_get(&font->characters, tdp_dynarr_t, i); 
+        return tdp_dynarr_get(&chs, td_texture_t*, ch - range.x);
     }
     return 0;
 }
@@ -179,9 +179,9 @@ TD_INLINE td_bool tdp_is_newline(const char *str, const td_u64 str_len, td_u64 *
     if (str[*current] == '\n' || (cr = (str[*current] == '\r'))) {
         if (cr && *current + 1 < str_len && str[*current + 1] == '\n')
             (*current)++;
-        return td_true;
+        return TD_TRUE;
     }
-    return td_false;
+    return TD_FALSE;
 }
 
 #define TDP_FONT_SPACING 1
@@ -204,7 +204,7 @@ td_ivec2 td_calc_text_size(
             continue;
         }
 
-        td_texture *glyph_tex = tdp_codepoint_resolve(font, str[i]);
+        td_texture_t *glyph_tex = tdp_codepoint_resolve(font, str[i]);
         if(!glyph_tex)
             continue;
 
@@ -228,9 +228,9 @@ td_font* td_font_create(void)
     td_font* out = malloc(sizeof(td_font));
     if(!out)
         return 0;
-    out->characters = (tdp_dynarr) { 0, 0, sizeof(tdp_dynarr), 0 };
-    out->ranges = (tdp_dynarr) { 0, 0, sizeof(td_ivec2), 0 };
-    out->mapper = (tdp_dynarr) { 0, 0, sizeof(tdp_map), 0 };
+    out->characters = (tdp_dynarr_t) { 0, 0, sizeof(tdp_dynarr_t), 0 };
+    out->ranges = (tdp_dynarr_t) { 0, 0, sizeof(td_ivec2), 0 };
+    out->mapper = (tdp_dynarr_t) { 0, 0, sizeof(tdp_map), 0 };
     return out;
 }
 
@@ -249,14 +249,15 @@ static void tdp_append_textures_from_template(
                 b[4] = TD_EXPAND_RGBA(background);
     
     size_t chars_count = (size_t)(range.y - range.x + 1);
-    tdp_dynarr chars_range = {0};
-    if(!tdp_dynarr_new(&chars_range, chars_count, sizeof(td_texture*)))
+    tdp_dynarr_t chars_range = {0};
+    if(!tdp_dynarr_new(&chars_range, chars_count, sizeof(td_texture_t*)))
         goto fail;
 
     for(size_t j = 0; j < chars_count; j++)
     { 
-        td_texture *char_tex = td_texture_create(
-            0, 4, (td_ivec2){CHAR_WIDTH, CHAR_HEIGHT}, 0, 0);
+        td_texture_t *char_tex = td_texture_create(
+            0, 4, (td_ivec2){.x = CHAR_WIDTH, .y = CHAR_HEIGHT},
+            0, 0);
         if(!char_tex) 
             continue;
 
@@ -278,9 +279,9 @@ static void tdp_append_textures_from_template(
     return;
 
 fail:
-    for(td_u64 i = 0; i < chars_range.used; i++)
-        td_texture_destroy(tdp_dynarr_get(&chars_range, td_texture*, i));
-    font->ranges.used--;
+    for(td_u64 i = 0; i < chars_range.size; i++)
+        td_texture_destroy(tdp_dynarr_get(&chars_range, td_texture_t*, i));
+    font->ranges.size--;
 }
 
 td_font* td_default_font(const td_rgba foreground, const td_rgba background)
@@ -302,12 +303,12 @@ td_font* td_default_font(const td_rgba foreground, const td_rgba background)
 
 void td_destroy_font(td_font* font)
 {
-    for(size_t i = 0; i < font->characters.used; i++)
+    for(size_t i = 0; i < font->characters.size; i++)
     {
-        tdp_dynarr chars_range = tdp_dynarr_get(&font->characters, tdp_dynarr, i);
-        for(size_t j = 0; j < chars_range.used; j++)
+        tdp_dynarr_t chars_range = tdp_dynarr_get(&font->characters, tdp_dynarr_t, i);
+        for(size_t j = 0; j < chars_range.size; j++)
         {
-            td_texture *tex = tdp_dynarr_get(&chars_range, td_texture*, j);
+            td_texture_t *tex = tdp_dynarr_get(&chars_range, td_texture_t*, j);
             if(!tex)
                 continue;
             td_texture_destroy(tex);
@@ -327,7 +328,7 @@ td_u64 tdp_find_character_range(
 )
 {
     const td_ivec2 *ranges = (const td_ivec2 *)font->ranges.ptr;
-    td_u64 count = font->ranges.used;
+    td_u64 count = font->ranges.size;
 
     td_u64 lo = 0;
     td_u64 hi = count;
@@ -354,38 +355,70 @@ td_u64 tdp_find_character_range(
     return count; // idx == end (not found)
 }
 
-td_err td_font_replace_char(
+td_error_t td_font_replace_char(
         td_font *font,
         const td_i32 codepoint,
-        const td_texture *tex
-)
+        const td_texture_t *tex)
 {
-    if(!font || !tex)
+    td_u64 ranges_end = 0;
+    td_texture_t *dup_tex = 0;
+    td_u64 idx = 0;
+    td_u64 lower_bound = 0;
+    td_ivec2 range = {0};
+    tdp_dynarr_t chars_range = {0};
+    td_ivec2 *range_ptr = 0;
+    tdp_dynarr_t *chars_range_ptr = 0;
+    td_u64 char_idx = 0;
+    td_texture_t **char_tex = 0;
+    td_i32 old_texh = 0;
+
+    if (!font || !tex)
         return TD_ERR_INVALID_ARG;
 
-    td_u64 ranges_end = font->ranges.used;
-    td_texture *dup_tex = td_texture_copy(tex);
-    if(!dup_tex)
+    ranges_end = font->ranges.size;
+
+    dup_tex = td_texture_copy(tex);
+    if (!dup_tex)
         return TD_ERR_OUT_OF_MEMORY;
 
-    // Case 1: Already existed characters range
-    td_u64 idx = tdp_find_character_range(font, codepoint, 0);
-    if(idx != ranges_end)
+    /*
+    ** Case 1:
+    ** Character already exists inside a range.
+    */
+    idx = tdp_find_character_range(font, codepoint, 0);
+
+    if (idx != ranges_end)
     {
-        if(idx >= font->characters.used)
-            ;
-        td_ivec2 range = tdp_dynarr_get(&font->ranges, td_ivec2, idx);
-        tdp_dynarr *chars_range = &tdp_dynarr_get(&font->characters, tdp_dynarr, idx);
-        td_u64 char_idx = (td_u64)(codepoint - range.x);
-        if(char_idx >= chars_range->used)
-            ;
-        td_texture **char_tex = &tdp_dynarr_get(chars_range, td_texture*, char_idx);
-        td_i32 old_texh = (*char_tex)->size.y;
-        if(*char_tex)
+        if (idx >= font->characters.size)
+            return TD_ERR_GENERIC;
+
+        range = tdp_dynarr_get(&font->ranges, td_ivec2, idx);
+
+        chars_range_ptr =
+                &tdp_dynarr_get(&font->characters, tdp_dynarr_t, idx);
+
+        char_idx = (td_u64)(codepoint - range.x);
+
+        if (char_idx >= chars_range_ptr->size)
+            return TD_ERR_GENERIC;
+
+        char_tex =
+                &tdp_dynarr_get(
+                        chars_range_ptr,
+                        td_texture_t*,
+                        char_idx);
+
+        old_texh = 0;
+
+        if (*char_tex)
+        {
+            old_texh = (*char_tex)->size.y;
             td_texture_destroy(*char_tex);
+        }
+
         *char_tex = dup_tex;
 
-        if(dup_tex->size.y > old_texh)
+        if (dup_tex->size.y > old_texh)
         {
             font->glyph_height = dup_tex->size.y;
             font->max_height_count = 0;
@@ -394,54 +427,103 @@ td_err td_font_replace_char(
         return TD_ERR_OK;
     }
 
-    // Case 2: Find the nearest lower consecutive characters range
-    td_u64 lower_bound = 0;
-    idx = tdp_find_character_range(font, codepoint > 0 ? codepoint - 1 : codepoint, &lower_bound);
-    if(idx != ranges_end)
+    /*
+    ** Case 2:
+    ** Append to nearest lower consecutive range.
+    */
+    lower_bound = 0;
+
+    idx = tdp_find_character_range(
+            font,
+            codepoint > 0 ? codepoint - 1 : codepoint,
+            &lower_bound);
+
+    if (idx != ranges_end)
     {
-        // TODO: add a case to find the nearest upper consecutive characters range
-        // then merge into lower range
-        td_ivec2 *range = &tdp_dynarr_get(&font->ranges, td_ivec2, idx);
-        tdp_dynarr *chars_range = &tdp_dynarr_get(&font->characters, tdp_dynarr, idx);
-        td_u64 char_idx = (td_u64)(codepoint - range->x);
-        if(char_idx >= chars_range->used + 1)
-            ;
-        if(!tdp_dynarr_add(chars_range, dup_tex))
+        /*
+        ** TODO:
+        ** Find nearest upper consecutive range
+        ** and merge both ranges together.
+        */
+
+        range_ptr =
+                &tdp_dynarr_get(
+                        &font->ranges,
+                        td_ivec2,
+                        idx);
+
+        chars_range_ptr =
+                &tdp_dynarr_get(
+                        &font->characters,
+                        tdp_dynarr_t,
+                        idx);
+
+        char_idx = (td_u64)(codepoint - range_ptr->x);
+
+        if (char_idx >= chars_range_ptr->size + 1)
+            return TD_ERR_GENERIC;
+
+        if (!tdp_dynarr_add(chars_range_ptr, &dup_tex))
+        {
+            td_texture_destroy(dup_tex);
             return TD_ERR_OUT_OF_MEMORY;
-        range->y++;
+        }
+
+        range_ptr->y++;
+
         return TD_ERR_OK;
     }
 
-    // Case 3: No existing range nearby
-    td_ivec2 range = { codepoint, codepoint };
-    tdp_dynarr chars_range = {0};
-    if(!tdp_dynarr_new(&chars_range, 4, sizeof(td_texture*)))
+    /*
+    ** Case 3:
+    ** Create a brand new range.
+    */
+    range.x = codepoint;
+    range.y = codepoint;
+
+    if (!tdp_dynarr_new(
+                &chars_range,
+                4,
+                sizeof(td_texture_t*)))
+    {
+        td_texture_destroy(dup_tex);
         return TD_ERR_OUT_OF_MEMORY;
+    }
+
     tdp_dynarr_add(&chars_range, &dup_tex);
-    if(
-        !tdp_dynarr_insert(&font->ranges, lower_bound, &range) ||
-        !tdp_dynarr_insert(&font->characters, lower_bound, &chars_range)
-      ) return TD_ERR_OUT_OF_MEMORY;
+    if (!tdp_dynarr_insert(
+                &font->ranges,
+                lower_bound,
+                &range) ||
+        !tdp_dynarr_insert(
+                &font->characters,
+                lower_bound,
+                &chars_range))
+    {
+        free(chars_range.ptr);
+        return TD_ERR_OUT_OF_MEMORY;
+    }
 
     return TD_ERR_OK;
 }
 
-td_texture *td_render_char(const td_font* font, const td_i32 character)
+td_texture_t *td_render_char(const td_font* font, const td_i32 character)
 {
     return tdp_codepoint_resolve(font, character);
 }
 
-td_err td_render_string_into(
+td_error_t td_render_string_into(
         const td_font *font,
         const td_ivec2 pos,
         const char *str,
         const td_u64 str_len,
-        td_texture *tex_out
+        td_texture_t *dst,
+        const td_texture_merge_mode_t merge_mode
 )
 {
-    if(!font || !str || !tex_out || pos.x < 0 || pos.y < 0)
+    if(!font || !str || !dst || pos.x < 0 || pos.y < 0)
         return TD_ERR_INVALID_ARG;
-    if(!str_len || pos.x >= tex_out->size.x || pos.y >= tex_out->size.y)
+    if(!str_len || pos.x >= dst->size.x || pos.y >= dst->size.y)
         return TD_ERR_OK;
 
     int line_y = pos.y;
@@ -451,25 +533,25 @@ td_err td_render_string_into(
         if(tdp_is_newline(str, str_len, &i))
         {
             line_y += font->glyph_height + 1;
-            if(line_y >= tex_out->size.y)
+            if(line_y >= dst->size.y)
                 break;
             char_x = pos.x;
             continue;
         }
 
-        if(char_x >= tex_out->size.x)
+        if(char_x >= dst->size.x)
             continue;
         
-        td_texture *glyph_tex = tdp_codepoint_resolve(font, str[i]);
+        td_texture_t *glyph_tex = tdp_codepoint_resolve(font, str[i]);
         if(!glyph_tex)
             continue;
-        td_texture_merge(tex_out, glyph_tex, (td_ivec2){char_x, line_y}, td_false);
+        td_texture_merge(dst, glyph_tex, (td_ivec2){.x = char_x, .y = line_y}, merge_mode);
         char_x += glyph_tex->size.x + TDP_FONT_SPACING;
     }
     return TD_ERR_OK;
 }
 
-td_texture *td_render_string(
+td_texture_t *td_render_string(
         const td_font* font,
         const char *str, 
         const td_u64 str_len
@@ -481,7 +563,7 @@ td_texture *td_render_string(
     td_ivec2 textsz = td_calc_text_size(font, str, str_len);
     if(!textsz.x || !textsz.y)
         return 0;
-    td_texture *tex = td_texture_create(0, 4, textsz, td_false, td_false);
+    td_texture_t *tex = td_texture_create(0, 4, textsz, TD_FALSE, TD_FALSE);
     if(!tex)
         return 0;
     td_render_string_into(font, (td_ivec2){0}, str, str_len, tex);

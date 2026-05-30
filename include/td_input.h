@@ -26,15 +26,16 @@ SOFTWARE.
 #define TD_INPUT_H
 
 /**
- * @enum td_key_state_t
- * @brief Enumeration for key states.
+ * @enum td_key_action_t
+ * @brief Enumeration for key actions.
  * 
  * Represents the state of a key: whether it is released, pressed, or held.
  */
-typedef enum { 
-    td_key_release, /**< Key was released */
-    td_key_press,   /**< Key was pressed */
-    td_key_hold     /**< Key is being held down */
+typedef enum td_key_action
+{ 
+    TD_ACTION_RELEASE, /**< Key was released */
+    TD_ACTION_PRESS,   /**< Key was pressed */
+    TD_ACTION_HELD     /**< Key is being held down */
 } td_key_action_t;
 
 /**
@@ -43,11 +44,12 @@ typedef enum {
  * 
  * These represent modifier keys that can be combined with other keys.
  */
-typedef enum {
-    td_mod_none  = 0, /**< No modifier key */
-    td_mod_shift = 1, /**< Shift modifier key */
-    td_mod_ctrl  = 2,  /**< Control modifier key */
-    td_mod_alt   = 4    /**< Alt modifier key */
+typedef enum td_key_mod
+{
+    TD_MOD_NONE  = 0, /**< No modifier key */
+    TD_MOD_SHIFT = 1, /**< Shift modifier key */
+    TD_MOD_CTRL  = 2,  /**< Control modifier key */
+    TD_MOD_ALT   = 4    /**< Alt modifier key */
 } td_key_mod_t;
 
 /**

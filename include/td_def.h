@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#ifndef TD_DEFINITION_H
-#define TD_DEFINITION_H
+#ifndef TD_DEF_H
+#define TD_DEF_H
 
 /**
  * @file td_def.h
@@ -36,6 +36,7 @@ SOFTWARE.
  * @param c The `td_rgba` struct to expand.
  */
 #define TD_EXPAND_RGBA(c) { (c).r, (c).g, (c).b, (c).a }
+#define TD_IRECT_NULL (td_irect){ .x = 0, .y = 0, .w = -1, .h = -1 }
 
 #define TD_RGBA(col)                                   \
     ((td_rgba){                                        \
@@ -128,15 +129,15 @@ typedef float td_f32;
  * @brief Boolean type for true/false values.
  */
 typedef enum {
-    td_false = 0, ///< Boolean false
-    td_true       ///< Boolean true
+    TD_FALSE = 0, ///< Boolean false
+    TD_TRUE       ///< Boolean true
 } td_bool;
 
 /**
  * @struct td_rgb
  * @brief RGB color type with three 8-bit components.
  */
-typedef struct {
+typedef union {
     struct {
         td_u8 r; ///< Red component
         td_u8 g; ///< Green component
@@ -159,28 +160,58 @@ typedef union {
     td_u8 raw[4];   ///< Raw access to RGBA bytes
 } td_rgba;
 
-typedef struct {
-    int x, y;
+typedef union
+{
+    struct
+    {
+        td_i32 x;
+        td_i32 y;
+    };
+    td_i32 raw[2];
 } td_ivec2;
-typedef union {
-    struct {
-        float x, y;
+
+typedef union 
+{
+    struct 
+    {
+        td_f32 x;
+        td_f32 y;
     };
-    float raw[2];
+    td_f32 raw[2];
 } td_vec2;
-typedef union {
-    struct {
-        float x, y, z;
+typedef union 
+{
+    struct
+    {
+        td_f32 x;
+        td_f32 y;
+        td_f32 z;
     };
-    float raw[3];
+    td_f32 raw[3];
 } td_vec3;
-typedef struct {
-    td_u32 x, y, z;
+
+typedef union
+{
+    struct
+    {
+        td_i32 x;
+        td_i32 y;
+        td_i32 z;
+    };
+    td_i32 raw[3];
 } td_ivec3;
 
-typedef struct {
-    td_u32 left, top, right, bottom;
-} td_rect;
+typedef union 
+{
+    struct
+    {
+        td_i32 x;
+        td_i32 y;
+        td_i32 w;
+        td_i32 h;
+    };
+    td_i32 raw[4];
+} td_irect;
 
 TD_INLINE td_ivec2 ndc_to_pos(td_vec2 pos, td_ivec2 size)
 {
@@ -198,4 +229,4 @@ TD_INLINE td_vec2 pos_to_ndc(td_ivec2 pos, td_ivec2 size)
     };
 }
 
-#endif // TD_DEFINITION_H
+#endif // TD_DEF_H

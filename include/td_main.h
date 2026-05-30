@@ -40,42 +40,6 @@ SOFTWARE.
 #include <td_renderer.h>
 #include <td_font.h>
 
- /**
-  * @enum td_settings_t
-  * @brief Enumeration for term-display settings.
-  * 
-  * These settings allow configuration of various aspects of the term-display, 
-  * including size, depth buffer, and other display properties.
-  */
-typedef enum {
-    td_opt_auto_resize = 0,             /**< Automatic resizing of the display */
-    td_opt_pixel_width,                 /**< Pixel width of the display */
-    td_opt_pixel_height,                /**< Pixel height of the display */
-    td_opt_display_type,                /**< Type of display (grayscale, truecolor, etc.) */
-    td_opt_display_rotate,              /**< Rotation of the display */
-    td_opt_depth_buffer,                /**< Enable or disable depth buffer */
-    td_opt_disable_stop_sig,            /**< Disable stop signal (SIGINT, SIGSTOP, etc) for the display */
-    td_opt_shift_translate,             /**< Option to shift and translate the display */
-    td_opt_enable_supersampling,        /**< Enable downscailing from bigger framebuffer */
-    __td_opt_numeric_end__,             /**< End of numeric options */
-    td_opt_display_size,                /**< Option for the display size */
-    td_opt_display_pos,                 /**< The placement position of display (cells) */
-    td_opt_supersampling_buffer_ratio   /**< The ratio between the supersampling buffer and the display */
-} td_settings_t;
-
- /**
-  * @enum display_types
-  * @brief Enumeration for display types.
-  * 
-  * These values represent different display modes for rendering colors and graphics.
-  */
-typedef enum {
-    td_display_grayscale_24,   /**< 24-color grayscale display */
-    td_display_grayscale_256,  /**< 256-color grayscale display */
-    td_display_truecolor_216,  /**< 216-color truecolor display */
-    td_display_truecolor       /**< Full truecolor display */
-} td_display_types;
-
 
 /**
  * @typedef td_resize_callback
@@ -100,17 +64,6 @@ const char *td_copyright_notice(void);
  * @return A boolean indicating the success initialization.
  */
 td_bool td_init(void);
-
-/**
- * @brief Gets or sets the value of a term-display setting.
- * 
- * @param type The setting to query/modify.
- * @param get A boolean indicating whether to get or set the setting.
- * @param option A pointer to the setting value to retrieve or set.
- * 
- * @return A boolean indicating success or failure.
- */
-td_bool td_option(td_settings_t type, td_bool get, void *option);
 
 /**
  * @brief Checks if the term-display is running.

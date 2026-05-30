@@ -23,7 +23,7 @@ static const struct {
 } mods_lookup[] = {
     { td_mod_ctrl, "Ctrl + " },
     { td_mod_alt, "Alt + " },
-    { td_mod_shift, "Shift + " }
+    { TD_MOD_SHIFT, "Shift + " }
 };
 
 static const char *fkey_name[] = {
@@ -34,11 +34,11 @@ static int kstork_texh = 0;
 static char* buffer = 0;
 static int current_size = 0, current_index = 0;
 static td_font* font = 0;
-static td_texture* textinput_tex = 0;
-static td_texture* keystroke_tex = 0;
+static td_texture_t* textinput_tex = 0;
+static td_texture_t* keystroke_tex = 0;
 static td_ivec2 fbsz = {0};
 
-void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
+void refresh_texture(td_texture_t** tex, const char* str, td_ivec2* texsz)
 {
     if(!tex) return;
     if(*tex) {
@@ -170,10 +170,10 @@ void resize_handle(td_ivec2 new_size) {
 
 void normal_routine(const int max_fps)
 {
-    td_bool disable = td_false;
+    td_bool disable = TD_FALSE;
 
-    td_option(td_opt_shift_translate, td_false, &disable);
-    td_option(td_opt_display_size, td_true, &fbsz);
+    td_option(TD_OPT_SHIFT_TRANSLATE, TD_FALSE, &disable);
+    td_option(td_opt_display_size, TD_TRUE, &fbsz);
     td_set_key_callback(process_input);
     td_set_resize_callback(resize_handle);
 
@@ -191,18 +191,18 @@ void normal_routine(const int max_fps)
         td_poll_events();
 
         float brightness = 0.5f * (sin((double)frame_count / 32) + 1.0f);
-        td_set_clear_color((td_rgba){109 * brightness, 154 * brightness, 140 * brightness, 255});   // Approximtely patina
+        td_renderer_set_clear_color((td_rgba){109 * brightness, 154 * brightness, 140 * brightness, 255});   // Approximtely patina
 
         char *string = to_string("%f", fps);
-        td_texture *texture =
+        td_texture_t *texture =
             td_render_string(font, string, strlen(string));
         size = td_texture_get_size(texture);
 
-        td_copy_texture(texture, (td_ivec2){0});
+        td_renderer_copy(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
-        td_copy_texture(textinput_tex, (td_ivec2){.y=size.y + 1});
-        td_copy_texture(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
+        td_renderer_copy(textinput_tex, (td_ivec2){.y=size.y + 1});
+        td_renderer_copy(keystroke_tex, (td_ivec2){.y=fbsz.y - kstork_texh});
 
         td_render();
 
@@ -307,7 +307,7 @@ int main(int argc, char** argv)
         }, 2, 0
     );
 
-    if (td_init() == td_false || start_logging("statics.txt"))
+    if (td_init() == TD_FALSE || start_logging("statics.txt"))
         return 1;
 
     use_params(&p);

@@ -25,43 +25,41 @@ SOFTWARE.
 #ifndef TD_RENDERER_H
 #define TD_RENDERER_H
 
-#include "td_def.h"
+#include <td_def.h>
+#include <td_error.h>
 
-struct td_texture_s;
-typedef struct td_texture_s td_texture;
+typedef struct td_texture td_texture_t;
 
-typedef enum td_vertex_attrib_e {
+typedef enum td_vtx_attr 
+{
     TDVA_POSITION_4D,
     TDVA_POSITION_3D,
     TDVA_POSITION_2D,
     TDVA_COLOR_RGBA,
     TDVA_COLOR_RGB,
     TDVA_UV_COORDS
-} td_vertex_attrib;
-
-/**
- * @brief Clear the terminal screen, not framebuffer
- */
-void td_clear_term(void);
+} td_vtx_attr_t;
 
 /** 
  * @brief Set clear color for td_clear_framebuffer
  *
  * @param clear_color The color will be used to clear framebuffer
  */
-void td_set_clear_color(const td_rgba clear_color);
+td_error_t td_renderer_set_clear_color(const td_rgba clear_color);
 
 /**
  * @brief Clear the framebuffer with color set by td_set_clear color and clear the depth buffer if it was enabled.
  */
-void td_clear_framebuffer(void);
+td_error_t td_renderer_clear(void);
 
 
-td_texture* td_get_framebuffer(void);
+td_texture_t* td_get_framebuffer(void);
 /**
  * @brief Draw a rectangle into framebuffer with given size
  */
-void td_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td_rgba color);
+td_error_t td_draw_rect(
+        const td_irect rect,
+        const td_rgba color);
 
 /**
  * @brief Copy the given texture directly into the framebuffer with given placement position
@@ -69,12 +67,19 @@ void td_draw_rect(const td_ivec2 top_left, const td_ivec2 bottom_right, const td
  * @param tex The texture to be copied into framebuffer
  * @param placement_pos The position of texture inside framebuffer 
  */
-void td_copy_texture(const td_texture* tex, const td_ivec2 placement_pos);
 
+td_error_t td_renderer_copy_raw(
+        const td_texture_t* texture, 
+        const td_irect src_rect,
+        const td_irect dst_rect);
 /**
  */
-void td_bind_texture(const td_texture* tex);
-void td_add_vertex(const td_f32 *vertex, const td_vertex_attrib* vertex_attribs, const int attribs_count, const td_bool finalize);
+td_error_t td_renderer_bind_texture(const td_texture_t* tex);
+td_error_t td_add_vertex(
+        const td_f32 *vertex, 
+        const td_vtx_attr_t* vertex_attribs, 
+        const int attribs_count, 
+        const td_bool finalize);
 
 /**
  * @brief Render built-in framebuffer

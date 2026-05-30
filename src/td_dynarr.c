@@ -3,81 +3,93 @@
 #include <stdlib.h>
 #include <string.h>
 
-td_bool tdp_dynarr_new(
-        tdp_dynarr *arr,
-        const td_u64 cap,
-        const td_u64 typesz
+#define TDP_DYNARR_INITIAL 4
+
+td_error_t tdp_dynarr_new(
+        tdp_dynarr_t *arr,
+        const td_u64 capacity,
+        const td_u64 itemsz
 )
 {
-    if(!arr || !typesz)
-        return td_false;
+    if(!arr || capacity < 0 || itemsz < 0)
+        return TD_ERR_INVALID_ARG;
 
-    arr->typesz = typesz;
-    if(!cap)
-        return td_true;
+    arr->itemsz = itemsz;
+    if(capacity == 0)
+        return TD_ERR_OK;
 
-    arr->ptr = calloc(cap, arr->typesz);
+    arr->ptr = calloc(capacity, arr->itemsz);
     if(!arr->ptr)
-    {
-        arr->typesz = 0;
-        return td_false;
-    }
+        return TD_ERR_OUT_OF_MEMORY;
 
-    arr->allocated = cap;
-
-    return td_true;
+    arr->capacity = capacity;
+    return TD_ERR_OK;
 }
 
-td_bool tdp_dynarr_add(tdp_dynarr* arr, const void* item)
+td_error_t tdp_dynarr_add(tdp_dynarr_t* arr, const void* item)
 {
-    if(!arr || arr->typesz == 0)
-        return td_false;
-    if(arr->used >= arr->allocated)
+    if(!arr || arr->itemsz == 0)
+        return TD_ERR_INVALID_ARG;
+    if(arr->size >= arr->capacity)
     {
-        size_t new_size = arr->allocated ? arr->allocated * 2 : 8;
-        void* new_ptr = realloc(arr->ptr, arr->typesz * new_size);
+        size_t new_capacity = 0;
+        void *new_ptr = 0;
+
+        new_capacity = arr->capacity ? arr->capacity * 2 : TDP_DYNARR_INITIAL;
+        new_ptr = realloc(arr->ptr, arr->itemsz * new_capacity);
         if(!new_ptr)
-            return td_false;
+            return TD_ERR_OUT_OF_MEMORY;
         arr->ptr = new_ptr;
-        arr->allocated = new_size;
+        arr->capacity = new_capacity;
     }
-    memcpy((td_u8*)arr->ptr + (arr->used++) * arr->typesz, item, arr->typesz);
-    return td_true;
+    memcpy((td_u8*)arr->ptr + (arr->size++) * arr->itemsz, item, arr->itemsz);
+    return TD_ERR_OK;
 }
 
-td_bool tdp_dynarr_insert(
-        tdp_dynarr* arr, 
+td_error_t tdp_dynarr_insert(
+        tdp_dynarr_t* arr, 
         const td_u64 index,
         const void* item)
 {
-    if (!arr || !item || arr->typesz == 0)
-        return td_false;
+    if (!arr || !item)
+        return TD_ERR_INVALID_ARG;
 
-    if (index > arr->used)
+    if (index > arr->size)
         return tdp_dynarr_add(arr, item);
-
-    if (arr->used >= arr->allocated)
+    
+    if(arr->size >= arr->capacity)
     {
-        size_t new_size = arr->allocated ? arr->allocated * 2 : 8;
-        void* new_ptr = realloc(arr->ptr, arr->typesz * new_size);
-        if (!new_ptr)
-            return td_false;
+        size_t new_capacity = 0;
+        void *new_ptr = 0;
+
+        new_capacity = arr->capacity ? arr->capacity * 2 : TDP_DYNARR_INITIAL;
+        new_ptr = realloc(arr->ptr, arr->itemsz * new_capacity);
+        if(!new_ptr)
+            return TD_ERR_OUT_OF_MEMORY;
         arr->ptr = new_ptr;
-        arr->allocated = new_size;
+        arr->capacity = new_capacity;
     }
 
     memmove(
-        (td_u8*)arr->ptr + (index + 1) * arr->typesz,
-        (td_u8*)arr->ptr + index * arr->typesz,
-        (arr->used - index) * arr->typesz
+        (td_u8*)arr->ptr + (index + 1) * arr->itemsz,
+        (td_u8*)arr->ptr + index * arr->itemsz,
+        (arr->size - index) * arr->itemsz
     );
 
     memcpy(
-        (td_u8*)arr->ptr + index * arr->typesz,
+        (td_u8*)arr->ptr + index * arr->itemsz,
         item,
-        arr->typesz
+        arr->itemsz
     );
 
-    arr->used++;
-    return td_true;
+    arr->size++;
+    return TD_ERR_OK;
+}
+
+void tdp_dynarr_destroy(tdp_dynarr_t *arr)
+{
+    if(!arr)
+        return;
+    free(arr->ptr);
+    *arr = (tdp_dynarr_t){0};
 }

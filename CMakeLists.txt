@@ -14,9 +14,9 @@ set(TD_SOURCES
 )
 
 if(WIN32)
-    list(APPEND TD_SOURCES src/td_priv_win32.c)
+    list(APPEND TD_SOURCES src/win32/td_term.c)
 elseif(UNIX)
-    list(APPEND TD_SOURCES src/td_priv_unix.c)
+    list(APPEND TD_SOURCES src/unix/td_term.c)
 else()
     message(FATAL_ERROR "Unsupported platform. Aborted.")
 endif()

@@ -115,7 +115,7 @@ example_params parse_argv(
 )
 {
     example_params p = {
-        .auto_resize = td_false,
+        .auto_resize = TD_FALSE,
         .px_w = 2,
         .px_h = 1,
         .display_type = td_display_truecolor,
@@ -235,11 +235,11 @@ example_params parse_argv(
 void use_params(const example_params *p)
 {
     /* gurantee value will not be changed if get = td_false */
-    td_option(td_opt_auto_resize, td_false, (void*)&p->auto_resize);
-    td_option(td_opt_display_pos, td_false, (void*)&p->display_pos);
-    td_option(td_opt_display_size, td_false, (void*)&p->display_size);
-    td_option(td_opt_pixel_width, td_false, (void*)&p->px_w);
-    td_option(td_opt_pixel_height, td_false, (void*)&p->px_h);
-    td_option(td_opt_display_type, td_false, (void*)&p->display_type);
-    td_option(td_opt_display_rotate, 0, (void*)&p->display_orientation);
+    td_option(TD_OPT_AUTO_RESIZE, TD_FALSE, (void*)&p->auto_resize);
+    td_option(td_opt_display_pos, TD_FALSE, (void*)&p->display_pos);
+    td_option(td_opt_display_size, TD_FALSE, (void*)&p->display_size);
+    td_option(TD_OPT_PIXEL_WIDTH, TD_FALSE, (void*)&p->px_w);
+    td_option(TD_OPT_PIXEL_HEIGHT, TD_FALSE, (void*)&p->px_h);
+    td_option(TD_OPT_DISPLAY_MODE, TD_FALSE, (void*)&p->display_type);
+    td_option(TD_OPT_DISPLAY_ROTATION, 0, (void*)&p->display_orientation);
 }

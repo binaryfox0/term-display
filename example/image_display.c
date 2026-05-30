@@ -20,7 +20,7 @@ static const int indices[] = {
     2, 1, 0
 };
 
-static td_texture *displayed_image = 0;
+static td_texture_t *displayed_image = 0;
 static td_ivec2 imgsz = {0};
 
 td_ivec2 ratio_new_size(const td_ivec2 old, const td_ivec2 size)
@@ -39,7 +39,7 @@ TD_INLINE td_bool vec2_larger(td_ivec2 vec1, td_ivec2 vec2)
 
 void resize_callback(td_ivec2 new_size)
 {    
-    static const td_vertex_attrib attribs[] = {TDVA_POSITION_2D, TDVA_UV_COORDS };
+    static const td_vtx_attb attribs[] = {TDVA_POSITION_2D, TDVA_UV_COORDS };
 
     td_ivec2 tmp = ratio_new_size(imgsz, (td_ivec2){.x=new_size.x});
     if(vec2_larger(tmp, new_size))
@@ -52,8 +52,8 @@ void resize_callback(td_ivec2 new_size)
         { .x = vertices_int[0].x + tmp.x, .y = vertices_int[0].y + tmp.y } // br
     };
     
-    td_clear_framebuffer();
-    td_bind_texture(displayed_image);
+    td_renderer_clear();
+    td_renderer_bind_texture(displayed_image);
 
     float new_vertices[4 * 2] = {0};
     for(int i = 0; i < ARRSZ(indices); i++)
@@ -61,13 +61,13 @@ void resize_callback(td_ivec2 new_size)
         int vidx = indices[i];
         td_add_vertex(
                 pos_to_ndc(vertices_int[vidx], new_size).raw,
-                (td_vertex_attrib[1]){TDVA_POSITION_2D},
-                1, td_false
+                (td_vtx_attb[1]){TDVA_POSITION_2D},
+                1, TD_FALSE
         );
         td_add_vertex(
                 &vertices_uv[vidx * 2],
-                (td_vertex_attrib[1]){TDVA_UV_COORDS},
-                1, td_true
+                (td_vtx_attb[1]){TDVA_UV_COORDS},
+                1, TD_TRUE
         );
     }
 
@@ -75,16 +75,16 @@ void resize_callback(td_ivec2 new_size)
     fflush(stdout);
 }
 
-td_bool stop = td_false;
-td_bool force_stop = td_false;
+td_bool stop = TD_FALSE;
+td_bool force_stop = TD_FALSE;
 
 void key_callback(td_key_token_t key, td_key_action_t action, td_key_mod_t mods)
 {
-    if(key == td_key_x && action == td_key_press)
+    if(key == td_key_x && action == TD_KEY_PRESS)
     {
-        if(mods == td_mod_ctrl)
+        if(mods == TD_MOD_CTRL)
             force_stop = true;
-        stop = td_true;
+        stop = TD_TRUE;
     }
 }
 
@@ -109,13 +109,13 @@ void display_image(const char* path)
     }
     imgsz = (td_ivec2){.x=width, .y=height};
 
-    td_clear_term();
+    td_window_clear();
 
     td_ivec2 current_size;
     td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
 
-    td_set_running_state(td_true);
+    td_set_running_state(TD_TRUE);
 
     stop = false;
     double delta_time = 1.0, last_log = get_time();
@@ -153,13 +153,13 @@ int main(int argc, char **argv)
         aparse_prog_info("[%d]: \"%s\"", i, images[i]);
     free(main_args);
 
-    if (td_init() == td_false || start_logging("statics.txt")) {
+    if (td_init() == TD_FALSE || start_logging("statics.txt")) {
         return 1;
     }
 
     use_params(&p);
 
-    td_set_clear_color((td_rgba){0, 0, 0, 255});
+    td_renderer_set_clear_color((td_rgba){0, 0, 0, 255});
     td_set_resize_callback(resize_callback);
     td_set_key_callback(key_callback);
     for(int i = 0; i < images_count && images && !force_stop; i++)

@@ -22,53 +22,50 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "td_def.h"
-#include "td_priv.h"
+#include "../td_term.h"
 
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <poll.h>
+
 #define _POSIX_C_SOURCE 200809L
 #include <signal.h>
 
-static struct termios old, cur;
+static struct termios old = {0}, cur = {0};
+static struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
 
-td_bool tdp_set_sighand(int type, void (*handler)(int))
+TD_INLINE void tdp_set_sighand(
+        const int signal, const tdp_sighand_t handle)
 {
 #ifdef _POSIX_VERSION
-    struct sigaction sa = {.sa_flags = SA_SIGINFO,.sa_handler = handler };
+    struct sigaction sa = {.sa_flags = SA_SIGINFO,.sa_handler = handle };
     sigemptyset(&sa.sa_mask);
-    return (sigaction(type, &sa, 0) != 0);
+    sigaction(signal, &sa, 0);
 #else
-    return signal(type, handler) == SIG_ERR;
+    signal(type, handler);
 #endif
 }
 
-td_bool tdp_setup_env(const tdp_sighand handle)
+td_error_t tdp_term_init(const tdp_sighand_t handle)
 {
     if (tcgetattr(STDIN_FILENO, &old) == -1)
-        return td_false;
+        return TD_ERR_GENERIC;
 
     cur = old;
     cur.c_lflag &= (td_u32)(~(ICANON | ECHO));
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
-        return td_false;
+        return TD_ERR_GENERIC;
 
-    int sigs[] = { SIGINT,  SIGQUIT};
-    for(unsigned long i = 0; i < sizeof(sigs) / sizeof(sigs[0]); i++) {
-        if(tdp_set_sighand(sigs[i], handle)) {
-            tdp_restore_env();
-            return td_false;
-        }
-    }
+    tdp_set_sighand(SIGINT, handle);
+    tdp_set_sighand(SIGQUIT, handle);
 
-    return td_true;
+    return TD_ERR_OK;
 }
 
-td_ivec2 tdp_get_termsz(void)
+td_ivec2 tdp_term_get_size(void)
 {
     struct winsize ws;
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
@@ -76,7 +73,28 @@ td_ivec2 tdp_get_termsz(void)
     return (td_ivec2){0};
 }
 
-void tdp_restore_env(void)
+td_bool tdp_term_stdin_ready(const int ms) 
+{
+    return (td_bool)(poll(&pfd, 1, ms) == 1);
+}
+
+int tdp_term_stdin_available(void)
+{
+    int out = 0;
+    ioctl(STDIN_FILENO, FIONREAD, &out);
+    return out;
+}
+
+td_bool tdp_term_toggle_stop(const td_bool enable)
+{
+    if(enable == TD_TRUE)
+        cur.c_lflag |= ISIG;
+    else
+        cur.c_lflag &= (td_u32)(~ISIG);
+    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) != -1;
+}
+
+void tdp_term_exit(void)
 {
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
 
@@ -84,22 +102,3 @@ void tdp_restore_env(void)
     tdp_set_sighand(SIGQUIT, SIG_DFL);
 }
 
-static struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
-td_bool tdp_stdin_ready(const int ms) {
-    return (td_bool)(poll(&pfd, 1, ms) == 1);
-}
-
-int tdp_stdin_available(void)
-{
-    int out = 0;
-    ioctl(STDIN_FILENO, FIONREAD, &out);
-    return out;
-}
-
-td_bool tdp_enable_stop_sig(const td_bool enable) {
-    if(enable == td_true)
-        cur.c_lflag |= ISIG;
-    else
-        cur.c_lflag &= (td_u32)(~ISIG);
-    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) != -1;
-}

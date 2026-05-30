@@ -24,180 +24,263 @@ SOFTWARE.
 
 /**
  * @file td_texture.h
- * @brief Texture header of term-display used to control all operation related to texture.
+ * @brief Texture manipulation utilities for term-display.
  *
- * This file provides basic functionality for texture manipulation and graphics-related operations.
- * It includes functions for creating, resizing, cropping, merging, line drawing, and more.
+ * This module provides texture creation, modification, drawing, resizing,
+ * blending, and memory management functions used by the rendering system.
  */
 
 #ifndef TD_TEXTURE_H
 #define TD_TEXTURE_H
 
 #include <td_def.h>
-#include <td_err.h>
+#include <td_error.h>
 
-struct td_texture_s;
-typedef struct td_texture_s td_texture;
+typedef struct td_texture td_texture_t;
 
 /**
  * @defgroup color_channel Supported Color Channels
- * @brief Supported image channel formats.
+ * @brief Supported pixel formats for td_texture.
  *
- * td_texture uses the same channel layout as `stbi_load()` from stb_image.h.
+ * td_texture uses the same channel layout as `stbi_load()` from stb_image.
  *
- * | Channels | Description               |
- * |----------|---------------------------|
- * | 1        | Grayscale                 |
- * | 2        | Grayscale with alpha      |
- * | 3        | RGB (Red-Green-Blue)      |
- * | 4        | RGBA (RGB with alpha)     |
+ * | Channels | Enum Value            | Description                  |
+ * |----------|-----------------------|------------------------------|
+ * | 1        | TD_TEXTURE_GRAY       | Grayscale                    |
+ * | 2        | TD_TEXTURE_GRAY_ALPHA | Grayscale with alpha         |
+ * | 3        | TD_TEXTURE_RGB        | Red, green, blue             |
+ * | 4        | TD_TEXTURE_RGB_ALPHA  | Red, green, blue, alpha      |
+ *
+ * `TD_TEXTURE_UNKNOWN` indicates an invalid or uninitialized format.
  */
+typedef enum td_texture_type
+{
+    TD_TEXTURE_UNKNOWN = 0,
+    TD_TEXTURE_GRAY,
+    TD_TEXTURE_GRAY_ALPHA,
+    TD_TEXTURE_RGB,
+    TD_TEXTURE_RGB_ALPHA
+} td_texture_type_t;
+
+typedef enum td_texture_merge_mode
+{
+    TD_TEXTURE_MERGE_BLEND = 0,
+    TD_TEXTURE_MERGE_REPLACE,
+    TD_TEXTURE_MERGE_WRAP
+} td_texture_merge_mode_t;
+/**
+ * @brief Create an empty texture object.
+ *
+ * @param type Texture pixel format.
+ * @return Pointer to a newly allocated texture object.
+ *
+ * @details
+ * Creates a texture with:
+ * - no allocated pixel buffer (`texture = NULL`)
+ * - size `{0, 0}`
+ * - specified pixel format
+ * - `freeable = TD_FALSE`
+ *
+ * This is useful when the pixel buffer will be assigned later or when a
+ * placeholder texture is needed.
+ */
+td_texture_t *td_texture_create_empty(const td_texture_type_t type);
 
 /**
- * @brief Create a new td_texture.
+ * @brief Create a texture object.
  *
- * @param texture The raw texture data (8-bit format).
- * @param channel Number of channels (1–4). See \ref color_channel.
- * @param size Width and height of the texture in pixels.
- * @param freeable If true, `tdt_free()` will free the raw data.
- * @param copy If true, the texture data will be copied internally.
+ * @param texture Raw 8-bit pixel buffer.
+ * @param type Texture pixel format.
+ * @param size Texture dimensions in pixels.
+ * @param freeable Whether `td_texture_destroy()` should free `texture`.
+ * @param copy Whether the pixel data should be copied internally.
  * @return Pointer to a newly created texture object.
  *
  * @details
- * If `texture` is NULL, the function allocates memory and zero-initializes it.
- * If `copy` is true, the function copies the content of `texture` into newly
- * allocated memory. Ownership of `texture` is transferred if `freeable` is set.
- * If `size.x` or `size.y` is 0, the function returns an empty td_texture object
- * without allocating any data.
- */
-td_texture *td_texture_create(td_u8 * texture,
-                       const td_i32 channel,
-                       const td_ivec2 size,
-                       const td_bool freeable,
-                       const td_bool copy);
-
-/*
- * @brief Replace the internal buffer of td_texture
+ * Behavior depends on `texture` and `copy`:
  *
- * @param texture The existing td_texture created by \ref td_texture_create
- * @param buffer The rae texture in 8-bit format
- * @param size Width and height of texture in pixels
- * @param channel Number of channels (1-4). See \ref color_channel
- * @return The success of the function
+ * - If `texture == NULL`, a zero-initialized buffer is allocated.
+ * - If `copy == TD_TRUE`, pixel data is copied into internal storage.
+ * - If `freeable == TD_TRUE`, ownership of `texture` is transferred.
+ *
+ * If either `size.x` or `size.y` is zero, an empty texture object is created
+ * without allocating pixel memory.
+ */
+td_texture_t *td_texture_create(td_u8 *texture,
+                                const td_texture_type_t type,
+                                const td_ivec2 size,
+                                const td_bool freeable,
+                                const td_bool copy);
+
+td_error_t td_texture_paramater(void);
+
+/**
+ * @brief Replace the internal pixel buffer of a texture.
+ *
+ * @param texture Target texture.
+ * @param buffer Raw 8-bit pixel buffer.
+ * @param size New texture dimensions.
+ * @param type New texture pixel format.
+ * @return Operation result.
  *
  * @details
- * If `buffer` is NULL, the function replace the internal buffer with a newly
- * allocated buffer with given size, adjust the settings if necessary. If specified
- * `channel` with value `0`, default to texture's channel
- * If `buffer` is not NULL, the function replace the internal buffer with given
- * buffer without creating a copy of it, respect the current settings was specified
- * by \ref td_texture_create
+ * Replaces the internal pixel buffer of an existing texture.
+ *
+ * - If `buffer == NULL`, a new zero-initialized buffer is allocated.
+ * - If `type == TD_TEXTURE_UNKNOWN`, the current texture format is preserved.
+ * - If `buffer != NULL`, ownership and memory behavior follow the settings
+ *   defined when the texture was originally created.
  */
-td_bool td_texture_set_buffer(td_texture * texture,
-                              td_u8* buffer,
+td_error_t td_texture_set_buffer(td_texture_t *texture,
+                              td_u8 *buffer,
                               const td_ivec2 size,
-                              const td_i32 channel);
+                              const td_texture_type_t type);
 
 /**
  * @brief Create a deep copy of a texture.
  *
- * @param texture The texture to copy.
- * @return A newly allocated copy of the texture.
+ * @param texture Source texture.
+ * @return Newly allocated duplicate texture.
  */
-td_texture *td_texture_copy(const td_texture * texture);
+td_texture_t *td_texture_copy(const td_texture_t *texture);
 
 /**
- * @brief Get the address of a pixel at the given position.
+ * @brief Get the address of a pixel.
  *
- * @param texture The texture to query
- * @param pos The position of the pixel
- * @return Pointer to the pixel data (channel count depends on the texture).
+ * @param texture Texture to query.
+ * @param pos Pixel position.
+ * @return Pointer to the pixel data at `pos`.
+ *
+ * @details
+ * Returned pixel layout depends on the texture format.
  */
-td_u8 *td_texture_get_pixel(const td_texture * texture, const td_ivec2 pos);
+td_u8 *td_texture_get_pixel(const td_texture_t *texture,
+                            const td_ivec2 pos);
 
 /**
- * @brief Get the dimensions of a texture.
+ * @brief Get texture dimensions.
  *
- * @param texture The texture to query.
- * @return A vector containing the width and height.
+ * @param texture Texture to query.
+ * @return Width and height as `td_ivec2`.
  */
-td_ivec2 td_texture_get_size(const td_texture * texture);
+td_ivec2 td_texture_get_size(const td_texture_t *texture);
 
 /**
- * @brief Fill the entire texture with a single color.
+ * @brief Fill a texture with a single color.
  *
- * @param texture The target texture.
- * @param color The color to use. Alpha blending is supported.
+ * @param texture Target texture.
+ * @param color Fill color.
+ * @return Operation result.
+ *
+ * @details
+ * Writes `color` across the entire texture buffer. Alpha blending is applied
+ * when supported by the texture format.
  */
-void td_texture_fill(const td_texture * texture, const td_rgba color);
+td_error_t td_texture_fill(const td_texture_t *texture,
+                           const td_rgba color);
 
 /**
- * @brief Change the texture to a new number of channels.
+ * @brief Convert a texture to another pixel format.
  *
- * @param texture The texture to convert.
- * @param channel The desired number of channels (1–4).
+ * @param texture Texture to convert.
+ * @param type Target pixel format.
+ * @return Operation result.
  */
-void td_texture_convert(td_texture * texture, const td_i32 channel);
+td_error_t td_texture_convert(td_texture_t *texture,
+                              const td_texture_type_t type);
 
 /**
- * @brief Merge two textures together.
+ * @brief Merge one texture onto another.
  *
- * `texture_b` is drawn onto `texture_a` using the specified merge mode.
+ * `texture_b` is composited onto `texture_a`.
  *
- * @param texture_a The base texture.
- * @param texture_b The texture to draw over A.
- * @param placment_pos Position to place B on A.
- * @param mode Merge mode. See \ref tdt_merge_mode.
- * @param replace Whether to overwrite A directly (used with some modes).
+ * @param texture_a Destination texture.
+ * @param texture_b Source texture.
+ * @param placement_pos Position of `texture_b` within `texture_a`.
+ * @param replace Whether to overwrite destination pixels directly.
+ * @return Operation result.
  */
-void td_texture_merge(const td_texture * texture_a,
-               const td_texture * texture_b,
-               const td_ivec2 placment_pos,
-               const td_bool replace);
+td_error_t td_texture_merge(const td_texture_t *texture_a,
+                            const td_texture_t *texture_b,
+                            const td_irect src_rect,
+                            const td_irect dst_rect,
+                            const td_texture_merge_mode_t mode);
 
 /**
- * @brief Resize the texture using bilinear interpolation.
+ * @brief Resize a texture using bilinear interpolation.
  *
- * @param texture The texture to resize.
- * @param new_size The desired size.
+ * Scales the texture contents to the requested dimensions using bilinear
+ * filtering. Pixel data is resampled to preserve image quality during the
+ * resize operation.
+ *
+ * @param texture Texture to resize.
+ * @param new_size Target texture dimensions.
+ * @return Operation result.
  */
-void td_texture_resize(td_texture * texture, const td_ivec2 new_size);
+td_error_t td_texture_resize(td_texture_t *texture,
+                             const td_ivec2 new_size);
 
 /**
- * @brief Crop the texture to a new size.
+ * @brief Resize a texture buffer without resampling pixel data.
  *
- * @param texture The texture to crop.
- * @param new_size The new size.
+ * Reallocates the internal texture buffer to match the requested dimensions.
+ * Existing pixel data is preserved only within the overlapping region between
+ * the old and new sizes. Newly allocated regions will be zero'ed by default
+ *
+ * Unlike td_texture_resize(), this function does not perform bilinear
+ * interpolation or any image scaling operation.
+ *
+ * @param texture Texture whose buffer will be resized.
+ * @param new_size Target buffer dimensions.
+ * @return Operation result.
  */
-void td_texture_crop(td_texture * texture, const td_ivec2 new_size);
+td_error_t td_texture_resize_buffer(td_texture_t *texture,
+                                    const td_ivec2 new_size);
+
+/**
+ * @brief Crop a texture.
+ *
+ * @param texture Texture to crop.
+ * @param new_size Output dimensions.
+ * @return Operation result.
+ */
+td_error_t td_texture_crop(td_texture_t *texture,
+                           const td_ivec2 new_size);
 
 /**
  * @brief Draw a line onto a texture.
  *
- * @param texture The texture to draw on.
+ * @param texture Target texture.
  * @param p1 Starting point.
  * @param p2 Ending point.
  * @param color Line color.
+ * @return Operation result.
  */
-void td_texture_draw_line(td_texture * texture,
-                   const td_ivec2 p1,
-                   const td_ivec2 p2,
-                   const td_rgba color);
+td_error_t td_texture_draw_line(td_texture_t *texture,
+                                const td_ivec2 p1,
+                                const td_ivec2 p2,
+                                const td_rgba color);
 
 /**
- * @brief Free the memory associated with a texture.
+ * @brief Destroy a texture object.
  *
- * @param texture The texture to free.
+ * @param texture Texture to destroy.
+ * @return Operation result.
+ *
+ * @details
+ * Releases the texture object and its internal pixel buffer when owned by
+ * the texture.
  */
-td_err td_texture_destroy(td_texture * texture);
+td_error_t td_texture_destroy(td_texture_t *texture);
 
 /**
- * @brief Blend two pixels using alpha.
+ * @brief Alpha-blend two pixels.
  *
  * @param a Background pixel.
  * @param b Foreground pixel.
- * @return Result of blending B over A.
+ * @return Result of blending `b` over `a`.
  */
-td_rgba td_blend_pixel(const td_rgba a, const td_rgba b);
+td_rgba td_blend_pixel(const td_rgba a,
+                       const td_rgba b);
 
 #endif // TD_TEXTURE_H

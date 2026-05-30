@@ -23,13 +23,13 @@
 
 static td_ivec2 mousepos = {0}, mousepos_prev = {0};
 static td_ivec2 cursorpos_textsz ={0}, cursorkey_textsz = {0};
-static td_texture
+static td_texture_t
     *cursor_tex = 0,
     *cursorpos_tex = 0,
     *cursorkey_tex = 0;
 static td_font *font = 0;
 
-void refresh_texture(td_texture** tex, const char* str, td_ivec2* texsz)
+void refresh_texture(td_texture_t** tex, const char* str, td_ivec2* texsz)
 {
     if(!tex) return;
     if(*tex) {
@@ -77,7 +77,7 @@ int load_cursor()
         EMPTY, EMPTY, SHADOW, BLACK,  BLACK,  SHADOW, EMPTY
     };
     cursor_tex = td_texture_create(bitmap, 2, (td_ivec2){.x=7,.y=10}, 
-            td_false, td_true);
+            TD_FALSE, TD_TRUE);
     if(!cursor_tex)
         return -1;
     td_texture_convert(cursor_tex, 4);
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 {
     example_params p = parse_argv(argc, argv, 0, 0, 0);
     td_u8 enable = 1;
-    if (td_init() == td_false || start_logging("statics.txt"))
+    if (td_init() == TD_FALSE || start_logging("statics.txt"))
         return 1;
    
     if(load_cursor() == -1)
@@ -108,22 +108,22 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        td_set_clear_color(BGCOL);
+        td_renderer_set_clear_color(BGCOL);
 
         td_ivec2 fbsz = (td_ivec2){0};
-        td_option(td_opt_display_size, td_true, &fbsz);
+        td_option(td_opt_display_size, TD_TRUE, &fbsz);
 
         char *string = to_string("%f", fps);
-        td_texture *texture =
+        td_texture_t *texture =
             td_render_string(font, string, strlen(string));
         size = td_texture_get_size(texture);
-        td_copy_texture(texture, (td_ivec2){0});
+        td_renderer_copy(texture, (td_ivec2){0});
         td_texture_destroy(texture);
 
-        td_copy_texture(cursorpos_tex, (td_ivec2){.x=0, .y=fbsz.y - cursorpos_textsz.y});
-        td_copy_texture(cursorkey_tex, (td_ivec2){.x=fbsz.x - cursorkey_textsz.x, .y=fbsz.y - cursorkey_textsz.y});
+        td_renderer_copy(cursorpos_tex, (td_ivec2){.x=0, .y=fbsz.y - cursorpos_textsz.y});
+        td_renderer_copy(cursorkey_tex, (td_ivec2){.x=fbsz.x - cursorkey_textsz.x, .y=fbsz.y - cursorkey_textsz.y});
 
-        td_copy_texture(cursor_tex, mousepos);
+        td_renderer_copy(cursor_tex, mousepos);
         // td_draw_rect(mousepos, 
         //               (td_ivec2){.x=mousepos.x+CURSOR_SIZE,.y=mousepos.y+CURSOR_SIZE},
         //               (td_rgba){.r = 255, .a = 255});

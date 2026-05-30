@@ -2,8 +2,8 @@
 #include <string.h>             // strlen
 #include <stdlib.h>             // free
 
-#include "td_main.h"
-#include "td_font.h"
+#include <td_main.h>
+#include <td_font.h>
 
 #include "example_utils.h"
 
@@ -56,12 +56,12 @@ int main(int argc, char** argv)
         }
     }
  
-    if (td_init() == td_false || start_logging("statics.txt"))
+    if (td_init() == TD_FALSE || start_logging("statics.txt"))
         return 1;
  
     use_params(&p);
 
-    td_vertex_attrib attribs[] = { TDVA_POSITION_2D, TDVA_UV_COORDS};
+    td_vtx_attr_t attribs[] = { TDVA_POSITION_2D, TDVA_UV_COORDS};
     td_font* font = td_default_font((td_rgba){255, 255, 255, 255}, (td_rgba){0});
 
     td_ivec2 size = { 0 };
@@ -74,16 +74,16 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        td_set_clear_color(calculate_rgb(elapsed));
+        td_renderer_set_clear_color(calculate_rgb(elapsed));
 
         char *string = to_string("%f", fps);
-        td_texture *texture =
+        td_texture_t *texture =
             td_render_string(font, string, strlen(string));
         size = td_texture_get_size(texture);
 
-        td_bind_texture(texture);
+        td_renderer_bind_texture(texture);
         td_ivec2 display_sz = {0};
-        td_option(td_opt_display_size, td_true, &display_sz);
+        td_option(td_opt_display_size, TD_TRUE, &display_sz);
         td_vec2 right_pos = pos_to_ndc((td_ivec2){.x=size.x} , display_sz);
         td_vec2 bottom_pos = pos_to_ndc((td_ivec2){.y=size.y}, display_sz);
         vertices[1 * 4 + 0] = right_pos.x;
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
         vertices[4 * 4 + 1] = bottom_pos.y;
         vertices[5 * 4 + 1] = bottom_pos.y;
         for(int i = 0; i < sizeof(vertices) / sizeof(float) / 4; i++)
-            td_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]), td_true);
+            td_add_vertex(vertices + i * 4, attribs, sizeof(attribs) / sizeof(attribs[0]), TD_TRUE);
         td_texture_destroy(texture);
 
         td_render();

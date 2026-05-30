@@ -66,24 +66,24 @@ void key_callback(td_key_token_t key, td_key_action_t action, td_key_mod_t mods)
     vec3 right, tmp;
 
     if ((key == td_key_w || key == td_key_up) && 
-            action == td_key_press) {
+            action == TD_KEY_PRESS) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_add(cameraPos, tmp, cameraPos);
     }
     if ((key == td_key_s || key == td_key_down) && 
-            action == td_key_press) {
+            action == TD_KEY_PRESS) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
     if ((key == td_key_a || key == td_key_left) && 
-            action == td_key_press) {
+            action == TD_KEY_PRESS) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
     if ((key == td_key_d || key == td_key_right) &&
-            action == td_key_press) {
+            action == TD_KEY_PRESS) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
     td_ivec2 size = { 0 };
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
     td_font *white_font = 0, *red_font = 0;
-    td_texture *fbtex = 0;
+    td_texture_t *fbtex = 0;
 
     example_params p = {0};
 
@@ -115,11 +115,11 @@ int main(int argc, char** argv)
     white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
     red_font = td_default_font((td_rgba){.r=255, .a=255}, (td_rgba){0});
 
-    td_option(td_opt_depth_buffer, 0, &enable);
-    td_option(td_opt_shift_translate, 0, &enable);
+    td_option(TD_OPT_DEPTH_BUFFER, 0, &enable);
+    td_option(TD_OPT_SHIFT_TRANSLATE, 0, &enable);
     td_set_key_callback(key_callback);
 
-    td_set_clear_color((td_rgba){.a=255});
+    td_renderer_set_clear_color((td_rgba){.a=255});
     fbtex = td_get_framebuffer();
 
     double last_log = get_time();
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
         td_poll_events();
 
-        td_clear_framebuffer();
+        td_renderer_clear();
 
         td_option(td_opt_display_size, 1, &size);
             
@@ -156,8 +156,8 @@ int main(int argc, char** argv)
             vec4 vertex = {vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1.0f};
             glm_mat4_mulv(mvp, vertex, vertex);  // Multiply by MVP matrix
 
-            td_add_vertex(vertex, (td_vertex_attrib[1]){TDVA_POSITION_4D}, 1, td_false);
-            td_add_vertex(vertex_colors + (i % 3) * 3, (td_vertex_attrib[1]){TDVA_COLOR_RGB}, 1, td_true);
+            td_add_vertex(vertex, (td_vtx_attb[1]){TDVA_POSITION_4D}, 1, TD_FALSE);
+            td_add_vertex(vertex_colors + (i % 3) * 3, (td_vtx_attb[1]){TDVA_COLOR_RGB}, 1, TD_TRUE);
         }
         
         char *string = to_string("%.2f", fps);

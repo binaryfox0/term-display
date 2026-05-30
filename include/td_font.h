@@ -24,79 +24,123 @@ SOFTWARE.
 
 /**
  * @file td_font.h
- * @brief Font rendering utilities for term-display.
+ * @brief Text rendering utilities for term-display.
  *
- * Provides basic functionality for converting characters and strings
- * into textured representations.
- */
-
-/**
- * @defgroup td_font Font Utilities
- * @brief Character and string to texture conversion.
- *
- * These functions allow rendering individual characters and strings
- * as `td_texture` objects using specified foreground/background colors.
- *
- * @{
+ * This module provides APIs to convert characters and strings into
+ * texture objects that can be rendered with term-display.
  */
 
 #ifndef TD_FONT_H
 #define TD_FONT_H
 
 #include <td_def.h>
-#include <td_err.h>
+#include <td_error.h>
 #include <td_texture.h>
 
+/**
+ * @brief Opaque font object.
+ *
+ * Holds glyph data and rendering configuration.
+ */
 typedef struct td_font td_font;
 
+/**
+ * @brief Create a new empty font object.
+ *
+ * The returned font contains no glyphs until populated.
+ *
+ * @return Pointer to a newly allocated font, or NULL on failure.
+ */
 td_font* td_create_font(void);
+
+/**
+ * @brief Create a default font with predefined colors.
+ *
+ * @param foreground Default text color.
+ * @param background Default background color.
+ * @return Pointer to initialized font instance.
+ */
 td_font* td_default_font(const td_rgba foreground, const td_rgba background);
+
+/**
+ * @brief Destroy and free a font object.
+ *
+ * @param font Font instance to destroy.
+ */
 void td_destroy_font(td_font* font);
 
-td_err td_font_insert_char(
+/**
+ * @brief Insert a glyph texture into the font atlas.
+ *
+ * Associates a Unicode codepoint with a pre-rendered texture.
+ *
+ * @param font Font container.
+ * @param codepoint Unicode codepoint of the character.
+ * @param tex Texture representing the glyph.
+ * @return Error code indicating success or failure.
+ */
+td_error_t td_font_insert_char(
         td_font *font,
         const td_i32 codepoint,
-        const td_texture *tex
+        const td_texture_t *tex
 );
 
+/**
+ * @brief Calculate pixel size of a text string.
+ *
+ * Computes width and height required to render the given string
+ * using the specified font.
+ *
+ * @param font Font used for measurement.
+ * @param str Input string.
+ * @param str_len Length of the string.
+ * @return 2D vector containing width (x) and height (y).
+ */
 td_ivec2 td_calc_text_size(const td_font *font, const char *str, const td_u64 str_len);
 
 /**
- * @brief Generate a texture from a single character.
+ * @brief Render a single character into a texture.
  *
- * @param font A font was created with \ref td_font_create
- * @param ch The character to render.
- * @param fg Foreground (text) color.
- * @param bg Background color.
- * @return A pointer to a new `td_texture` representing the character.
+ * @param font Font used for rendering.
+ * @param ch Unicode codepoint of the character.
+ * @return Newly allocated texture containing rendered glyph.
  */
-td_texture *td_render_char(const td_font* font, const td_i32 ch);
+td_texture_t *td_render_char(const td_font* font, const td_i32 ch);
 
-td_err td_render_string_into(
+/**
+ * @brief Render a string into an existing texture buffer.
+ *
+ * Writes rendered text into `tex_out` starting at the given position.
+ *
+ * @param font Font used for rendering.
+ * @param pos Top-left position in destination texture.
+ * @param str Input string.
+ * @param str_len Length of string.
+ * @param tex_out Output texture buffer.
+ * @return Error code indicating success or failure.
+ */
+td_error_t td_render_string_into(
         const td_font *font,
         const td_ivec2 pos,
         const char *str,
         const td_u64 str_len,
-        td_texture *tex_out
+        td_texture_t *tex_out
 );
-    
 
 /**
- * @brief Generate a texture from a string.
+ * @brief Render a string into a new texture.
  *
- * @param str Null-terminated string to render.
+ * Creates a texture containing the full rendered string.
+ *
+ * @param font Font used for rendering.
+ * @param str Null-terminated input string.
  * @param len Length of the string.
- * @param size Optional output for texture size (can be NULL).
- * @param fg Foreground (aka text) color.
- * @param bg Background color.
- * @return A pointer to a new `td_texture` containing the rendered string.
+ * @return Newly allocated texture containing rendered text.
  */
-td_texture *td_render_string(
+td_texture_t *td_render_string(
         const td_font* font,
         const char *str,
         const td_u64 len
 );
-
-/** @} */ // end of td_font
 
 #endif // TD_FONT_H
