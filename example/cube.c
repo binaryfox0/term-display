@@ -125,7 +125,7 @@ int main(int argc, char** argv)
     double last_log = get_time();
     const double max_dt = 1.0 / p.max_fps;
     const double program_start = get_time();
-    while (td_is_running()) {
+    while (td_window_is_running()) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 

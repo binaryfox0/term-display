@@ -3,8 +3,7 @@
 #include <ctype.h>
 
 #include "td_def.h"
-#include "td_main.h"
-#include "td_priv.h"
+#include "td_utils.h"
 
 #define tdp_raise(name, ...) \
     if(tdp_cb.name) (tdp_cb.name)(__VA_ARGS__)
@@ -21,141 +20,142 @@ typedef struct tdp_keymap_entry
 } tdp_keymap_entry;
 
 typedef struct {
-    td_key_callback key;
+    td_key_callback_t key;
     td_mouse_button_callback mouse_button;
     td_cursor_pos_callback cursor_pos;
 } tdp_input_callback;
 
 static const tdp_keymap_entry tdp_keymap[(1 << (sizeof(td_u8) * 8))] = 
 {
-    [0x00] = { td_key_space,         td_mod_ctrl },
-    [0x01] = { td_key_a,             td_mod_ctrl },
-    [0x02] = { td_key_b,             td_mod_ctrl },
-    [0x03] = { td_key_c,             td_mod_ctrl },
-    [0x04] = { td_key_d,             td_mod_ctrl },
-    [0x05] = { td_key_e,             td_mod_ctrl },
-    [0x06] = { td_key_f,             td_mod_ctrl },
-    [0x07] = { td_key_g,             td_mod_ctrl },
-    [0x08] = { td_key_backspace,     td_mod_ctrl },
-    [0x09] = { td_key_tab,           0},
-    [0x0A] = { td_key_enter,         0 },
-    [0x0B] = { td_key_k,             td_mod_ctrl },
-    [0x0C] = { td_key_l,             td_mod_ctrl },
-    [0x0D] = { td_key_m,             td_mod_ctrl },
-    [0x0E] = { td_key_n,             td_mod_ctrl },
-    [0x0F] = { td_key_o,             td_mod_ctrl },
-    [0x10] = { td_key_p,             td_mod_ctrl },
-    [0x11] = { td_key_q,             td_mod_ctrl },
-    [0x12] = { td_key_r,             td_mod_ctrl },
-    [0x13] = { td_key_s,             td_mod_ctrl },
-    [0x14] = { td_key_t,             td_mod_ctrl },
-    [0x15] = { td_key_u,             td_mod_ctrl },
-    [0x16] = { td_key_v,             td_mod_ctrl },
-    [0x17] = { td_key_w,             td_mod_ctrl },
-    [0x18] = { td_key_x,             td_mod_ctrl },
-    [0x19] = { td_key_y,             td_mod_ctrl },
-    [0x1A] = { td_key_z,             td_mod_ctrl },
-    [0x1B] = { td_key_escape,        0 },
-    [0x1C] = { td_key_backslash,     td_mod_ctrl },
-    [0x1D] = { td_key_right_bracket, td_mod_ctrl },
-    [0x1E] = { td_key_6,             td_mod_ctrl | TD_MOD_SHIFT },
-    [0x1F] = { td_key_minus,         td_mod_ctrl | TD_MOD_SHIFT },
-    [' ']  = { td_key_space,         0 },
-    ['!']  = { td_key_1,             TD_MOD_SHIFT },
-    ['\"'] = { td_key_astrophe,      TD_MOD_SHIFT },
-    ['#']  = { td_key_3,             TD_MOD_SHIFT },
-    ['$']  = { td_key_4,             TD_MOD_SHIFT },
-    ['%']  = { td_key_5,             TD_MOD_SHIFT },
-    ['&']  = { td_key_7,             TD_MOD_SHIFT },
-    ['\''] = { td_key_astrophe,      0 },
-    ['(']  = { td_key_9,             TD_MOD_SHIFT },
-    [')']  = { td_key_0,             TD_MOD_SHIFT },
-    ['*']  = { td_key_8,             TD_MOD_SHIFT },
-    ['+']  = { td_key_equal,         TD_MOD_SHIFT },
-    [',']  = { td_key_comma,         0 },
-    ['-']  = { td_key_minus,         0 },
-    ['.']  = { td_key_period,        0 },
-    ['/']  = { td_key_slash,         0 },
-    ['0']  = { td_key_0,             0 },
-    ['1']  = { td_key_1,             0 },
-    ['2']  = { td_key_2,             0 },
-    ['3']  = { td_key_3,             0 },
-    ['4']  = { td_key_4,             0 },
-    ['5']  = { td_key_5,             0 },
-    ['6']  = { td_key_6,             0 },
-    ['7']  = { td_key_7,             0 },
-    ['8']  = { td_key_8,             0 },
-    ['9']  = { td_key_9,             0 },
-    [':']  = { td_key_semicolon,     TD_MOD_SHIFT },
-    [';']  = { td_key_semicolon,     0 },
-    ['<']  = { td_key_comma,         TD_MOD_SHIFT },
-    ['=']  = { td_key_equal,         0 },
-    ['>']  = { td_key_period,        TD_MOD_SHIFT },
-    ['?']  = { td_key_slash,         TD_MOD_SHIFT },
-    ['@']  = { td_key_2,             TD_MOD_SHIFT },
-    ['A']  = { td_key_a,             TD_MOD_SHIFT },
-    ['B']  = { td_key_b,             TD_MOD_SHIFT },
-    ['C']  = { td_key_c,             TD_MOD_SHIFT },
-    ['D']  = { td_key_d,             TD_MOD_SHIFT },
-    ['E']  = { td_key_e,             TD_MOD_SHIFT },
-    ['F']  = { td_key_f,             TD_MOD_SHIFT },
-    ['G']  = { td_key_g,             TD_MOD_SHIFT },
-    ['H']  = { td_key_h,             TD_MOD_SHIFT },
-    ['I']  = { td_key_i,             TD_MOD_SHIFT },
-    ['J']  = { td_key_j,             TD_MOD_SHIFT },
-    ['K']  = { td_key_k,             TD_MOD_SHIFT },
-    ['L']  = { td_key_l,             TD_MOD_SHIFT },
-    ['M']  = { td_key_m,             TD_MOD_SHIFT },
-    ['N']  = { td_key_n,             TD_MOD_SHIFT },
-    ['O']  = { td_key_o,             TD_MOD_SHIFT },
-    ['P']  = { td_key_p,             TD_MOD_SHIFT },
-    ['Q']  = { td_key_q,             TD_MOD_SHIFT },
-    ['R']  = { td_key_r,             TD_MOD_SHIFT },
-    ['S']  = { td_key_s,             TD_MOD_SHIFT },
-    ['T']  = { td_key_t,             TD_MOD_SHIFT },
-    ['U']  = { td_key_u,             TD_MOD_SHIFT },
-    ['V']  = { td_key_v,             TD_MOD_SHIFT },
-    ['W']  = { td_key_w,             TD_MOD_SHIFT },
-    ['X']  = { td_key_x,             TD_MOD_SHIFT },
-    ['Y']  = { td_key_y,             TD_MOD_SHIFT },
-    ['Z']  = { td_key_z,             TD_MOD_SHIFT },
-    ['[']  = { td_key_left_bracket,  0 },
-    ['\\'] = { td_key_backslash,     0 },
-    [']']  = { td_key_right_bracket, 0 },
-    ['^']  = { td_key_6,             TD_MOD_SHIFT },
-    ['_']  = { td_key_minus,         TD_MOD_SHIFT },
-    ['`']  = { td_key_grave_accent,  0 },
-    ['a']  = { td_key_a,             0 },
-    ['b']  = { td_key_b,             0 },
-    ['c']  = { td_key_c,             0 },
-    ['d']  = { td_key_d,             0 },
-    ['e']  = { td_key_e,             0 },
-    ['f']  = { td_key_f,             0 },
-    ['g']  = { td_key_g,             0 },
-    ['h']  = { td_key_h,             0 },
-    ['i']  = { td_key_i,             0 },
-    ['j']  = { td_key_j,             0 },
-    ['k']  = { td_key_k,             0 },
-    ['l']  = { td_key_l,             0 },
-    ['m']  = { td_key_m,             0 },
-    ['n']  = { td_key_n,             0 },
-    ['o']  = { td_key_o,             0 },
-    ['p']  = { td_key_p,             0 },
-    ['q']  = { td_key_q,             0 },
-    ['r']  = { td_key_r,             0 },
-    ['s']  = { td_key_s,             0 },
-    ['t']  = { td_key_t,             0 },
-    ['u']  = { td_key_u,             0 },
-    ['v']  = { td_key_v,             0 },
-    ['w']  = { td_key_w,             0 },
-    ['x']  = { td_key_x,             0 },
-    ['y']  = { td_key_y,             0 },
-    ['z']  = { td_key_z,             0 },
-    ['{']  = { td_key_left_bracket,  TD_MOD_SHIFT },
-    ['|']  = { td_key_backslash,     TD_MOD_SHIFT },
-    ['}']  = { td_key_right_bracket, TD_MOD_SHIFT },
-    ['~']  = { td_key_grave_accent,  TD_MOD_SHIFT },
-    [0x7F] = { td_key_backspace,     0 }
+    [0x00] = { TD_KEY_SPACE,         TD_MOD_CTRL },
+    [0x01] = { TD_KEY_A,             TD_MOD_CTRL },
+    [0x02] = { TD_KEY_B,             TD_MOD_CTRL },
+    [0x03] = { TD_KEY_C,             TD_MOD_CTRL },
+    [0x04] = { TD_KEY_D,             TD_MOD_CTRL },
+    [0x05] = { TD_KEY_E,             TD_MOD_CTRL },
+    [0x06] = { TD_KEY_F,             TD_MOD_CTRL },
+    [0x07] = { TD_KEY_G,             TD_MOD_CTRL },
+    [0x08] = { TD_KEY_BACKSPACE,     TD_MOD_CTRL },
+    [0x09] = { TD_KEY_TAB,           TD_MOD_NONE },
+    [0x0A] = { TD_KEY_ENTER,         TD_MOD_NONE },
+    [0x0B] = { TD_KEY_K,             TD_MOD_CTRL },
+    [0x0C] = { TD_KEY_L,             TD_MOD_CTRL },
+    [0x0D] = { TD_KEY_M,             TD_MOD_CTRL },
+    [0x0E] = { TD_KEY_N,             TD_MOD_CTRL },
+    [0x0F] = { TD_KEY_O,             TD_MOD_CTRL },
+    [0x10] = { TD_KEY_P,             TD_MOD_CTRL },
+    [0x11] = { TD_KEY_Q,             TD_MOD_CTRL },
+    [0x12] = { TD_KEY_R,             TD_MOD_CTRL },
+    [0x13] = { TD_KEY_S,             TD_MOD_CTRL },
+    [0x14] = { TD_KEY_T,             TD_MOD_CTRL },
+    [0x15] = { TD_KEY_U,             TD_MOD_CTRL },
+    [0x16] = { TD_KEY_V,             TD_MOD_CTRL },
+    [0x17] = { TD_KEY_W,             TD_MOD_CTRL },
+    [0x18] = { TD_KEY_X,             TD_MOD_CTRL },
+    [0x19] = { TD_KEY_Y,             TD_MOD_CTRL },
+    [0x1A] = { TD_KEY_Z,             TD_MOD_CTRL },
+    [0x1B] = { TD_KEY_ESCAPE,        TD_MOD_NONE },
+    [0x1C] = { TD_KEY_BACKSLASH,     TD_MOD_CTRL },
+    [0x1D] = { TD_KEY_RIGHT_BRACKET, TD_MOD_CTRL },
+    [0x1E] = { TD_KEY_6,             TD_MOD_CTRL | TD_MOD_SHIFT },
+    [0x1F] = { TD_KEY_MINUS,         TD_MOD_CTRL | TD_MOD_SHIFT },
+    [' ']  = { TD_KEY_SPACE,         TD_MOD_NONE },
+    ['!']  = { TD_KEY_1,             TD_MOD_SHIFT },
+    ['\"'] = { TD_KEY_ASTROPHE,      TD_MOD_SHIFT },
+    ['#']  = { TD_KEY_3,             TD_MOD_SHIFT },
+    ['$']  = { TD_KEY_4,             TD_MOD_SHIFT },
+    ['%']  = { TD_KEY_5,             TD_MOD_SHIFT },
+    ['&']  = { TD_KEY_7,             TD_MOD_SHIFT },
+    ['\''] = { TD_KEY_ASTROPHE,      TD_MOD_NONE },
+    ['(']  = { TD_KEY_9,             TD_MOD_SHIFT },
+    [')']  = { TD_KEY_0,             TD_MOD_SHIFT },
+    ['*']  = { TD_KEY_8,             TD_MOD_SHIFT },
+    ['+']  = { TD_KEY_EQUAL,         TD_MOD_SHIFT },
+    [',']  = { TD_KEY_COMMA,         TD_MOD_NONE },
+    ['-']  = { TD_KEY_MINUS,         TD_MOD_NONE },
+    ['.']  = { TD_KEY_PERIOD,        TD_MOD_NONE },
+    ['/']  = { TD_KEY_SLASH,         TD_MOD_NONE },
+    ['0']  = { TD_KEY_0,             TD_MOD_NONE },
+    ['1']  = { TD_KEY_1,             TD_MOD_NONE },
+    ['2']  = { TD_KEY_2,             TD_MOD_NONE },
+    ['3']  = { TD_KEY_3,             TD_MOD_NONE },
+    ['4']  = { TD_KEY_4,             TD_MOD_NONE },
+    ['5']  = { TD_KEY_5,             TD_MOD_NONE },
+    ['6']  = { TD_KEY_6,             TD_MOD_NONE },
+    ['7']  = { TD_KEY_7,             TD_MOD_NONE },
+    ['8']  = { TD_KEY_8,             TD_MOD_NONE },
+    ['9']  = { TD_KEY_9,             TD_MOD_NONE },
+    [':']  = { TD_KEY_SEMICOLON,     TD_MOD_SHIFT },
+    [';']  = { TD_KEY_SEMICOLON,     TD_MOD_NONE },
+    ['<']  = { TD_KEY_COMMA,         TD_MOD_SHIFT },
+    ['=']  = { TD_KEY_EQUAL,         TD_MOD_NONE },
+    ['>']  = { TD_KEY_PERIOD,        TD_MOD_SHIFT },
+    ['?']  = { TD_KEY_SLASH,         TD_MOD_SHIFT },
+    ['@']  = { TD_KEY_2,             TD_MOD_SHIFT },
+    ['A']  = { TD_KEY_A,             TD_MOD_SHIFT },
+    ['B']  = { TD_KEY_B,             TD_MOD_SHIFT },
+    ['C']  = { TD_KEY_C,             TD_MOD_SHIFT },
+    ['D']  = { TD_KEY_D,             TD_MOD_SHIFT },
+    ['E']  = { TD_KEY_E,             TD_MOD_SHIFT },
+    ['F']  = { TD_KEY_F,             TD_MOD_SHIFT },
+    ['G']  = { TD_KEY_G,             TD_MOD_SHIFT },
+    ['H']  = { TD_KEY_H,             TD_MOD_SHIFT },
+    ['I']  = { TD_KEY_I,             TD_MOD_SHIFT },
+    ['J']  = { TD_KEY_J,             TD_MOD_SHIFT },
+    ['K']  = { TD_KEY_K,             TD_MOD_SHIFT },
+    ['L']  = { TD_KEY_L,             TD_MOD_SHIFT },
+    ['M']  = { TD_KEY_M,             TD_MOD_SHIFT },
+    ['N']  = { TD_KEY_N,             TD_MOD_SHIFT },
+    ['O']  = { TD_KEY_O,             TD_MOD_SHIFT },
+    ['P']  = { TD_KEY_P,             TD_MOD_SHIFT },
+    ['Q']  = { TD_KEY_Q,             TD_MOD_SHIFT },
+    ['R']  = { TD_KEY_R,             TD_MOD_SHIFT },
+    ['S']  = { TD_KEY_S,             TD_MOD_SHIFT },
+    ['T']  = { TD_KEY_T,             TD_MOD_SHIFT },
+    ['U']  = { TD_KEY_U,             TD_MOD_SHIFT },
+    ['V']  = { TD_KEY_V,             TD_MOD_SHIFT },
+    ['W']  = { TD_KEY_W,             TD_MOD_SHIFT },
+    ['X']  = { TD_KEY_X,             TD_MOD_SHIFT },
+    ['Y']  = { TD_KEY_Y,             TD_MOD_SHIFT },
+    ['Z']  = { TD_KEY_Z,             TD_MOD_SHIFT },
+    ['[']  = { TD_KEY_LEFT_BRACKET,  TD_MOD_NONE },
+    ['\\'] = { TD_KEY_BACKSLASH,     TD_MOD_NONE },
+    [']']  = { TD_KEY_RIGHT_BRACKET, TD_MOD_NONE },
+    ['^']  = { TD_KEY_6,             TD_MOD_SHIFT },
+    ['_']  = { TD_KEY_MINUS,         TD_MOD_SHIFT },
+    ['`']  = { TD_KEY_GRAVE_ACCENT,  TD_MOD_NONE },
+    ['a']  = { TD_KEY_A,             TD_MOD_NONE },
+    ['b']  = { TD_KEY_B,             TD_MOD_NONE },
+    ['c']  = { TD_KEY_C,             TD_MOD_NONE },
+    ['d']  = { TD_KEY_D,             TD_MOD_NONE },
+    ['e']  = { TD_KEY_E,             TD_MOD_NONE },
+    ['f']  = { TD_KEY_F,             TD_MOD_NONE },
+    ['g']  = { TD_KEY_G,             TD_MOD_NONE },
+    ['h']  = { TD_KEY_H,             TD_MOD_NONE },
+    ['i']  = { TD_KEY_I,             TD_MOD_NONE },
+    ['j']  = { TD_KEY_J,             TD_MOD_NONE },
+    :
+    ['k']  = { TD_KEY_K,             TD_MOD_NONE },
+    ['l']  = { TD_KEY_L,             TD_MOD_NONE },
+    ['m']  = { TD_KEY_M,             TD_MOD_NONE },
+    ['n']  = { TD_KEY_N,             TD_MOD_NONE },
+    ['o']  = { TD_KEY_O,             TD_MOD_NONE },
+    ['p']  = { TD_KEY_P,             TD_MOD_NONE },
+    ['q']  = { TD_KEY_Q,             TD_MOD_NONE },
+    ['r']  = { TD_KEY_R,             TD_MOD_NONE },
+    ['s']  = { TD_KEY_S,             TD_MOD_NONE },
+    ['t']  = { TD_KEY_T,             TD_MOD_NONE },
+    ['u']  = { TD_KEY_U,             TD_MOD_NONE },
+    ['v']  = { TD_KEY_V,             TD_MOD_NONE },
+    ['w']  = { TD_KEY_W,             TD_MOD_NONE },
+    ['x']  = { TD_KEY_X,             TD_MOD_NONE },
+    ['y']  = { TD_KEY_Y,             TD_MOD_NONE },
+    ['z']  = { TD_KEY_Z,             TD_MOD_NONE },
+    ['{']  = { TD_KEY_LEFT_BRACKET,  TD_MOD_SHIFT },
+    ['|']  = { TD_KEY_BACKSLASH,     TD_MOD_SHIFT },
+    ['}']  = { TD_KEY_RIGHT_BRACKET, TD_MOD_SHIFT },
+    ['~']  = { TD_KEY_GRAVE_ACCENT,  TD_MOD_SHIFT },
+    [0x7F] = { TD_KEY_BACKSPACE,     TD_MOD_NONE }
 };
 
 static tdp_input_callback tdp_cb = {0};
@@ -186,16 +186,16 @@ td_bool tdp_handle_single_byte(
 TD_INLINE td_bool tdp_handle_nav_key(const td_i32 byte, td_key_token_t *ch)
 {
     switch (byte) {
-    case 'A': *ch = td_key_up; break;
-    case 'B': *ch = td_key_down; break;
-    case 'C': *ch = td_key_right; break;
-    case 'D': *ch = td_key_left; break;
-    case 'H': *ch = td_key_home; break;
-    case 'F': *ch = td_key_end; break;
-    case '2': *ch = td_key_insert; break;
-    case '3': *ch = td_key_delete; break;
-    case '5': *ch = td_key_page_up; break;
-    case '6': *ch = td_key_page_down; break;
+    case 'A': *ch = TD_KEY_UP; break;
+    case 'B': *ch = TD_KEY_DOWN; break;
+    case 'C': *ch = TD_KEY_RIGHT; break;
+    case 'D': *ch = TD_KEY_LEFT; break;
+    case 'H': *ch = TD_KEY_HOME; break;
+    case 'F': *ch = TD_KEY_END; break;
+    case '2': *ch = TD_KEY_INSERT; break;
+    case '3': *ch = TD_KEY_DELETE; break;
+    case '5': *ch = TD_KEY_PAGE_UP; break;
+    case '6': *ch = TD_KEY_PAGE_DOWN; break;
     default:
         return TD_FALSE;
     }
@@ -206,7 +206,7 @@ TD_INLINE td_bool tdp_handle_f5_below(const td_i32 byte, td_key_token_t *ch)
 {
     td_i32 tmp = 0;
     if (OUT_RANGE
-        ((tmp = byte - 'P' + td_key_f1), td_key_f1, td_key_f4))
+        ((tmp = byte - 'P' + TD_KEY_F1), TD_KEY_F1, TD_KEY_F4))
         return TD_FALSE;
     *ch = (td_key_token_t)tmp;
     return TD_TRUE;
@@ -217,18 +217,18 @@ TD_INLINE td_bool tdp_handle_f5_above(
 {
     if (first == '1') {
         switch (second) {
-        case '5': *ch = td_key_f5; break;
-        case '7': *ch = td_key_f6; break;
-        case '8': *ch = td_key_f7; break;
-        case '9': *ch = td_key_f8; break;
+        case '5': *ch = TD_KEY_F5; break;
+        case '7': *ch = TD_KEY_F6; break;
+        case '8': *ch = TD_KEY_F7; break;
+        case '9': *ch = TD_KEY_F8; break;
         default: return TD_FALSE;
         }
     } else if (first == '2') {
         switch (second) {
-        case '0': *ch = td_key_f9;  break;
-        case '1': *ch = td_key_f10; break;
-        case '3': *ch = td_key_f11; break;
-        case '4': *ch = td_key_f12; break;
+        case '0': *ch = TD_KEY_F9;  break;
+        case '1': *ch = TD_KEY_F10; break;
+        case '3': *ch = TD_KEY_F11; break;
+        case '4': *ch = TD_KEY_F12; break;
         default: return TD_FALSE;
         }
     } else
@@ -239,12 +239,12 @@ TD_INLINE td_bool tdp_handle_f5_above(
 TD_INLINE td_bool tdp_handle_combo(const int byte, td_key_mod_t *mods)
 {
     switch (byte) {
-        case '8': *mods |= (td_mod_ctrl | td_mod_alt | TD_MOD_SHIFT); break;
-        case '7': *mods |= (TD_MOD_CTRL | td_mod_alt); break;
-        case '6': *mods |= (td_mod_ctrl | TD_MOD_SHIFT); break;
+        case '8': *mods |= (TD_MOD_CTRL | TD_MOD_ALT | TD_MOD_SHIFT); break;
+        case '7': *mods |= (TD_MOD_CTRL | TD_MOD_ALT); break;
+        case '6': *mods |= (TD_MOD_CTRL | TD_MOD_SHIFT); break;
         case '5': *mods |= TD_MOD_CTRL; break;
-        case '4': *mods |= (td_mod_alt | TD_MOD_SHIFT); break;
-        case '3': *mods |= TD_MOD_AT; break;
+        case '4': *mods |= (TD_MOD_ALT | TD_MOD_SHIFT); break;
+        case '3': *mods |= TD_MOD_ALT; break;
         case '2': *mods |= TD_MOD_SHIFT; break;
         default: return TD_FALSE;
     }
@@ -346,7 +346,7 @@ void tdp_kbpoll(void)
         if (b0 != 0x1b) {
             probe++;
             if(tdp_handle_single_byte(b0, &ch, &mods))
-                tdp_raise(key, ch, TD_KEY_PRESS, mods);
+                tdp_raise(key, ch, TD_ACTION_PRESS, mods);
             input_ptr = probe;
             continue;
         }
@@ -364,7 +364,7 @@ void tdp_kbpoll(void)
 
             probe += 2;
             if (tdp_handle_single_byte(b, &ch, &mods))
-                tdp_raise(key, ch, TD_KEY_PRESS, mods | TD_MOD_AT);
+                tdp_raise(key, ch, TD_ACTION_PRESS, mods | TD_MOD_ALT);
             input_ptr = probe;
             continue;
         }
@@ -378,7 +378,7 @@ void tdp_kbpoll(void)
         if (b3 != '~' && tdp_handle_nav_key(b2, &ch)) {
             probe += 3;
             input_ptr = probe;
-            tdp_raise(key, ch, TD_KEY_PRESS, TD_MOD_NONE);
+            tdp_raise(key, ch, TD_ACTION_PRESS, TD_MOD_NONE);
             continue;
         }
 
@@ -386,7 +386,7 @@ void tdp_kbpoll(void)
         if (b1 == 'O' && tdp_handle_f5_below(b2, &ch)) {
             probe += 3;
             input_ptr = probe;
-            tdp_raise(key, ch, TD_KEY_PRESS, TD_MOD_NONE);
+            tdp_raise(key, ch, TD_ACTION_PRESS, TD_MOD_NONE);
             continue;
         }
 
@@ -397,7 +397,7 @@ void tdp_kbpoll(void)
 //         if (b3 == '~' && handle_f5_below(b2, &ch)) {
 //             probe += 4;
 //             input_ptr = probe;
-//             tdp_raise(key ch, 0, td_key_press);
+//             tdp_raise(key ch, 0, TD_ACTION_PRESS);
 //             continue;
 //         }
 
@@ -406,7 +406,7 @@ void tdp_kbpoll(void)
         {
             probe += 4;
             input_ptr = probe;
-            tdp_raise(key, ch, TD_KEY_PRESS, TD_MOD_NONE);
+            tdp_raise(key, ch, TD_ACTION_PRESS, TD_MOD_NONE);
             continue;
         }
 
@@ -418,7 +418,7 @@ void tdp_kbpoll(void)
         if (b4 == '~' && tdp_handle_f5_above(b2, b3, &ch)) {
             probe += 5;
             input_ptr = probe;
-            tdp_raise(key, ch,TD_KEY_PRESS, TD_MOD_NONE);
+            tdp_raise(key, ch,TD_ACTION_PRESS, TD_MOD_NONE);
             continue;
         }
 
@@ -433,7 +433,7 @@ void tdp_kbpoll(void)
                  tdp_handle_f5_below(b5, &ch))) {
                 probe += 6;
                 input_ptr = probe;
-                tdp_raise(key, ch, TD_KEY_PRESS, mods);
+                tdp_raise(key, ch, TD_ACTION_PRESS, mods);
                 continue;
             }
         }
@@ -463,7 +463,7 @@ void tdp_kbpoll(void)
 
 fallback:
         input_ptr++;
-        tdp_raise(key, td_key_escape, TD_KEY_PRESS, TD_MOD_NONE);
+        tdp_raise(key, TD_KEY_ESCAPE, TD_ACTION_PRESS, TD_MOD_NONE);
     }
 }
 

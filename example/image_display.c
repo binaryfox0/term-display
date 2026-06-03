@@ -115,11 +115,11 @@ void display_image(const char* path)
     td_option(td_opt_display_size, 1, &current_size);
     resize_callback(current_size);
 
-    td_set_running_state(TD_TRUE);
+    td_window_is_running(TD_TRUE);
 
     stop = false;
     double delta_time = 1.0, last_log = get_time();
-    while (td_is_running() && !stop) {
+    while (td_window_is_running() && !stop) {
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
 

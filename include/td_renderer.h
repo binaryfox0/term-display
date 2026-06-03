@@ -29,6 +29,8 @@ SOFTWARE.
 #include <td_error.h>
 
 typedef struct td_texture td_texture_t;
+typedef struct td_window td_window_t;
+typedef struct td_renderer td_renderer_t;
 
 typedef enum td_vtx_attr 
 {
@@ -40,20 +42,37 @@ typedef enum td_vtx_attr
     TDVA_UV_COORDS
 } td_vtx_attr_t;
 
-/** 
- * @brief Set clear color for td_clear_framebuffer
- *
- * @param clear_color The color will be used to clear framebuffer
- */
-td_error_t td_renderer_set_clear_color(const td_rgba clear_color);
+td_renderer_t *td_renderer_create(
+        td_window_t *window);
+
+td_error_t td_renderer_get_size(
+        td_renderer_t *renderer,
+        td_i32 *w, td_i32 *h);
+
+td_error_t td_renderer_set_draw_color(
+        td_renderer_t *renderer,
+        const td_u8 r,
+        const td_u8 g,
+        const td_u8 b,
+        const td_u8 a);
 
 /**
  * @brief Clear the framebuffer with color set by td_set_clear color and clear the depth buffer if it was enabled.
  */
-td_error_t td_renderer_clear(void);
+td_error_t td_renderer_clear(td_renderer_t *renderer);
 
 
-td_texture_t* td_get_framebuffer(void);
+td_error_t td_renderer_draw_point(
+        td_renderer_t *renderer,
+        const td_i32 x, const td_i32 y);
+
+
+td_error_t td_renderer_draw_line(
+    td_renderer_t *renderer,
+    const td_i32 x1, const td_i32 y1,
+    const td_i32 x2, const td_i32 y2);
+
+
 /**
  * @brief Draw a rectangle into framebuffer with given size
  */
@@ -81,9 +100,6 @@ td_error_t td_add_vertex(
         const int attribs_count, 
         const td_bool finalize);
 
-/**
- * @brief Render built-in framebuffer
- */
-void td_render(void);
+void td_renderer_destroy(td_renderer_t *renderer);
 
 #endif

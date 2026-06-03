@@ -23,11 +23,10 @@ SOFTWARE.
 */
 
 #include <td_main.h>
-#include "td_priv.h"
+#include "td_utils.h"
 
 #include "td_context.h"
-#include "td_window_priv.h"
-#include "td_renderer_priv.h"
+#include "td_debug.h"
 
 const char *td_copyright_notice(void)
 {
@@ -50,7 +49,7 @@ BOOL tdp_stop_handle(DWORD ctrl_type)
     {
         case CTRL_C_EVENT:
         case CTRL_BREAK_EVENT:
-            __display_is_running = td_false;
+//            __display_is_running = td_false;
             return FALSE;
         default:
             return FALSE;
@@ -61,7 +60,7 @@ BOOL tdp_stop_handle(DWORD ctrl_type)
 void tdp_stop_handle(int signal)
 {
     (void) signal;
-    __display_is_running = TD_FALSE;
+//    __display_is_running = TD_FALSE;
 }
 #endif
 
@@ -69,9 +68,7 @@ struct {
     td_error_t (*init)(void);
     void (*exit)(void);
 } tdp_susbsytems[] = {
-    {tdp_context_init, tdp_context_exit},
-    {tdp_window_init, tdp_window_exit},
-    {tdp_renderer_init, tdp_renderer_exit}
+    {tdp_debug_init, tdp_debug_exit},
 };
 
 td_error_t td_init(void)
@@ -80,32 +77,27 @@ td_error_t td_init(void)
     if(tdp_ctx) 
         return TD_ERR_OK;
 
-    for(td_i32 i = 0; i < 
+    err = tdp_context_init();
+    if(err != TD_ERR_OK)
+        return err;
 
-    err = tdp_setup_env(tdp_stop_handle);
-        return TD_;
-    
-    tdp_term_size = tdp_prev_size = tdp_get_termsz();      // Disable calling callback on the first time
-    if(tdp_renderer_init(tdp_term_size))
-        return TD_FALSE;
-    __display_is_running = TD_TRUE;
-    if(tdp_debug(init, ) == 1)
-        return TD_FALSE;
-    td_initialized = TD_TRUE;
-    return TD_TRUE;
-}
+    for(td_i32 i = 0; i < (td_i32)TDP_ARRSZ(tdp_susbsytems); i++)
+    {
+        err = tdp_susbsytems[i].init();
+        if(err != TD_ERR_OK)
+        {
+            for(; i >= 0; i--)
+                tdp_susbsytems[i].exit();
+            break;
+        }
+    }
 
-
-static td_resize_callback tdp_resize_callback = 0;
-void td_set_resize_callback(td_resize_callback callback) {
-    tdp_resize_callback = callback;
+    return TD_ERR_OK;
 }
 
 void td_quit(void)
 {
-    if(!td_initialized) return;
-    tdp_renderer_exit();
-    tdp_restore_env();
-    tdp_debug(quit, );
-    td_initialized = TD_FALSE;
+    for(td_i32 i = 0; i < (td_i32)TDP_ARRSZ(tdp_susbsytems); i++)
+        tdp_susbsytems[i].exit();
+    tdp_context_exit();
 }

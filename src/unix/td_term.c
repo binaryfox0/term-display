@@ -22,16 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "../td_term.h"
-
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <poll.h>
+#include "td_term.h"
 
 #define _POSIX_C_SOURCE 200809L
+
+#include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+
+#include "td_utils.h"
 
 static struct termios old = {0}, cur = {0};
 static struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
@@ -48,7 +51,7 @@ TD_INLINE void tdp_set_sighand(
 #endif
 }
 
-td_error_t tdp_term_init(const tdp_sighand_t handle)
+td_error_t tdp_term_init(void)
 {
     if (tcgetattr(STDIN_FILENO, &old) == -1)
         return TD_ERR_GENERIC;
@@ -59,18 +62,33 @@ td_error_t tdp_term_init(const tdp_sighand_t handle)
     if (tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
         return TD_ERR_GENERIC;
 
-    tdp_set_sighand(SIGINT, handle);
-    tdp_set_sighand(SIGQUIT, handle);
-
     return TD_ERR_OK;
+}
+
+void tdp_term_set_stop_handle(const tdp_sighand_t handle)
+{
+    tdp_set_sighand(SIGINT, handle ? handle : SIG_DFL);
+    tdp_set_sighand(SIGTSTP, handle ? handle : SIG_DFL);
+    tdp_set_sighand(SIGQUIT, handle ? handle : SIG_DFL);
 }
 
 td_ivec2 tdp_term_get_size(void)
 {
-    struct winsize ws;
+    struct winsize ws = {0};
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
         return (td_ivec2){.x=ws.ws_col, .y=ws.ws_row};
     return (td_ivec2){0};
+}
+
+void tdp_term_clear(void)
+{
+    fflush(stdout);
+    tdp_tty_write(
+        "\x1b[0m"   // Reset all text formatting (colors, styles, attributes)
+        "\x1b[3J"   // Clear entire scrollback buffer (if supported by terminal)
+        "\x1b[H"    // Move cursor to top-left corner (home position)
+        "\x1b[2J"   // Clear entire visible screen
+    );
 }
 
 td_bool tdp_term_stdin_ready(const int ms) 
@@ -85,20 +103,19 @@ int tdp_term_stdin_available(void)
     return out;
 }
 
-td_bool tdp_term_toggle_stop(const td_bool enable)
+td_error_t tdp_term_toggle_stop(const td_bool enable)
 {
-    if(enable == TD_TRUE)
+    if(enable)
         cur.c_lflag |= ISIG;
     else
         cur.c_lflag &= (td_u32)(~ISIG);
-    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) != -1;
+    return tcsetattr(STDIN_FILENO, TCSANOW, &cur) != -1 ?
+        TD_ERR_OK : TD_ERR_GENERIC;
 }
 
 void tdp_term_exit(void)
 {
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
-
-    tdp_set_sighand(SIGINT, SIG_DFL);
-    tdp_set_sighand(SIGQUIT, SIG_DFL);
+    tdp_term_set_stop_handle(0);
 }
 

@@ -22,77 +22,54 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/** 
+/**
  * @file td_main.h
- * @brief Main header of term-display used to control the display and related operations.
- * 
- * This file provides the declarations for term-display settings, input handling,
- * and graphics-related operations. It includes functions for managing the display size,
- * key events, and rendering operations on a terminal-based display.
+ * @brief Core declarations for the term-display library.
+ *
+ * This header provides the primary initialization and shutdown functions for
+ * the term-display library. It also includes access to the library's core
+ * modules, including events, rendering, textures, fonts, and common type
+ * definitions.
  */
 
-#ifndef TD_DISPLAY_H
-#define TD_DISPLAY_H
+#ifndef TD_MAIN_H
+#define TD_MAIN_H
 
 #include <td_def.h>
-#include <td_input.h>
-#include <td_texture.h>
+#include <td_window.h>
+#include <td_event.h>
 #include <td_renderer.h>
+/*
+#include <td_event.h>
+#include <td_texture.h>
 #include <td_font.h>
-
-
+*/
 /**
- * @typedef td_resize_callback
- * @brief Typedef for resize event callback function.
- * 
- * This typedef defines the function pointer type for handling resize events.
- * The callback function is called when term-display is resized and the option <b>is enabled</b>.
- */
-typedef void (*td_resize_callback)(td_ivec2 new_size);
-
-
-/**
- * @brief Returns the copyright notice of the term-display library.
- * 
- * @return A string containing the copyright notice.
+ * @brief Returns the term-display copyright notice.
+ *
+ * The returned string is statically allocated and must not be modified
+ * or freed by the caller.
+ *
+ * @return Pointer to the copyright notice string.
  */
 const char *td_copyright_notice(void);
 
 /**
  * @brief Initializes the term-display library.
- * 
- * @return A boolean indicating the success initialization.
+ *
+ * Initializes all required subsystems and prepares the library for use.
+ * This function must be called before using any other term-display APIs.
+ *
+ * @return Operation result.
  */
-td_bool td_init(void);
+td_error_t td_init(void);
 
 /**
- * @brief Checks if the term-display is running.
- * 
- * @return A boolean indicating display is shown to user.
- */
-extern volatile td_bool __display_is_running;
-TD_INLINE td_bool td_is_running(void) {
-    return __display_is_running;
-}
-
-TD_INLINE void td_set_running_state(td_bool state) {
-    __display_is_running = state;
-}
-
-/**
- * @brief Polls for events related to the display.
- */
-void td_poll_events(void);
-
-/**
- * @brief Sets the callback function to handle resize events.
- * 
- * @param callback A function pointer to the resize event handler.
- */
-void td_set_resize_callback(td_resize_callback callback);
-
-/**
- * @brief Frees any allocated resources used by the term-display library.
+ * @brief Shuts down the term-display library.
+ *
+ * Releases resources allocated by the library and shuts down all initialized
+ * subsystems. After calling this function, no other term-display APIs should
+ * be used unless the library is initialized again with td_init().
  */
 void td_quit(void);
 

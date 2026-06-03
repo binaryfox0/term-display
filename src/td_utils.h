@@ -16,7 +16,7 @@
 #   endif
 
 #   define _pread _read
-#   define _pwrite _write
+#   define tdp_write _write
 #   define _pisatty _isatty
 
 typedef BOOL (*tdp_sighand)(DWORD);
@@ -25,7 +25,7 @@ typedef BOOL (*tdp_sighand)(DWORD);
 #   include <unistd.h>
 
 #   define _pread read
-#   define _pwrite write
+#   define tdp_tty_write(buf) write(STDOUT_FILENO, (buf), sizeof((buf)) - 1)
 #   define _pisatty isatty
 
 typedef void (*tdp_sighand_t)(int);
@@ -40,6 +40,9 @@ typedef void (*tdp_sighand_t)(int);
         (a) = (b);                \
         (b) = temp;               \
     } while (0)
+
+#define TDP_ARRSZ(arr) \
+    (sizeof((arr)) / sizeof((arr)[0]))
 
 TD_INLINE td_i32 tdp_min(const td_i32 x, const td_i32 y)
 {

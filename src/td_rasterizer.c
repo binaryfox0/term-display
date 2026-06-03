@@ -11,15 +11,23 @@ static inline void tdp_rasterize_pixel(
                                 const td_f32 depth,
                                 const td_u8 color[4])
 {
-    if(!IN_RANGE(pos.x, 0, fb->size.x -1 ) || !IN_RANGE(pos.y, 0, fb->size.y - 1)) return;
-    const td_u64 wpos = tdp_calculate_pos(pos, fb->size.x, 1);
-    if (depth_buf) {
-        if (depth_buf[wpos] <= depth)
+    td_u64 pixel_pos = 0;
+    td_u8 *pixel_ptr = 0;
+
+    if(
+            !IN_RANGE(pos.x, 0, fb->size.x -1 ) || 
+            !IN_RANGE(pos.y, 0, fb->size.y - 1)
+    ) return;
+
+    pixel_pos = tdp_calculate_pos(pos, fb->size.x, 1);
+    pixel_ptr = fb->data + pixel_pos * (td_u64)fb->type; 
+    if (depth_buf) 
+    {
+        if (depth_buf[pixel_pos] <= depth)
             return;
-        depth_buf[wpos] = depth;
+        depth_buf[pixel_pos] = depth;
     }
-    tdp_blend(fb->data + (wpos * (td_u64)fb->type), color, 
-            (td_i32)fb->type, 4);
+    tdp_blend(pixel_ptr, color, (td_i32)fb->type, 4, pixel_ptr);
 }
 
 void tdp_rasterize_line(const td_texture_t* fb,
@@ -198,7 +206,7 @@ void tdp_rasterize_triangle(
                             tx, ty
                         );
                     
-                    tdp_blend(final_color, texel, 4, tex_ch);
+                    tdp_blend(final_color, texel, 4, tex_ch, final_color);
                 }
 
                 // Set pixel

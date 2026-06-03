@@ -183,7 +183,7 @@ void normal_routine(const int max_fps)
     td_u64 frame_count = 0;
     double delta_time = 1.0, last_log = get_time();
     const double max_dt = 1.0 / max_fps;
-    while (td_is_running()) {
+    while (td_window_is_running()) {
         frame_count++;
         double start_frame = get_time();
         double fps = (delta_time > 0) ? (1.0 / delta_time) : 0.0;
@@ -286,7 +286,7 @@ void kstrok_test_routine(const int max_fps)
     td_set_key_callback(kstrok_logger);
 
     const double max_dt = 1.0 / max_fps;
-    while (td_is_running()) {
+    while (td_window_is_running()) {
         kstrok_frame_start = get_time();
         td_poll_events();
         while (get_time() - kstrok_frame_start < max_dt) {}

@@ -185,7 +185,7 @@ td_error_t td_texture_fill(const td_texture_t *texture, const td_rgba color)
     if (TDP_HAS_ALPHA(ch) || color.a != 255) {
         for (td_i32 row = 0; row < size.y; row++) {
             for (td_i32 col = 0; col < size.x; col++, data += ch)
-                tdp_blend(data, c, ch, 4);
+                tdp_blend(data, c, ch, 4, data);
         }
     } else {
         tdp_fill_buffer(data, c, tdp_calculate_size(size, ch), (td_u64)ch);    
@@ -373,7 +373,7 @@ td_error_t td_texture_merge(const td_texture_t *texture_a,
 
                 case TD_TEXTURE_MERGE_BLEND:
                 case TD_TEXTURE_MERGE_WRAP:
-                    tdp_blend(row_a, color, ch_a, new_ch_b);
+                    tdp_blend(row_a, color, ch_a, new_ch_b, row_a);
                     break;
             }
         }
@@ -571,11 +571,20 @@ td_error_t td_texture_destroy(td_texture_t *texture)
     return TD_ERR_OK;
 }
 
+td_rgba td_blend_color(const td_rgba a,
+                       const td_rgba b)
+{
+    td_rgba out = {0};
+    tdp_blend(a.raw, b.raw, 4, 4, out.raw);
+    return out;
+}
+
 void tdp_blend(
-        td_u8 *a, 
+        const td_u8 *a, 
         const td_u8 *b, 
         const td_i32 ch_a, 
-        const td_i32 ch_b)
+        const td_i32 ch_b,
+        td_u8 *dst)
 {
     td_bool has_alpha = TD_FALSE;
     td_i32 alpha_idx = 0;
@@ -589,13 +598,14 @@ void tdp_blend(
     inv_b_alpha = 255 - b_alpha;
 
     if (ch_a < 5)
-        a[0] = (td_u8)((b_alpha * b[0] + inv_b_alpha * a[0]) >> 8);
-    if (ch_a > 2) {
-        a[1] = (td_u8)((b_alpha * b[1] + inv_b_alpha * a[1]) >> 8);
-        a[2] = (td_u8)((b_alpha * b[2] + inv_b_alpha * a[2]) >> 8);
+        dst[0] = (td_u8)((b_alpha * b[0] + inv_b_alpha * a[0]) >> 8);
+    if (ch_a > 2) 
+    {
+        dst[1] = (td_u8)((b_alpha * b[1] + inv_b_alpha * a[1]) >> 8);
+        dst[2] = (td_u8)((b_alpha * b[2] + inv_b_alpha * a[2]) >> 8);
     }
     if (has_alpha)
-        a[alpha_idx] = (td_u8)(!inv_b_alpha ? 255 : 
+        dst[alpha_idx] = (td_u8)(!inv_b_alpha ? 255 : 
                 b_alpha + ((inv_b_alpha + a_alpha) >> 8));
 }
 
@@ -638,3 +648,4 @@ void tdp_convert_color(
     if(conv_ch)
         *conv_ch = target_ch;
 }
+

@@ -107,19 +107,49 @@ char *to_timestamp(double time)
                      (td_u32) (time * 1000000) % 1000000);
 }
 
-example_params parse_argv(
+int exu_ask_yes_no(void)
+{
+    for (;;)
+    {
+        int ch = 0;
+        int c = 0;
+        printf("%s: " __aparse_info_label
+               ": do you want to continue (y/n): ",
+               __aparse_progname);
+
+        ch = getchar();
+
+        if (ch == EOF)
+        {
+            info("EOF received, default to no");
+            return 0;
+        }
+
+        while ((c = getchar()) != '\n' && c != EOF) {}
+
+        if (ch == 'y')
+            return 1;
+        else if (ch == 'n')
+            return 0;
+
+        error("invalid answer");
+    }
+    return 0;
+}
+
+exu_paramaters_t exu_parse_args(
     int argc, char **argv,
     aparse_arg *custom_args,
     int custom_count,
     aparse_arg **merged_args
 )
 {
-    example_params p = {
+    exu_paramaters_t p = {
         .auto_resize = TD_FALSE,
         .px_w = 2,
         .px_h = 1,
-        .display_type = td_display_truecolor,
-        .display_orientation = 0,
+//        .display_type = td_display_truecolor,
+        .rotation = 0,
         .max_fps = 60
     };
 
@@ -165,7 +195,7 @@ example_params parse_argv(
         ),
         aparse_arg_option(
             "-rot", "--display-rotate",
-            &p.display_orientation, sizeof(p.display_orientation),
+            &p.rotation, sizeof(p.rotation),
             APARSE_ARG_TYPE_UNSIGNED,
             "Display orientation / rotation"
         ),
@@ -189,7 +219,7 @@ example_params parse_argv(
     memcpy(args, custom_args, custom_count * sizeof(*args));
     memcpy(args + custom_count, example_args, example_count * sizeof(*args));
 
-    if (aparse_parse(argc, argv, args,
+    if (aparse_parse(argc, argv, args, 0,
             "Example program of term-display library")
         == APARSE_STATUS_FAILURE)
     {
@@ -199,8 +229,8 @@ example_params parse_argv(
 
     if (pos_raw &&
         sscanf(pos_raw, "%d,%d",
-               &p.display_pos.x,
-               &p.display_pos.y) != 2)
+               &p.pos.x,
+               &p.pos.y) != 2)
     {
         aparse_prog_error("invalid display position: \"%s\"", pos_raw);
         free(args);
@@ -209,8 +239,8 @@ example_params parse_argv(
 
     if (size_raw &&
         sscanf(size_raw, "%dx%d",
-               &p.display_size.x,
-               &p.display_size.y) != 2)
+               &p.size.x,
+               &p.size.y) != 2)
     {
         aparse_prog_error("invalid display size: \"%s\"", size_raw);
         free(args);
@@ -232,14 +262,6 @@ example_params parse_argv(
     return p;
 }
 
-void use_params(const example_params *p)
+void use_params(const exu_paramaters_t *p)
 {
-    /* gurantee value will not be changed if get = td_false */
-    td_option(TD_OPT_AUTO_RESIZE, TD_FALSE, (void*)&p->auto_resize);
-    td_option(td_opt_display_pos, TD_FALSE, (void*)&p->display_pos);
-    td_option(td_opt_display_size, TD_FALSE, (void*)&p->display_size);
-    td_option(TD_OPT_PIXEL_WIDTH, TD_FALSE, (void*)&p->px_w);
-    td_option(TD_OPT_PIXEL_HEIGHT, TD_FALSE, (void*)&p->px_h);
-    td_option(TD_OPT_DISPLAY_MODE, TD_FALSE, (void*)&p->display_type);
-    td_option(TD_OPT_DISPLAY_ROTATION, 0, (void*)&p->display_orientation);
 }
