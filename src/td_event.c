@@ -37,6 +37,7 @@ td_error_t td_poll_events(td_window_t *window)
         if(window->flags & TD_WINDOW_RESIZABLE)
             ;  
         tdp_term_clear();
+        tdp_window_update_bound(window);
         event->term_size = current_size;
     }
     return TD_ERR_OK;

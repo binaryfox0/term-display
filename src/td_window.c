@@ -11,7 +11,8 @@
 #include "td_renderer_priv.h"
 #include "td_black_magic.h"
 // Convert terminal size -> logical framebuffer size (NO rotation here anymore)
-td_ivec2 tdp_calculate_logical(
+
+TD_INLINE td_ivec2 tdp_calculate_logical(
         td_window_t *window,
         const td_ivec2 term_size)
 {
@@ -38,7 +39,6 @@ TD_INLINE td_ivec2 tdp_apply_rotation(
 }
 
 
-// Clamp size to renderer limits
 TD_INLINE td_ivec2 tdp_clamp_to_renderer(
         const td_window_t *window,
         const td_ivec2 size)
@@ -51,35 +51,22 @@ TD_INLINE td_ivec2 tdp_clamp_to_renderer(
     return out;
 }
 
-
-// Restore terminal state
-void tdp_window_exit(void)
+void tdp_window_update_bound(td_window_t *window)
 {
-    fflush(stdout);
+    td_ivec2 term_size = {0};
+    td_ivec2 logical_size = {0};
+    td_ivec2 visible_size = {0};
 
-    tdp_tty_write(
-            "\x1b[?25h"
-            "\x1b[0m"
-            "\x1b[?1049l"
-            "\x1b[?1000l"
-            "\x1b[?1003l"
-            "\x1b[?1006l"
+    
+    term_size = tdp_term_get_size();
+    logical_size = tdp_calculate_logical(window, term_size);
+    // separate from renderer, and also renderer is still NULL
+    visible_size = tdp_apply_rotation(window, 
+            (td_ivec2){.x = window->rect.w, .y = window->rect.h}
     );
+    window->fb_bound.x = tdp_min(logical_size.x, visible_size.x);
+    window->fb_bound.y = tdp_min(logical_size.y, visible_size.y);
 }
-
-
-// Update framebuffer viewport
-void tdp_window_update_layout(td_window_t *window, const td_ivec2 size)
-{
-    td_ivec2 clipped = size;
-
-    clipped.x = tdp_min(clipped.x, window->renderer->size.x);
-    clipped.y = tdp_min(clipped.y, window->renderer->size.y);
-
-    window->fb_xend = clipped.x;
-    window->fb_yend = clipped.y;
-}
-
 
 // Create window
 td_window_t *td_window_create(
@@ -94,8 +81,6 @@ td_window_t *td_window_create(
 {
     td_window_t *window = 0;
 
-    td_ivec2 term_size = {0};
-    td_ivec2 logical_size = {0};
     td_ivec2 rotated_size = {0};
     td_ivec2 final_size = {0};
 
@@ -122,31 +107,25 @@ td_window_t *td_window_create(
     window->rect.x = x;
     window->rect.y = y;
 
-    term_size = tdp_term_get_size();
 
-    // pipeline
-    logical_size = tdp_calculate_logical(window, term_size);
-    rotated_size = tdp_apply_rotation(window, logical_size);
-
-    // window rect
     if(window->flags & TD_WINDOW_FULLSCREEN)
     {
-        window->rect.w = rotated_size.x;
-        window->rect.h = rotated_size.y;
+        td_ivec2 term_size = {0};
+        td_ivec2 logical_size = {0};
+
+        term_size = tdp_term_get_size();
+        logical_size = tdp_calculate_logical(window, term_size);
+        if(window->rotation & 1 != 0)
+            TDP_SWAP(logical_size.x, logical_size.y, td_i32);
+
+        window->rect.w = logical_size.x;
+        window->rect.h = logical_size.y;
     }
     else
     {
         window->rect.w = w;
         window->rect.h = h;
     }
-
-    // framebuffer bounds = min(logical space, window size)
-    final_size.x = tdp_min(rotated_size.x, window->rect.w);
-    final_size.y = tdp_min(rotated_size.y, window->rect.h);
-
-    final_size = tdp_apply_rotation(window, final_size);
-
-    window->fb_bound = final_size;
 
     // enter terminal UI mode
     tdp_tty_write(
@@ -318,5 +297,15 @@ void td_window_destroy(td_window_t *window)
 {
     if(!window)
         return;
+
+    fflush(stdout);
+    tdp_tty_write(
+            "\x1b[?25h"
+            "\x1b[0m"
+            "\x1b[?1049l"
+            "\x1b[?1000l"
+            "\x1b[?1003l"
+            "\x1b[?1006l"
+    );
     free(window);
 }

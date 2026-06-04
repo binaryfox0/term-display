@@ -70,11 +70,22 @@ cleanup:
 */
 int main(int argc, char **argv)
 {
+    td_i32 rotation = 0;
+    aparse_arg main_args[] = {
+        aparse_arg_option(
+                "-rot", "--rotation",
+                &rotation, sizeof(rotation),
+                APARSE_ARG_TYPE_SIGNED, 0),
+        aparse_arg_end_marker
+    };
     td_window_t *window = 0;
     td_renderer_t *renderer = 0;
 
+    if(aparse_parse(argc, argv, main_args, 0, 0) != APARSE_STATUS_OK)
+        return 1;
+
     window = td_window_create(
-            0, 0, 0, 0, 0,
+            0, 0, 0, 0, rotation,
             TD_COLOR_TRUECOLOR,
             TD_WINDOW_FULLSCREEN | TD_WINDOW_RESIZABLE
     );
@@ -108,9 +119,10 @@ int main(int argc, char **argv)
         // top, bottom border
         for(td_i32 x = 0; x < width; x++)
         {
+            // right
             td_renderer_set_draw_color(renderer, 
                     255, 0, 0, 255);
-            td_renderer_draw_point(renderer, x, 0);
+            td_renderer_draw_point(renderer, x, 0); 
             td_renderer_set_draw_color(renderer, 
                     0, 255, 0, 255);
             td_renderer_draw_point(renderer, x, height - 1);
@@ -119,9 +131,11 @@ int main(int argc, char **argv)
         // left, right border
         for(td_i32 y = 0; y < height; y++)
         {
+            // left - blue
             td_renderer_set_draw_color(renderer, 
                     0, 0, 255, 255);
             td_renderer_draw_point(renderer, 0, y);
+            // right - white
             td_renderer_set_draw_color(renderer, 
                     255, 255, 255, 255);
             td_renderer_draw_point(renderer, width - 1, y);

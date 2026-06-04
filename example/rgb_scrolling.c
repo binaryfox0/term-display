@@ -109,7 +109,7 @@ int main(int argc, char** argv)
         td_window_present(window);
         elapsed += dt * speed;
 
-        while ((dt = get_time() - dt) < target_dt)
+        while ((dt = get_time() - frame_start) < target_dt)
             ;
         if (frame_start - last_log >= LOG_INTERVAL) 
         {

@@ -15,6 +15,7 @@
 
 TD_INLINE td_rgba tdp_query_background(void)
 {
+    char r[5] = {0}, b[5] = {0}, g[5] = {0};
     td_rgba out = {0};
 
     tdp_tty_write("\x1b]11;?\x1b\\");
@@ -23,7 +24,6 @@ TD_INLINE td_rgba tdp_query_background(void)
     char buffer[32] = { 0 };
     if (_pread(STDIN_FILENO, buffer, 32) == -1)
         return out;
-    char r[5] = { 0 }, b[5] = { 0 }, g[5] = { 0 };
     if (sscanf(buffer, "\x1B]11;rgb:%4[^/]/%4[^/]/%4[^;]", r, g, b) != 3)
         return out;
 
@@ -36,6 +36,10 @@ TD_INLINE td_rgba tdp_query_background(void)
 td_renderer_t *td_renderer_create(td_window_t *window)
 {
     td_renderer_t *renderer = 0;
+    td_ivec2 size = {0};
+    td_ivec2 term_size = {0};
+    td_ivec2 logical_size = {0};
+
     if(!window)
         return 0;
 
@@ -51,6 +55,8 @@ td_renderer_t *td_renderer_create(td_window_t *window)
         free(renderer);
         return 0;
     }
+
+    tdp_window_update_bound(window);
 
     window->renderer = renderer;
     return renderer;

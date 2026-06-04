@@ -25,6 +25,6 @@ typedef struct td_window
     tdp_event_t event;
 } td_window_t;
 
-
+void tdp_window_update_bound(td_window_t *window);
 
 #endif
