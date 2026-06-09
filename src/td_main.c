@@ -24,14 +24,13 @@ SOFTWARE.
 
 #include <td_main.h>
 #include "td_utils.h"
-
+#include "td_term.h"
 #include "td_context.h"
-#include "td_debug.h"
 
 const char *td_copyright_notice(void)
 {
     return
-        "Copyright (c) 2026 binaryfox0 (Duy Pham Duc)\n"
+        "Copyright (c) 2026 binaryfox0\n"
         "License under the MIT License (see LICENSE file)\n\n"
         "Extremely Fast Line Algorithm Var D (Addition Fixed Point)\n"
         "Copyright 2001, By Po-Han Lin\n"
@@ -41,36 +40,12 @@ const char *td_copyright_notice(void)
         "Commercial applications please inquire about licensing the algorithms.";
 }
 
-
-#if defined(TD_PLATFORM_WINDOWS)
-BOOL tdp_stop_handle(DWORD ctrl_type)
-{
-    switch(ctrl_type)
-    {
-        case CTRL_C_EVENT:
-        case CTRL_BREAK_EVENT:
-//            __display_is_running = td_false;
-            return FALSE;
-        default:
-            return FALSE;
-    }
-    return FALSE;
-}
-#else
-void tdp_stop_handle(int signal)
-{
-    (void) signal;
-//    __display_is_running = TD_FALSE;
-}
-#endif
-
 struct {
     td_error_t (*init)(void);
     void (*exit)(void);
 } tdp_susbsytems[] = {
-    {tdp_debug_init, tdp_debug_exit},
+    {0, tdp_debug_exit},
 };
-
 td_error_t td_init(void)
 {
     td_error_t err = TD_ERR_OK;
@@ -83,20 +58,26 @@ td_error_t td_init(void)
 
     for(td_i32 i = 0; i < (td_i32)TDP_ARRSZ(tdp_susbsytems); i++)
     {
-        err = tdp_susbsytems[i].init();
+        if(tdp_susbsytems[i].init)
+            err = tdp_susbsytems[i].init();
         if(err != TD_ERR_OK)
         {
             for(; i >= 0; i--)
                 tdp_susbsytems[i].exit();
-            break;
+            tdp_context_exit();
+            return err;
         }
     }
+
+    tdp_term_init();
+    tdp_ctx->init_ts = td_get_performance_counter();
 
     return TD_ERR_OK;
 }
 
 void td_quit(void)
 {
+    tdp_term_exit(); 
     for(td_i32 i = 0; i < (td_i32)TDP_ARRSZ(tdp_susbsytems); i++)
         tdp_susbsytems[i].exit();
     tdp_context_exit();

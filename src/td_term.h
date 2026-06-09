@@ -14,6 +14,7 @@
 #endif
 
 td_error_t tdp_term_init(void);
+void tdp_term_set_stop_handle(const tdp_sighand_t handle);
 td_ivec2 tdp_term_get_size(void);
 void tdp_term_clear(void);
 td_bool tdp_term_stdin_ready(const int ms);

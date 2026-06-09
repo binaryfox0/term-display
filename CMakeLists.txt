@@ -6,9 +6,16 @@ option(TD_BUILD_ASAN "Build every binary with AddressSanitizer" OFF)
 option(TD_BUILD_TEST "Build term-display tests" OFF)
 option(TD_BUILD_EXAMPLE "Build term-display examples" OFF)
 
+set(TD_TYPE_DEBUG FALSE)
+
+if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug"
+        OR CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+    set(TD_TYPE_DEBUG TRUE)
+endif()
+
 if(TD_BUILD_EXAMPLE)
     if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        if(NOT (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        if(NOT TD_TYPE_DEBUG)
             message(FATAL_ERROR "TD_BUILD_ASAN MUST be built with Debug or RelWithDebInfo")
         endif()
     else()
@@ -39,20 +46,30 @@ set(TD_SOURCES
     #    src/td_texture.c
     src/td_utils.c
     src/td_context.c
+    src/td_error.c
+    src/td_misc.c
+    src/td_timer.c
     src/td_main.c
     src/td_window.c
+    src/td_rbuf.c
     src/td_event.c
     src/td_texture.c
     src/td_rasterizer.c
     src/td_renderer.c
     #    src/td_font.c
-    #    src/td_input.c
 )
 
 if(WIN32)
-    list(APPEND TD_SOURCES src/win32/td_term.c)
+    list(APPEND TD_SOURCES 
+        src/win32/td_timer.c
+        src/win32/td_term.c
+    )
 elseif(UNIX)
-    list(APPEND TD_SOURCES src/unix/td_term.c)
+    list(APPEND TD_SOURCES 
+        src/unix/td_timer.c
+        src/unix/td_term.c
+        src/unix/td_input.c
+    )
 else()
     message(FATAL_ERROR "Unsupported platform. Aborted.")
 endif()
@@ -69,14 +86,30 @@ target_compile_definitions(term-display PRIVATE
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd]ebug")
     if (CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-        target_compile_options(term-display PRIVATE 
+        target_compile_options(term-display PRIVATE
             $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:
-                -Werror -Wall -Wextra -pedantic -Wcast-align
-                -Wcast-qual -Wdisabled-optimization -Wformat=2
-                -Winit-self -Wmissing-include-dirs
-                -Wshadow -Wundef -Wno-unused 
-                -Wno-variadic-macros -Wno-parentheses 
-                -fdiagnostics-show-option -Wconversion
+                -Werror
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Wconversion
+                -Wcast-align
+                -Wcast-qual
+                -Wwrite-strings
+                -Wstrict-prototypes
+                -Wmissing-prototypes
+                -Wshadow
+                -Wswitch
+                -Wundef
+                -Wnull-dereference
+                -Wformat=2
+                -fdiagnostics-show-option
+                -Winit-self
+                -Wmissing-include-dirs
+                -Wdisabled-optimization
+                -Wno-unused-parameter
+                -Wno-parentheses
+                -Wno-variadic-macro-arguments-omitted
             >
         )
     endif()
@@ -94,6 +127,10 @@ if(TD_BUILD_EXAMPLE OR TD_BUILD_TEST)
     endif()
 
     if(TD_BUILD_TEST)
-        add_subdirectory(tests)
+        if(TD_TYPE_DEBUG)
+            add_subdirectory(tests)
+        else() 
+            message(FATAL_ERROR "Tests required to be built with Debug or RelWithDebInfo")
+        endif()
     endif()
 endif()

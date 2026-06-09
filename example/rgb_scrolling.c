@@ -1,6 +1,5 @@
+#include <stdio.h>
 #include <math.h>               // sin
-#include <string.h>             // strlen
-#include <stdlib.h>             // free
 
 #include <td_main.h>
 // #include <td_font.h>
@@ -20,9 +19,9 @@ int main(int argc, char** argv)
 
     td_window_t *window = 0;
     td_renderer_t *renderer = 0;
-    double target_dt = 0.0, dt = 0.0;
+    td_u64 target_dt = 0.0, dt = 0.0;
     double elapsed = 0.0;
-    double last_log = 0.0;
+    td_u64 last_log = 0.0;
 
     param = exu_parse_args(argc, argv, 
         custom_args, 1, 0
@@ -37,10 +36,9 @@ int main(int argc, char** argv)
             return 0;
     }
  
-    if (td_init() != TD_ERR_OK || start_logging("statics.txt"))
+    if (td_init() != TD_ERR_OK)
         return 1;
  
-    use_params(&param);
     window = td_window_create(
             param.pos.x, param.pos.y, 
             param.size.x, param.size.y, param.rotation, 
@@ -63,19 +61,16 @@ int main(int argc, char** argv)
     td_vtx_attr_t attribs[] = { TDVA_POSITION_2D, TDVA_UV_COORDS};
     td_font* font = td_default_font((td_rgba){255, 255, 255, 255}, (td_rgba){0});
 */
-    target_dt = 1.0 / param.max_fps;
-    last_log = get_time();
+    target_dt = 1000 / 60;
     while (!td_window_should_close(window)) 
     {
-        double frame_start = 0.0;
-        double fps = 0.0;
+        td_u64 frame_start = 0;
         td_u8 r = 0, g = 0, b = 0;
         char fps_string[64] = {0};
 
-        frame_start = get_time();
-        fps = (dt > 0) ? (1.0 / dt) : 0.0;
+        frame_start = td_get_performance_counter();
 
-        td_poll_events(window);
+        td_poll_events();
 
         r = (sin(elapsed) + 1) * 127.5;
         g = (sin(elapsed + (2 * M_PI / 3)) + 1) * 127.5;
@@ -84,9 +79,6 @@ int main(int argc, char** argv)
         td_renderer_set_draw_color(renderer, r, g, b, 255);
 
         td_renderer_clear(renderer);
-
-        snprintf(fps_string, sizeof(fps_string), 
-                "%.2f FPS", fps);
 /*
         td_texture_t *texture =
             td_render_string(font, string, strlen(string));
@@ -107,15 +99,10 @@ int main(int argc, char** argv)
         td_texture_destroy(texture);
 */
         td_window_present(window);
-        elapsed += dt * speed;
+        elapsed += ((double)dt / 1000.0) * speed;
 
-        while ((dt = get_time() - frame_start) < target_dt)
+        while ((dt = td_get_performance_counter() - frame_start) < target_dt)
             ;
-        if (frame_start - last_log >= LOG_INTERVAL) 
-        {
-            write_log("FPS: %s", fps);
-            last_log = get_time();
-        }
     }
 
 cleanup:
@@ -123,6 +110,5 @@ cleanup:
     td_window_destroy(window);
 //    td_destroy_font(font);
     td_quit();
-    stop_logging();
     return 0;
 }

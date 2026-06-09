@@ -8,14 +8,14 @@ typedef struct td_texture td_texture_t;
 
 typedef struct tdp_vertex
 {
-    td_ivec2 pos;
+    td_vec4 pos;
     td_f32 depth;
     td_rgba color;
     td_vec2 uv;
 } tdp_vertex_t;
 
 void tdp_rasterize_line(const td_texture_t* fb,
-                        td_f32* depth_buf,
+                        td_i32* depth_buf,
                         const tdp_vertex_t p1,
                         const tdp_vertex_t p2);
 

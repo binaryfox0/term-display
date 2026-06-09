@@ -10,7 +10,6 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-    window = &tdp_ctx->window;
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
@@ -62,14 +61,47 @@ td_window_t *td_window_create(
         const td_window_flags_t flags
 );
 
-/**
- * @brief Clear the terminal screen, not framebuffer
- */
-td_error_t td_window_clear(td_window_t *window);
+td_error_t td_window_resize(
+        td_window_t *window,
+        const td_ivec2 logical_size);
+
+td_error_t td_window_set_position(
+        td_window_t *window,
+        const td_i32 x,
+        const td_i32 y);
+
+td_error_t td_window_set_size(
+        td_window_t *window,
+        const td_i32 width,
+        const td_i32 height);
+
+td_error_t td_window_set_orientation(
+        td_window_t *window,
+        const td_i32 orientation);
+
+td_error_t td_window_set_resizable(
+        td_window_t *window,
+        const td_bool resizable);
 
 td_error_t td_window_set_should_close(
         td_window_t *window,
         const td_bool should_close);
+
+td_window_flags_t td_window_get_flags(
+        td_window_t *window);
+
+td_error_t td_window_get_position(
+        td_window_t *window,
+        td_i32 *x,
+        td_i32 *y);
+
+td_error_t td_window_get_size(
+        td_window_t *window,
+        td_i32 *width,
+        td_i32 *height);
+
+td_i32 td_window_get_orientation(
+        td_window_t *window);
 
 td_bool td_window_should_close(
         td_window_t *window);

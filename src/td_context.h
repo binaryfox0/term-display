@@ -3,19 +3,9 @@
 
 #include <td_def.h>
 #include <td_error.h>
-#include <td_option.h>
 
-#include <td_window.h>
-#include <td_event.h>
 #include <td_renderer.h>
-
 #include "td_debug.h"
-
-#define TDP_INVOKE_CALLBACK(type, ...) \
-    event->TDP_CALLBACK_NAME(type)(__VA_ARGS__)
-
-
-typedef struct td_texture td_texture_t;
 
 #ifdef TD_BUILD_DEBUG
 typedef struct tdp_debug_context
@@ -27,7 +17,9 @@ typedef struct tdp_debug_context
 typedef struct tdp_context
 {
     TDP_DEBUG_DEFINE(tdp_debug_context_t debug);
-
+    td_error_t last_error;
+    td_u64 init_ts;
+    td_window_t *window;
 } tdp_context_t;
 
 extern tdp_context_t *tdp_ctx;

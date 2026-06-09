@@ -32,15 +32,10 @@ typedef struct td_texture td_texture_t;
 typedef struct td_window td_window_t;
 typedef struct td_renderer td_renderer_t;
 
-typedef enum td_vtx_attr 
+typedef enum td_renderer_mode
 {
-    TDVA_POSITION_4D,
-    TDVA_POSITION_3D,
-    TDVA_POSITION_2D,
-    TDVA_COLOR_RGBA,
-    TDVA_COLOR_RGB,
-    TDVA_UV_COORDS
-} td_vtx_attr_t;
+    TD_RENDERER_TRIANGLE
+} td_renderer_mode_t;
 
 td_renderer_t *td_renderer_create(
         td_window_t *window);
@@ -94,11 +89,24 @@ td_error_t td_renderer_copy_raw(
 /**
  */
 td_error_t td_renderer_bind_texture(const td_texture_t* tex);
-td_error_t td_add_vertex(
-        const td_f32 *vertex, 
-        const td_vtx_attr_t* vertex_attribs, 
-        const int attribs_count, 
-        const td_bool finalize);
+td_error_t td_renderer_begin(const td_renderer_mode_t mode);
+td_error_t td_renderer_end(void);
+
+td_error_t td_renderer_tex_coord_2f(
+        td_renderer_t *renderer,
+        const td_f32 s,
+        const td_f32 t);
+
+td_error_t td_renderer_vertex_2f(
+        td_renderer_t *renderer,
+        const td_f32 x,
+        const td_f32 y);
+
+td_error_t td_renderer_vertex_3f(
+        td_renderer_t *renderer,
+        const td_f32 x,
+        const td_f32 y,
+        const td_f32 z);
 
 void td_renderer_destroy(td_renderer_t *renderer);
 

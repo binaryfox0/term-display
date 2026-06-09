@@ -24,8 +24,6 @@ SOFTWARE.
 
 #include "td_term.h"
 
-#define _POSIX_C_SOURCE 200809L
-
 #include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
@@ -38,17 +36,20 @@ SOFTWARE.
 
 static struct termios old = {0}, cur = {0};
 static struct pollfd pfd = {.events = POLLIN,.fd = STDIN_FILENO };
-
 TD_INLINE void tdp_set_sighand(
         const int signal, const tdp_sighand_t handle)
 {
-#ifdef _POSIX_VERSION
     struct sigaction sa = {.sa_flags = SA_SIGINFO,.sa_handler = handle };
     sigemptyset(&sa.sa_mask);
     sigaction(signal, &sa, 0);
-#else
-    signal(type, handler);
-#endif
+}
+
+static void tdp_reset_term(int signum)
+{
+    (void)signum;
+    tdp_term_exit();
+    tdp_set_sighand(SIGTERM, SIG_DFL);
+    raise(SIGTERM);
 }
 
 td_error_t tdp_term_init(void)
@@ -57,10 +58,16 @@ td_error_t tdp_term_init(void)
         return TD_ERR_GENERIC;
 
     cur = old;
-    cur.c_lflag &= (td_u32)(~(ICANON | ECHO));
+    cur.c_lflag &= (td_u32)(~(ICANON | ECHO | ISIG));
 
     if (tcsetattr(STDIN_FILENO, TCSANOW, &cur) == -1)
         return TD_ERR_GENERIC;
+   
+    tdp_set_sighand(SIGTERM, tdp_reset_term);
+
+    tdp_tty_write(
+            "\x1b[?25l"
+            "\x1b[?1049h");
 
     return TD_ERR_OK;
 }
@@ -115,7 +122,17 @@ td_error_t tdp_term_toggle_stop(const td_bool enable)
 
 void tdp_term_exit(void)
 {
+    tdp_tty_write(
+            "\x1b[0m"
+            "\x1b[?1049l"
+            "\x1b[?25h");
+    tdp_tty_write(
+            "\x1b[?1000l"
+            "\x1b[?1003l"
+            "\x1b[?1006l"
+    );
     tcsetattr(STDIN_FILENO, TCSANOW, &old);
+    tdp_set_sighand(SIGTERM, SIG_DFL);
     tdp_term_set_stop_handle(0);
 }
 

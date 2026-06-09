@@ -46,18 +46,6 @@ SOFTWARE.
         .a = (td_u8)(((col)      ) & 0xFF)             \
     })
 
-/**
- * @def IN_RANGE(value, first, last)
- * @brief Checks if a value lies within an inclusive range.
- */
-#define IN_RANGE(value, first, last) ((first) <= (value) && (value) <= (last))
-
-/**
- * @def OUT_RANGE(value, first, last)
- * @brief Checks if a value lies outside an inclusive range.
- */
-#define OUT_RANGE(value, first, last) ((value) < (first) || (value) > (last))
-
 // Platform detection
 #if defined(_WIN64) || defined(_WIN32)
     /**
@@ -200,6 +188,18 @@ typedef union
     };
     td_i32 raw[3];
 } td_ivec3;
+
+typedef union 
+{
+    struct
+    {
+        td_f32 x;
+        td_f32 y;
+        td_f32 z;
+        td_f32 w;
+    };
+    td_f32 raw[4];
+} td_vec4;
 
 typedef union 
 {

@@ -1,5 +1,5 @@
-#ifndef TD_PRIVATE_H
-#define TD_PRIVATE_H
+#ifndef TD_PRIV_H
+#define TD_PRIV_H
 
 #include <td_def.h>
 
@@ -15,7 +15,7 @@
 #       define STDOUT_FILENO _fileno(stdout)
 #   endif
 
-#   define _pread _read
+#   define tdp_read _read
 #   define tdp_write _write
 #   define _pisatty _isatty
 
@@ -24,8 +24,10 @@ typedef BOOL (*tdp_sighand)(DWORD);
 #elif defined(TD_PLATFORM_UNIX)
 #   include <unistd.h>
 
-#   define _pread read
-#   define tdp_tty_write(buf) write(STDOUT_FILENO, (buf), sizeof((buf)) - 1)
+#   define tdp_tty_read(buf, size) \
+        read(STDIN_FILENO, (buf), (size))
+#   define tdp_tty_write(buf) \
+        write(STDOUT_FILENO, (buf), sizeof((buf)) - 1)
 #   define _pisatty isatty
 
 typedef void (*tdp_sighand_t)(int);
@@ -33,6 +35,11 @@ typedef void (*tdp_sighand_t)(int);
 #else
 #   error "term-display haven't added support for this platform"
 #endif
+
+#define TDP_IN_RANGE(value, first, last) \
+    ((first) <= (value) && (value) <= (last))
+#define TDP_OUT_RANGE(value, first, last) \
+    ((value) < (first) || (value) > (last))
 
 #define TDP_SWAP(a, b, type) \
     do { \
@@ -43,16 +50,12 @@ typedef void (*tdp_sighand_t)(int);
 
 #define TDP_ARRSZ(arr) \
     (sizeof((arr)) / sizeof((arr)[0]))
+#define TDP_SET_BIT(value, index, flag) \
+    ((flag) ? ((value) |= (1ULL << (index))) : ((value) &= ~(1ULL << (index))))
 
-TD_INLINE td_i32 tdp_min(const td_i32 x, const td_i32 y)
-{
-    return x < y ? x : y;
-}
-
-TD_INLINE td_i32 tdp_max(const td_i32 x, const td_i32 y)
-{
-    return x > y ? x : y;
-}
+#define TDP_MIN(x, y) ((x) < (y) ? (x) : (y))
+#define TDP_MAX(x, y) ((x) > (y) ? (x) : (y))
+#define TDP_ABS(x) ((x) < 0 ? -(x) : (x))
 
 TD_INLINE td_i32 tdp_floor(const float x) {
     return (td_i32)x;
@@ -99,8 +102,6 @@ TD_INLINE td_u8 bilerp(
 TD_INLINE td_u8 to_grayscale(const td_u8 *c){
     return (td_u8)((77 * c[0] + 150 * c[1] + 29 * c[2]) >> 8);
 }
-void tdp_kbpoll(void);
-
 
 void tdp_fill_buffer(
         void* dest, 

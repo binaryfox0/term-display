@@ -2,28 +2,19 @@
 
 #include <ctype.h>
 
-#include "td_def.h"
-#include "td_utils.h"
+#include "td_rbuf.h"
+#include "td_window_priv.h"
+#include "td_term.h"
 
 #define tdp_raise(name, ...) \
-    if(tdp_cb.name) (tdp_cb.name)(__VA_ARGS__)
-
-#define tdp_define_setter(name) \
-    void __td_cat(__td_cat(td_set_, name), _callback)(const __td_cat(__td_cat(td_, name), _callback) callback) { \
-        tdp_cb.name = callback; \
-    }
+    if(TDP_CALLBACK_NAME(name)) \
+        TDP_CALLBACK_NAME(name)(window, __VA_ARGS__)
 
 typedef struct tdp_keymap_entry
 {
     td_u16 key;
     td_u8 mod;
 } tdp_keymap_entry;
-
-typedef struct {
-    td_key_callback_t key;
-    td_mouse_button_callback mouse_button;
-    td_cursor_pos_callback cursor_pos;
-} tdp_input_callback;
 
 static const tdp_keymap_entry tdp_keymap[(1 << (sizeof(td_u8) * 8))] = 
 {
@@ -134,7 +125,6 @@ static const tdp_keymap_entry tdp_keymap[(1 << (sizeof(td_u8) * 8))] =
     ['h']  = { TD_KEY_H,             TD_MOD_NONE },
     ['i']  = { TD_KEY_I,             TD_MOD_NONE },
     ['j']  = { TD_KEY_J,             TD_MOD_NONE },
-    :
     ['k']  = { TD_KEY_K,             TD_MOD_NONE },
     ['l']  = { TD_KEY_L,             TD_MOD_NONE },
     ['m']  = { TD_KEY_M,             TD_MOD_NONE },
@@ -158,10 +148,8 @@ static const tdp_keymap_entry tdp_keymap[(1 << (sizeof(td_u8) * 8))] =
     [0x7F] = { TD_KEY_BACKSPACE,     TD_MOD_NONE }
 };
 
-static tdp_input_callback tdp_cb = {0};
-
 td_bool tdp_shift_translate = TD_TRUE;
-td_bool tdp_handle_single_byte(
+static td_bool tdp_handle_single_byte(
         const td_i32 byte, td_key_token_t *ch, 
         td_key_mod_t *mods
 )
@@ -185,19 +173,20 @@ td_bool tdp_handle_single_byte(
 // Handle navigation keys (Arrow keys, Home, End)
 TD_INLINE td_bool tdp_handle_nav_key(const td_i32 byte, td_key_token_t *ch)
 {
-    switch (byte) {
-    case 'A': *ch = TD_KEY_UP; break;
-    case 'B': *ch = TD_KEY_DOWN; break;
-    case 'C': *ch = TD_KEY_RIGHT; break;
-    case 'D': *ch = TD_KEY_LEFT; break;
-    case 'H': *ch = TD_KEY_HOME; break;
-    case 'F': *ch = TD_KEY_END; break;
-    case '2': *ch = TD_KEY_INSERT; break;
-    case '3': *ch = TD_KEY_DELETE; break;
-    case '5': *ch = TD_KEY_PAGE_UP; break;
-    case '6': *ch = TD_KEY_PAGE_DOWN; break;
-    default:
-        return TD_FALSE;
+    switch (byte)      
+    {
+        case 'A': *ch = TD_KEY_UP; break;
+        case 'B': *ch = TD_KEY_DOWN; break;
+        case 'C': *ch = TD_KEY_RIGHT; break;
+        case 'D': *ch = TD_KEY_LEFT; break;
+        case 'H': *ch = TD_KEY_HOME; break;
+        case 'F': *ch = TD_KEY_END; break;
+        case '2': *ch = TD_KEY_INSERT; break;
+        case '3': *ch = TD_KEY_DELETE; break;
+        case '5': *ch = TD_KEY_PAGE_UP; break;
+        case '6': *ch = TD_KEY_PAGE_DOWN; break;
+        default:
+            return TD_FALSE;
     }
     return TD_TRUE;
 }
@@ -205,7 +194,7 @@ TD_INLINE td_bool tdp_handle_nav_key(const td_i32 byte, td_key_token_t *ch)
 TD_INLINE td_bool tdp_handle_f5_below(const td_i32 byte, td_key_token_t *ch)
 {
     td_i32 tmp = 0;
-    if (OUT_RANGE
+    if (TDP_OUT_RANGE
         ((tmp = byte - 'P' + TD_KEY_F1), TD_KEY_F1, TD_KEY_F4))
         return TD_FALSE;
     *ch = (td_key_token_t)tmp;
@@ -215,24 +204,28 @@ TD_INLINE td_bool tdp_handle_f5_below(const td_i32 byte, td_key_token_t *ch)
 TD_INLINE td_bool tdp_handle_f5_above(
         const td_i32 first, const td_i32 second, td_key_token_t *ch)
 {
-    if (first == '1') {
-        switch (second) {
-        case '5': *ch = TD_KEY_F5; break;
-        case '7': *ch = TD_KEY_F6; break;
-        case '8': *ch = TD_KEY_F7; break;
-        case '9': *ch = TD_KEY_F8; break;
-        default: return TD_FALSE;
+    if (first == '1') 
+    {
+        switch (second) 
+        {
+            case '5': *ch = TD_KEY_F5; break;
+            case '7': *ch = TD_KEY_F6; break;
+            case '8': *ch = TD_KEY_F7; break;
+            case '9': *ch = TD_KEY_F8; break;
+            default: return TD_FALSE;
         }
     } else if (first == '2') {
-        switch (second) {
-        case '0': *ch = TD_KEY_F9;  break;
-        case '1': *ch = TD_KEY_F10; break;
-        case '3': *ch = TD_KEY_F11; break;
-        case '4': *ch = TD_KEY_F12; break;
-        default: return TD_FALSE;
+        switch (second) 
+        {
+            case '0': *ch = TD_KEY_F9;  break;
+            case '1': *ch = TD_KEY_F10; break;
+            case '3': *ch = TD_KEY_F11; break;
+            case '4': *ch = TD_KEY_F12; break;
+            default: return TD_FALSE;
         }
-    } else
+    } else {
         return TD_FALSE;
+    }
     return TD_TRUE;
 }
 
@@ -251,65 +244,8 @@ TD_INLINE td_bool tdp_handle_combo(const int byte, td_key_mod_t *mods)
     return TD_TRUE;
 }
 
-#define BUF_SIZE 256  // physical buffer size
-typedef struct {
-    char buffer[BUF_SIZE];        // physical storage
-    int start_idx;          // logical index of buffer[0]
-    int count;              // number of valid elements in buffer
-} tdp_ringbuf;
 
-static int tdp_kbbyte_available = 0;
-// Access by logical index
-int tdp_rbuf_get(tdp_ringbuf* rb, int index) {
-    // If buffer empty, fill first chunk
-    if (rb->count == 0) {
-        int n = (int)_pread(STDIN_FILENO, rb->buffer, 
-                (size_t)tdp_min(tdp_kbbyte_available, BUF_SIZE));
-        if (n == 0) return -1;  // no data
-        
-        rb->start_idx = index;
-        rb->count = n;
-        tdp_kbbyte_available -= n;
-
-        return rb->buffer[0];
-    }
-
-    int end_idx = rb->start_idx + rb->count - 1;
-
-    if (rb->count > 0 && index < rb->start_idx) return -1; // too old
-
-    // If index beyond current buffer, refill
-    while (index > end_idx) {
-        char tmp[BUF_SIZE] = {0};
-
-        if(index - end_idx > tdp_kbbyte_available) return -1;
-        int n = (int)read(STDIN_FILENO, tmp, 
-                (size_t)tdp_min(tdp_kbbyte_available, BUF_SIZE));
-        if (n == 0) return -1;  // no more data
-
-        // Copy into circular buffer
-        for (int i = 0; i < n; i++) {
-            int pos = (rb->start_idx + rb->count + i) % BUF_SIZE;
-            rb->buffer[pos] = tmp[i];
-        }
-
-        // Update count and start_idx if buffer exceeded
-        if (rb->count + n > BUF_SIZE) {
-            rb->start_idx += (rb->count + n - BUF_SIZE);
-            rb->count = BUF_SIZE;
-        } else {
-            rb->count += n;
-        }
-
-        end_idx = rb->start_idx + rb->count - 1;
-        tdp_kbbyte_available -= n;
-    }
-
-    int phys = (index - rb->start_idx) % BUF_SIZE;
-    return rb->buffer[phys];
-}
-
-int tdp_stoi(tdp_ringbuf* rb, int *idx)
+static int tdp_stoi(tdp_rbuf_t* rb, int *idx)
 {
     int out = 0;
     int c = 0;
@@ -324,15 +260,46 @@ int tdp_stoi(tdp_ringbuf* rb, int *idx)
     return out;
 }
 
-void tdp_kbpoll(void)
+static int tdp_stdin_read_callback(
+        void *userdata,
+        char *buf,
+        int size)
 {
+    int *available = (int*)userdata;
+    int want = 0;
+    int n = 0;
+    if (*available <= 0)
+        return 0;
+
+    want = size;
+    if (want > *available)
+        want = *available;
+
+    n = (int)tdp_tty_read(buf, (size_t)want);
+    if (n > 0)
+        *available -= n;
+
+    return n;
+}
+
+void tdp_poll_input(
+        td_window_t *window,
+        TDP_DEFINE_CALLBACK_VAR(key),
+        TDP_DEFINE_CALLBACK_VAR(mouse_button),
+        TDP_DEFINE_CALLBACK_VAR(cursor_pos))
+{
+    td_i32 available = 0;
+    tdp_rbuf_t input_buf = {0};
+    td_i32 input_ptr = 0;
      if (!tdp_term_stdin_ready(0))
          return;
-     if ((tdp_kbbyte_available = tdp_stdin_available()) < 1)
+     available = tdp_term_stdin_available();
+     if(available < 0)
          return;
 
-    tdp_ringbuf input_buf = {0};
-    td_i32 input_ptr = 0;
+     input_buf.read_cb = tdp_stdin_read_callback;
+     input_buf.userdata = &available;
+(void)mouse_button_callback;
     for(;;)
     {
         int probe = input_ptr;
@@ -439,18 +406,19 @@ void tdp_kbpoll(void)
         }
 
 
-        if (b2 == '<') {
+        if (b2 == '<') 
+        {
             probe += 3;
             int b = tdp_stoi(&input_buf, &probe);
             if (tdp_rbuf_get(&input_buf, probe++) != ';')
                 goto fallback;
 
             int x = (tdp_stoi(&input_buf, &probe) - 1) /
-                     tdp_options[TD_OPT_PIXEL_WIDTH];
+                     window->pix_size.x;
             probe++; /* ; */
 
             int y = (tdp_stoi(&input_buf, &probe) - 1) /
-                     tdp_options[TD_OPT_PIXEL_HEIGHT];
+                     window->pix_size.y;
 
             int type = tdp_rbuf_get(&input_buf, probe++);
             if (type == -1)
@@ -458,6 +426,7 @@ void tdp_kbpoll(void)
 
             input_ptr = probe;
             tdp_raise(cursor_pos, x, y);
+            (void)b;
             continue;
         }
 
@@ -467,6 +436,3 @@ fallback:
     }
 }
 
-tdp_define_setter(key)
-tdp_define_setter(mouse_button)
-tdp_define_setter(cursor_pos)

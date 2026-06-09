@@ -13,16 +13,17 @@
 #include "td_window_priv.h"
 #include "td_rasterizer.h"
 
+
 TD_INLINE td_rgba tdp_query_background(void)
 {
     char r[5] = {0}, b[5] = {0}, g[5] = {0};
+    char buffer[32] = {0};
     td_rgba out = {0};
 
     tdp_tty_write("\x1b]11;?\x1b\\");
-    if (!tdp_term_stdin_ready(4))
+    if (!tdp_term_stdin_ready(32))
         return out;
-    char buffer[32] = { 0 };
-    if (_pread(STDIN_FILENO, buffer, 32) == -1)
+    if (tdp_tty_read(buffer, sizeof(buffer) - 1) == -1)
         return out;
     if (sscanf(buffer, "\x1B]11;rgb:%4[^/]/%4[^/]/%4[^;]", r, g, b) != 3)
         return out;
@@ -36,10 +37,6 @@ TD_INLINE td_rgba tdp_query_background(void)
 td_renderer_t *td_renderer_create(td_window_t *window)
 {
     td_renderer_t *renderer = 0;
-    td_ivec2 size = {0};
-    td_ivec2 term_size = {0};
-    td_ivec2 logical_size = {0};
-
     if(!window)
         return 0;
 
@@ -55,6 +52,7 @@ td_renderer_t *td_renderer_create(td_window_t *window)
         free(renderer);
         return 0;
     }
+    renderer->term_col = tdp_query_background();
 
     tdp_window_update_bound(window);
 
@@ -87,15 +85,20 @@ td_error_t tdp_resize_depth_buffer(const td_ivec2 new_size)
     renderer->depth_buf = tmp;
     return TD_ERR_OK;
 }
+*/
 
-td_error_t tdp_renderer_resize(const td_ivec2 logical_size)
+td_error_t tdp_renderer_resize(
+        td_renderer_t *renderer,
+        const td_ivec2 logical_size)
 {
-    tdp_renderer_context_t *renderer = &tdp_ctx->renderer;
     td_error_t err = TD_ERR_OK;
+    if(!renderer)
+        return TD_ERR_OK;
+
     err = td_texture_resize_buffer(renderer->fb, logical_size);
     if(err != TD_ERR_OK)
         return err; 
-    err = tdp_resize_depth_buffer(logical_size);
+//    err = tdp_resize_depth_buffer(logical_size);
     if(err != TD_ERR_OK)
     {
         // shrink in order not to nake rasterizer confuse
@@ -106,7 +109,7 @@ td_error_t tdp_renderer_resize(const td_ivec2 logical_size)
         renderer->size = logical_size;
     return TD_ERR_OK;
 }
-
+/*
 td_error_t tdp_renderer_init(void)
 {
     tdp_renderer_context_t *renderer = &tdp_ctx->renderer;
@@ -199,7 +202,7 @@ td_error_t td_renderer_draw_point(
 }
 
 // Liang-Barsky line clipping algorithm
-td_error_t tdp_clip_line(
+static td_error_t tdp_clip_line(
         td_ivec2 *p1, td_ivec2 *p2,
         const td_ivec2 size)
 {
@@ -252,6 +255,45 @@ td_error_t td_renderer_draw_line(
     const td_i32 x1, const td_i32 y1,
     const td_i32 x2, const td_i32 y2)
 {
+    tdp_vertex_t p1 = {0};
+    tdp_vertex_t p2 = {0};
+    if (!renderer) 
+        return TD_ERR_INVALID_ARG;
+
+    // 1. Temporary screen vectors for the 2D clipper
+    td_ivec2 screen_p1 = { .x = x1, .y = y1 };
+    td_ivec2 screen_p2 = { .x = x2, .y = y2 };
+
+    // 2. Clip them directly in 2D space so the loop doesn't explode
+    // (Assuming tdp_clip_line returns a boolean or handles visibility checks)
+    tdp_clip_line(&screen_p1, &screen_p2, renderer->fb->size);
+
+    p1.color = renderer->color;
+    p2.color = renderer->color;
+
+    td_f32 w = (td_f32)renderer->fb->size.x;
+    td_f32 h = (td_f32)renderer->fb->size.y;
+
+    p1.pos.x = (2.0f * (td_f32)screen_p1.x / w) - 1.0f;
+    p1.pos.y = (2.0f * (td_f32)screen_p1.y / h) - 1.0f;
+    p1.pos.z = 0.0f;
+    p1.pos.w = 1.0f; 
+
+    p2.pos.x = (2.0f * (td_f32)screen_p2.x / w) - 1.0f;
+    p2.pos.y = (2.0f * (td_f32)screen_p2.y / h) - 1.0f;
+    p2.pos.z = 0.0f;
+    p2.pos.w = 1.0f;
+
+    tdp_rasterize_line(renderer->fb, 0, p1, p2);
+
+    return TD_ERR_OK;
+}
+/*
+td_error_t td_renderer_draw_line(
+    td_renderer_t *renderer,
+    const td_i32 x1, const td_i32 y1,
+    const td_i32 x2, const td_i32 y2)
+{
     td_i32 w = 0, h = 0;
     tdp_vertex_t p1 = {0}, p2 = {0};
     if (!renderer)
@@ -271,7 +313,7 @@ td_error_t td_renderer_draw_line(
 
     tdp_rasterize_line(renderer->fb, 0, p1, p2);
     return TD_ERR_OK;
-}
+}*/
 
 /*
 td_error_t td_draw_rect(
@@ -325,20 +367,35 @@ td_error_t td_renderer_copy_raw(
 }
 
 
-td_error_t td_renderer_copy(
-        const td_texture_t* texture, 
-        const td_irect src_rect,
-        const td_irect dst_rect)
+#define TDP_GET_VTX(renderer) ((renderer)->vtx_buf[(renderer)->vtx_idx])
+td_error_t td_renderer_tex_coord_2f(
+        td_renderer_t *renderer,
+        const td_f32 s,
+        const td_f32 t)
 {
-    (void)texture;
-    (void)src_rect;
-    (void)dst_rect;
-    /*
-    td_texture_merge(tdp_ctx->renderer.fb, tex, 
-            placement_pos,TD_FALSE);
-    */
+    if(!renderer)
+        return TD_ERR_INVALID_ARG;
+
+    TDP_GET_VTX(renderer).uv.x = s;
+    TDP_GET_VTX(renderer).uv.y = t;
     return TD_ERR_OK;
 }
+
+td_error_t td_renderer_vertex_2f(
+        td_renderer_t *renderer,
+        const td_f32 x,
+        const td_f32 y)
+{
+    if(!renderer)
+        return TD_ERR_INVALID_ARG;
+
+    (void)x;
+    (void)y;
+    
+    renderer->vtx_idx++;
+    return TD_ERR_OK;
+}
+
 /*
 td_error_t td_renderer_bind_texture(const td_texture_t *texture)
 {

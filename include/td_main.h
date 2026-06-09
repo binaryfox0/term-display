@@ -36,11 +36,13 @@ SOFTWARE.
 #define TD_MAIN_H
 
 #include <td_def.h>
+#include <td_error.h>
+#include <td_misc.h>
+#include <td_timer.h>
 #include <td_window.h>
 #include <td_event.h>
 #include <td_renderer.h>
 /*
-#include <td_event.h>
 #include <td_texture.h>
 #include <td_font.h>
 */

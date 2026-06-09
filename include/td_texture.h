@@ -62,12 +62,6 @@ typedef enum td_texture_type
     TD_TEXTURE_RGB_ALPHA
 } td_texture_type_t;
 
-typedef enum td_texture_merge_mode
-{
-    TD_TEXTURE_MERGE_BLEND = 0,
-    TD_TEXTURE_MERGE_REPLACE,
-    TD_TEXTURE_MERGE_WRAP
-} td_texture_merge_mode_t;
 /**
  * @brief Create an empty texture object.
  *
@@ -180,47 +174,6 @@ td_error_t td_texture_fill(const td_texture_t *texture,
                            const td_rgba color);
 
 /**
- * @brief Convert a texture to another pixel format.
- *
- * @param texture Texture to convert.
- * @param type Target pixel format.
- * @return Operation result.
- */
-td_error_t td_texture_convert(td_texture_t *texture,
-                              const td_texture_type_t type);
-
-/**
- * @brief Merge one texture onto another.
- *
- * `texture_b` is composited onto `texture_a`.
- *
- * @param texture_a Destination texture.
- * @param texture_b Source texture.
- * @param placement_pos Position of `texture_b` within `texture_a`.
- * @param replace Whether to overwrite destination pixels directly.
- * @return Operation result.
- */
-td_error_t td_texture_merge(const td_texture_t *texture_a,
-                            const td_texture_t *texture_b,
-                            const td_irect src_rect,
-                            const td_irect dst_rect,
-                            const td_texture_merge_mode_t mode);
-
-/**
- * @brief Resize a texture using bilinear interpolation.
- *
- * Scales the texture contents to the requested dimensions using bilinear
- * filtering. Pixel data is resampled to preserve image quality during the
- * resize operation.
- *
- * @param texture Texture to resize.
- * @param new_size Target texture dimensions.
- * @return Operation result.
- */
-td_error_t td_texture_resize(td_texture_t *texture,
-                             const td_ivec2 new_size);
-
-/**
  * @brief Resize a texture buffer without resampling pixel data.
  *
  * Reallocates the internal texture buffer to match the requested dimensions.
@@ -236,30 +189,6 @@ td_error_t td_texture_resize(td_texture_t *texture,
  */
 td_error_t td_texture_resize_buffer(td_texture_t *texture,
                                     const td_ivec2 new_size);
-
-/**
- * @brief Crop a texture.
- *
- * @param texture Texture to crop.
- * @param new_size Output dimensions.
- * @return Operation result.
- */
-td_error_t td_texture_crop(td_texture_t *texture,
-                           const td_ivec2 new_size);
-
-/**
- * @brief Draw a line onto a texture.
- *
- * @param texture Target texture.
- * @param p1 Starting point.
- * @param p2 Ending point.
- * @param color Line color.
- * @return Operation result.
- */
-td_error_t td_texture_draw_line(td_texture_t *texture,
-                                const td_ivec2 p1,
-                                const td_ivec2 p2,
-                                const td_rgba color);
 
 /**
  * @brief Destroy a texture object.

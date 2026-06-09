@@ -155,7 +155,12 @@ typedef enum td_key_token
  * The callback function is called when a key event occurs, passing the key code,
  * action (press, release, or hold), and modifier keys
  */
-typedef void (*td_key_callback_t)(td_key_token_t key, td_key_action_t action, td_key_mod_t mod);
+typedef void (*td_key_callback_t)(
+        td_window_t *window,
+        td_key_token_t key, 
+        td_key_action_t action, 
+        td_key_mod_t mod
+);
 
 /**
  * @typedef td_mouse_button_callback
@@ -165,15 +170,28 @@ typedef void (*td_key_callback_t)(td_key_token_t key, td_key_action_t action, td
  * The callback function will be invoked when mouse button was pressed,
  * passing the button code, action (press, release, or hold), and modifier keys
  */
-typedef void (*td_mouse_button_callback_t)(int button, td_key_action_t actions, td_key_mod_t mods);
+typedef void (*td_mouse_button_callback_t)(
+        td_window_t *window,
+        int button, 
+        td_key_action_t actions, 
+        td_key_mod_t mods
+);
 
-typedef void (*td_cursor_pos_callback_t)(td_ivec2 pos);
+typedef void (*td_cursor_pos_callback_t)(
+        td_window_t *window,
+        td_i32 x, 
+        td_i32 y
+);
 
 TD_DEFINE_CALLBACK_SETTER(resize);
 TD_DEFINE_CALLBACK_SETTER(key);
 TD_DEFINE_CALLBACK_SETTER(mouse_button);
 TD_DEFINE_CALLBACK_SETTER(cursor_pos);
 
-td_error_t td_poll_events(td_window_t *window);
+td_error_t td_set_virtual_cursor_keybind(
+        const td_key_token_t key,
+        const td_key_mod_t mod);
+
+td_error_t td_poll_events(void);
 
 #endif
