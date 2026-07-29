@@ -17,6 +17,9 @@ endif()
 example_projects(rgb_scrolling)
 target_add_asan(rgb_scrolling)
 
+example_projects(triangle)
+target_add_asan(triangle)
+
 # example_projects(image_display)
 # target_include_directories(image_display PRIVATE deps/include/)
 # 
@@ -28,14 +31,14 @@ target_add_asan(rgb_scrolling)
 # 
 # example_projects(multiline_text)
 # target_link_libraries(multiline_text PRIVATE m)
-# 
+
 # set(EXTRA "cglm")
 # if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/deps/cglm/include")
 #     example_projects(cube)
 #     add_subdirectory(deps/cglm)
 #     target_link_libraries(cube PRIVATE cglm m)
 # endif()
-# 
+
 # if(UNIX)
 #     set(EXTRA "m")
 # endif()

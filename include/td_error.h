@@ -10,7 +10,7 @@ typedef enum td_error
     TD_ERR_NOT_TERMINAL,
     TD_ERR_NOT_INITIALIZED,
     TD_ERR_OUT_OF_MEMORY,
-    TD_ERR_INVALID_ARG,
+    TD_ERR_PARAM,
     TD_ERR_EXISTED,
     __TD_ERR_MAX__
 } td_error_t;

@@ -51,23 +51,23 @@ typedef struct td_font td_font;
  *
  * @return Pointer to a newly allocated font, or NULL on failure.
  */
-td_font* td_create_font(void);
+td_font* td_font_create(void);
 
 /**
- * @brief Create a default font with predefined colors.
+ * @brief Create font from builtin template
  *
  * @param foreground Default text color.
  * @param background Default background color.
  * @return Pointer to initialized font instance.
  */
-td_font* td_default_font(const td_rgba foreground, const td_rgba background);
+td_font* td_font_builtin(const td_rgba foreground, const td_rgba background);
 
 /**
  * @brief Destroy and free a font object.
  *
  * @param font Font instance to destroy.
  */
-void td_destroy_font(td_font* font);
+void td_font_destroy(td_font* font);
 
 /**
  * @brief Insert a glyph texture into the font atlas.
@@ -105,7 +105,7 @@ td_ivec2 td_calc_text_size(const td_font *font, const char *str, const td_u64 st
  * @param ch Unicode codepoint of the character.
  * @return Newly allocated texture containing rendered glyph.
  */
-td_texture_t *td_render_char(const td_font* font, const td_i32 ch);
+td_texture_t *td_font_get_char(const td_font* font, const td_i32 ch);
 
 /**
  * @brief Render a string into an existing texture buffer.

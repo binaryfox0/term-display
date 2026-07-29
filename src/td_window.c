@@ -120,7 +120,7 @@ td_error_t td_window_resize(
             logical_size.x <= 0 ||
             logical_size.y <= 0
     )
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     err = tdp_renderer_resize(window->renderer, logical_size);
     if(err != TD_ERR_OK)
@@ -138,7 +138,7 @@ td_error_t td_window_set_size(
 {
     td_error_t err = TD_ERR_OK;
     if(!window || width <= 0 || height <= 0)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     
     err = tdp_renderer_resize(window->renderer, (td_ivec2){.x=width, .y=height});
     if(err != TD_ERR_OK)
@@ -157,7 +157,7 @@ td_error_t td_window_set_position(
         const td_i32 y)
 {
     if(!window)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     window->rect.x = x;
     window->rect.y = y;
@@ -173,7 +173,7 @@ td_error_t td_window_set_orientation(
     td_error_t err = TD_ERR_OK;
     td_ivec2 new_size = {0};
     if(!window)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     if((window->orientation % 2) == (orientation % 2))
         return TD_ERR_OK;
     // swap
@@ -195,7 +195,7 @@ td_error_t td_window_set_resizable(
         const td_bool resizable)
 {
     if(!window)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     if(resizable)
         window->flags |= TD_WINDOW_RESIZABLE;
     else
@@ -208,7 +208,7 @@ td_error_t td_window_set_should_close(
         const td_bool should_close)
 {
     if(!window)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     window->should_close = should_close;
     return TD_ERR_OK;
 }
@@ -224,7 +224,7 @@ td_error_t td_window_get_position(
         td_i32 *y)
 {
     if(!window || !x || !y)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     *x = window->rect.x;
     *y = window->rect.y;
@@ -238,7 +238,7 @@ td_error_t td_window_get_size(
         td_i32 *height)
 {
     if(!window || !width || !height)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     *width = window->rect.w;
     *height = window->rect.h;
@@ -258,7 +258,7 @@ td_bool td_window_should_close(
     return window ? window->should_close : TD_FALSE;
 }
 
-TD_INLINE void tdp_display_cell(
+TD_INLINE void tdp_change_color(
         const td_u8 *c,
         const td_color_mode_t cm)
 {
@@ -307,7 +307,7 @@ td_error_t td_window_present(td_window_t *window)
 
     
     if(!window)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     renderer = window->renderer;
     rot = window->orientation;
@@ -331,6 +331,7 @@ td_error_t td_window_present(td_window_t *window)
         {
             td_u8 *row_ptr = 0;
             int dx = 0;
+            int pix_count = 0;
 
             printf("\x1b[%d;%dH",
                    term_y_base + yt,
@@ -370,16 +371,26 @@ td_error_t td_window_present(td_window_t *window)
             }
 
             row_ptr += dx * xstart;
+            memcpy(prev, row_ptr, (size_t)ch);
             for (int x = xstart; x < xend; x++) 
             {
-                if (memcmp(prev, row_ptr, (size_t)ch) != 0) 
+                if(memcmp(prev, row_ptr, (size_t)ch) != 0) 
                 {
-                    tdp_display_cell(row_ptr, window->color_mode);
+                    tdp_change_color(prev, window->color_mode);
+                    printf("%*s", px_w * pix_count, "");
                     memcpy(prev, row_ptr, (size_t)ch);
+                    pix_count = 1;
+                } else {
+                    pix_count++;
                 }
 
-                printf("%*s", px_w, "");
                 row_ptr += dx;
+            }
+
+            if(pix_count > 0)
+            {
+                tdp_change_color(prev, window->color_mode);
+                printf("%*s", px_w * pix_count, "");
             }
         }
     }

@@ -16,7 +16,7 @@ typedef struct td_renderer
     td_f32 *depth_buf;
     td_rgba term_col;
 
-    td_rgba color;
+    td_rgba clear_color;
 
     td_renderer_mode_t current_mode;
     const td_texture_t *bound_tex;

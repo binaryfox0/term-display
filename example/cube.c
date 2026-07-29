@@ -60,30 +60,33 @@ static vec3 cameraFront = (vec3){0.0f, 0.0f, -1.0f};
 static vec3 cameraUp    = (vec3){0.0f, 1.0f,  0.0f};
 
 static double delta_time = 0.0f;
-void key_callback(td_key_token_t key, td_key_action_t action, td_key_mod_t mods)
+static void key_callback(
+        td_key_token_t key, 
+        td_key_action_t action, 
+        td_key_mod_t mods)
 {
     float cameraSpeed = 10.0f * delta_time;
     vec3 right, tmp;
 
-    if ((key == td_key_w || key == td_key_up) && 
-            action == TD_KEY_PRESS) {
+    if ((key == TD_KEY_W || key == TD_KEY_UP) && 
+            action == TD_ACTION_PRESS) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_add(cameraPos, tmp, cameraPos);
     }
-    if ((key == td_key_s || key == td_key_down) && 
-            action == TD_KEY_PRESS) {
+    if ((key == TD_KEY_S || key == TD_KEY_DOWN) && 
+            action == TD_ACTION_PRESS) {
         glm_vec3_scale(cameraFront, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
-    if ((key == td_key_a || key == td_key_left) && 
-            action == TD_KEY_PRESS) {
+    if ((key == TD_KEY_A || key == TD_KEY_LEFT) && 
+            action == TD_ACTION_PRESS) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);
         glm_vec3_sub(cameraPos, tmp, cameraPos);
     }
-    if ((key == td_key_d || key == td_key_right) &&
-            action == TD_KEY_PRESS) {
+    if ((key == TD_KEY_D || key == TD_KEY_RIGHT) &&
+            action == TD_ACTION_PRESS) {
         glm_vec3_cross(cameraFront, cameraUp, right);
         glm_vec3_normalize(right);
         glm_vec3_scale(right, cameraSpeed, tmp);
@@ -97,30 +100,32 @@ int main(int argc, char** argv)
     td_bool enable = 1;
     td_ivec2 size = { 0 };
     float out[sizeof(vertices) / sizeof(vertices[0])] = {};
-    td_font *white_font = 0, *red_font = 0;
+    //td_font *white_font = 0, *red_font = 0;
     td_texture_t *fbtex = 0;
 
-    example_params p = {0};
+    exu_paramaters_t p = {0};
 
-    p = parse_argv(argc, argv, (aparse_arg[1]){
-        aparse_arg_option("-rotspd", "--rotation-speed", &rotate_speed, sizeof(rotate_speed), 
+    p = exu_parse_args(argc, argv, (aparse_arg[1]){
+        aparse_arg_option(
+                "-rotspd", "--rotation-speed", 
+                &rotate_speed, sizeof(rotate_speed), 
                 APARSE_ARG_TYPE_FLOAT, "Rotation speed of the RGB cube")
     }, 1, 0);
-    if (!td_init() || start_logging("statics.txt"))
+    if (!td_init())
         return 1;
 
-    use_params(&p);
+    //use_params(&p);
 
     
-    white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
-    red_font = td_default_font((td_rgba){.r=255, .a=255}, (td_rgba){0});
+    //white_font = td_default_font((td_rgba){.r=255, .g=255, .b=255, .a=255}, (td_rgba){0});
+    //red_font = td_default_font((td_rgba){.r=255, .a=255}, (td_rgba){0});
 
-    td_option(TD_OPT_DEPTH_BUFFER, 0, &enable);
-    td_option(TD_OPT_SHIFT_TRANSLATE, 0, &enable);
+    //td_option(TD_OPT_DEPTH_BUFFER, 0, &enable);
+    //td_option(TD_OPT_SHIFT_TRANSLATE, 0, &enable);
     td_set_key_callback(key_callback);
 
-    td_renderer_set_clear_color((td_rgba){.a=255});
-    fbtex = td_get_framebuffer();
+    //td_renderer_set_clear_color((td_rgba){.a=255});
+    //fbtex = td_get_framebuffer();
 
     double last_log = get_time();
     const double max_dt = 1.0 / p.max_fps;

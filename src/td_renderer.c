@@ -18,11 +18,12 @@ TD_INLINE td_rgba tdp_query_background(void)
 {
     char r[5] = {0}, b[5] = {0}, g[5] = {0};
     char buffer[32] = {0};
-    td_rgba out = {0};
+    td_rgba out = {0}; 
 
     tdp_tty_write("\x1b]11;?\x1b\\");
     if (!tdp_term_stdin_ready(32))
         return out;
+
     if (tdp_tty_read(buffer, sizeof(buffer) - 1) == -1)
         return out;
     if (sscanf(buffer, "\x1B]11;rgb:%4[^/]/%4[^/]/%4[^;]", r, g, b) != 3)
@@ -139,39 +140,34 @@ td_error_t td_renderer_get_size(
         td_i32 *w, td_i32 *h)
 {
     if(!renderer || !w || !h)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     *w = renderer->fb->size.x;
     *h = renderer->fb->size.y;
     return TD_ERR_OK;
 }
 
-td_error_t td_renderer_set_draw_color(
+td_error_t td_renderer_clear_color(
         td_renderer_t *renderer,
-        const td_u8 r,
-        const td_u8 g,
-        const td_u8 b,
-        const td_u8 a)
+        const td_f32 r,
+        const td_f32 g,
+        const td_f32 b,
+        const td_f32 a)
 {
-    td_rgba color = {0};
     if(!renderer)
-        return TD_ERR_INVALID_ARG;
-
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    color.a = a;
-
-    renderer->color = 
-        td_blend_color(renderer->term_col, color);
+        return TD_ERR_PARAM;
+    renderer->clear_color.r = (td_u8)(TDP_CLAMP(r, 0.0f, 1.0f) * 255.0f);
+    renderer->clear_color.g = (td_u8)(TDP_CLAMP(g, 0.0f, 1.0f) * 255.0f);
+    renderer->clear_color.b = (td_u8)(TDP_CLAMP(b, 0.0f, 1.0f) * 255.0f);
+    renderer->clear_color.a = (td_u8)(TDP_CLAMP(a, 0.0f, 1.0f) * 255.0f);
     return TD_ERR_OK;
 }
 
 td_error_t td_renderer_clear(td_renderer_t *renderer)
 {
     if(!renderer)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
         
-    td_texture_fill(renderer->fb, renderer->color);
+    td_texture_fill(renderer->fb, renderer->clear_color);
     if(renderer->depth_enable)
     {
         tdp_fill_buffer(renderer->depth_buf, &(td_f32){ FLT_MAX },
@@ -188,7 +184,7 @@ td_error_t td_renderer_draw_point(
     td_i32 w = 0, h = 0;
     td_u8 *pixel_ptr = 0;
     if(!renderer)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     w = renderer->fb->size.x;
     h = renderer->fb->size.y;
@@ -196,7 +192,7 @@ td_error_t td_renderer_draw_point(
         return TD_ERR_OK;
 
     pixel_ptr = tdp_get_pixel(renderer->fb, (td_ivec2){.x=x, .y=y});
-    tdp_blend(pixel_ptr, renderer->color.raw, 
+    tdp_blend(pixel_ptr, renderer->clear_color.raw, 
             (td_i32)renderer->fb->type, 4, pixel_ptr);
     return TD_ERR_OK;
 }
@@ -258,7 +254,7 @@ td_error_t td_renderer_draw_line(
     tdp_vertex_t p1 = {0};
     tdp_vertex_t p2 = {0};
     if (!renderer) 
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     // 1. Temporary screen vectors for the 2D clipper
     td_ivec2 screen_p1 = { .x = x1, .y = y1 };
@@ -268,8 +264,8 @@ td_error_t td_renderer_draw_line(
     // (Assuming tdp_clip_line returns a boolean or handles visibility checks)
     tdp_clip_line(&screen_p1, &screen_p2, renderer->fb->size);
 
-    p1.color = renderer->color;
-    p2.color = renderer->color;
+    p1.color = renderer->clear_color;
+    p2.color = renderer->clear_color;
 
     td_f32 w = (td_f32)renderer->fb->size.x;
     td_f32 h = (td_f32)renderer->fb->size.y;
@@ -350,7 +346,7 @@ td_error_t td_draw_rect(
     return TD_ERR_OK;
 }
 */
-td_error_t td_renderer_copy_raw(
+td_error_t td_renderer_blit(
         const td_texture_t* texture, 
         const td_irect src_rect,
         const td_irect dst_rect)
@@ -366,15 +362,58 @@ td_error_t td_renderer_copy_raw(
     return TD_ERR_OK;
 }
 
+td_error_t td_renderer_begin(
+        td_renderer_t *renderer,
+        const td_renderer_mode_t mode)
+{
+    if(!renderer)
+        return TD_ERR_PARAM;
+
+    renderer->current_mode = mode;
+    return TD_ERR_OK;
+}
+
+td_error_t td_renderer_end(
+        td_renderer_t *renderer)
+{
+    if(!renderer)
+        return TD_ERR_PARAM;
+    renderer->current_mode = TD_RENDERER_NONE;
+    return TD_ERR_OK;
+}
+
+static const int tdp_mode_vtx_cnt[__TD_RENDERER_MAX__] =
+{
+    [TD_RENDERER_LINES] = 2,
+    [TD_RENDERER_TRIANGLE] = 3
+};
 
 #define TDP_GET_VTX(renderer) ((renderer)->vtx_buf[(renderer)->vtx_idx])
+
+td_error_t td_renderer_color_3f(
+        td_renderer_t *renderer,
+        const td_f32 r,
+        const td_f32 g,
+        const td_f32 b)
+{
+    if(!renderer)
+        return TD_ERR_PARAM;
+
+    TDP_GET_VTX(renderer).color.r = (td_u8)(TDP_CLAMP(r, 0.0f, 1.0f) * 255.0f);
+    TDP_GET_VTX(renderer).color.g = (td_u8)(TDP_CLAMP(g, 0.0f, 1.0f) * 255.0f);
+    TDP_GET_VTX(renderer).color.b = (td_u8)(TDP_CLAMP(b, 0.0f, 1.0f) * 255.0f);
+    TDP_GET_VTX(renderer).color.a = 255.0f;
+    
+    return TD_ERR_OK;
+}
+
 td_error_t td_renderer_tex_coord_2f(
         td_renderer_t *renderer,
         const td_f32 s,
         const td_f32 t)
 {
     if(!renderer)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     TDP_GET_VTX(renderer).uv.x = s;
     TDP_GET_VTX(renderer).uv.y = t;
@@ -386,15 +425,54 @@ td_error_t td_renderer_vertex_2f(
         const td_f32 x,
         const td_f32 y)
 {
-    if(!renderer)
-        return TD_ERR_INVALID_ARG;
+    return td_renderer_vertex_4f(
+            renderer, x, y, 0.0f, 1.0f);
+}
 
-    (void)x;
-    (void)y;
+td_error_t td_renderer_vertex_3f(
+        td_renderer_t *renderer,
+        const td_f32 x,
+        const td_f32 y,
+        const td_f32 z)
+{
+    return td_renderer_vertex_4f(
+            renderer, x, y, z, 1.0f);
+}
+
+td_error_t td_renderer_vertex_4f(
+        td_renderer_t *renderer,
+        const td_f32 x,
+        const td_f32 y,
+        const td_f32 z,
+        const td_f32 w)
+{
+    if(!renderer)
+        return TD_ERR_PARAM;
+
+    TDP_GET_VTX(renderer).pos.x = x;
+    TDP_GET_VTX(renderer).pos.y = y;
+    TDP_GET_VTX(renderer).pos.z = z;
+    TDP_GET_VTX(renderer).pos.w = w;
     
     renderer->vtx_idx++;
+    if(renderer->vtx_idx == tdp_mode_vtx_cnt[renderer->current_mode])
+    {
+        if(renderer->current_mode == TD_RENDERER_TRIANGLE)
+        {
+            tdp_rasterize_triangle(
+                    renderer->fb, 
+                    renderer->depth_buf, 
+                    renderer->vtx_buf[0], 
+                    renderer->vtx_buf[1], 
+                    renderer->vtx_buf[2],
+                    renderer->bound_tex);
+        }
+        renderer->vtx_idx = 0;
+    }
+
     return TD_ERR_OK;
 }
+
 
 /*
 td_error_t td_renderer_bind_texture(const td_texture_t *texture)

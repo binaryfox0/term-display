@@ -150,7 +150,7 @@ static const tdp_font_template tdp_template_no2 = {
     .range = { .x = '{', .y = '~' }
 };
 
-td_texture_t* tdp_codepoint_resolve(
+static td_texture_t* tdp_codepoint_resolve(
     const td_font* font, const int character)
 {
     int ch = character;
@@ -175,9 +175,9 @@ td_texture_t* tdp_codepoint_resolve(
 
 TD_INLINE td_bool tdp_is_newline(const char *str, const td_u64 str_len, td_u64 *current)
 {
-    td_u8 cr = 0;                  // CR LF detection
-    if (str[*current] == '\n' || (cr = (str[*current] == '\r'))) {
-        if (cr && *current + 1 < str_len && str[*current + 1] == '\n')
+    td_bool is_cr = 0;                  // CR LF detection
+    if (str[*current] == '\n' || (is_cr = (str[*current] == '\r'))) {
+        if (is_cr && *current + 1 < str_len && str[*current + 1] == '\n')
             (*current)++;
         return TD_TRUE;
     }
@@ -198,7 +198,7 @@ td_ivec2 td_calc_text_size(
     {
         if(tdp_is_newline(str, str_len, &i))
         {
-            max_len = tdp_max(curr_len, max_len);
+            max_len = TDP_MAX(curr_len, max_len);
             curr_len = -TDP_FONT_SPACING;
             lines++;
             continue;
@@ -212,7 +212,7 @@ td_ivec2 td_calc_text_size(
     }
 
     if(curr_len > 0) {
-        max_len = tdp_max(curr_len, max_len);
+        max_len = TDP_MAX(curr_len, max_len);
         lines++;
     }
 
@@ -228,9 +228,9 @@ td_font* td_font_create(void)
     td_font* out = malloc(sizeof(td_font));
     if(!out)
         return 0;
-    out->characters = (tdp_dynarr_t) { 0, 0, sizeof(tdp_dynarr_t), 0 };
-    out->ranges = (tdp_dynarr_t) { 0, 0, sizeof(td_ivec2), 0 };
-    out->mapper = (tdp_dynarr_t) { 0, 0, sizeof(tdp_map), 0 };
+    out->characters = (tdp_dynarr_t) {.itemsz = sizeof(tdp_dynarr_t)};
+    out->ranges     = (tdp_dynarr_t) {.itemsz = sizeof(td_ivec2)};
+    out->mapper     = (tdp_dynarr_t) {.itemsz = sizeof(tdp_map)};
     return out;
 }
 
@@ -239,17 +239,21 @@ static void tdp_append_textures_from_template(
         const td_rgba background, const td_rgba foreground
 )
 {
+    const td_u8 *a = NULL, *b = NULL;
+    td_ivec2 range = {0};
+    tdp_dynarr_t chars_range = {0};
+
     if(!font || !template)
         return;
-    const td_ivec2 range = template->range;
-    if(!tdp_dynarr_add(&font->ranges, &template->range))
+
+    range = template->range;
+    if(!tdp_dynarr_add(&font->ranges, &range))
         return;
         
-    const td_u8 a[4] = TD_EXPAND_RGBA(foreground),
-                b[4] = TD_EXPAND_RGBA(background);
+    a = foreground.raw,
+    b = foreground.raw;
     
     size_t chars_count = (size_t)(range.y - range.x + 1);
-    tdp_dynarr_t chars_range = {0};
     if(!tdp_dynarr_new(&chars_range, chars_count, sizeof(td_texture_t*)))
         goto fail;
 
@@ -284,7 +288,7 @@ fail:
     font->ranges.size--;
 }
 
-td_font* td_default_font(const td_rgba foreground, const td_rgba background)
+td_font* td_font_builtin(const td_rgba foreground, const td_rgba background)
 {
     td_font* out = td_font_create();
     if(!out)
@@ -301,7 +305,7 @@ td_font* td_default_font(const td_rgba foreground, const td_rgba background)
     return out;
 }
 
-void td_destroy_font(td_font* font)
+void td_font_destroy(td_font* font)
 {
     for(size_t i = 0; i < font->characters.size; i++)
     {
@@ -333,20 +337,17 @@ td_u64 tdp_find_character_range(
     td_u64 lo = 0;
     td_u64 hi = count;
 
-    while (lo < hi) {
+    while (lo < hi) 
+    {
         td_u64 mid = lo + (hi - lo) / 2;
         td_ivec2 r = ranges[mid];
 
-        if (codepoint < r.x) {
+        if (codepoint < r.x)
             hi = mid;
-        }
-        else if (codepoint > r.y) {
+        else if (codepoint > r.y)
             lo = mid + 1;
-        }
-        else {
-            // inside [x, y]
+        else
             return mid;
-        }
     }
 
     if(lower_bound)
@@ -373,7 +374,7 @@ td_error_t td_font_replace_char(
     td_i32 old_texh = 0;
 
     if (!font || !tex)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
 
     ranges_end = font->ranges.size;
 
@@ -507,7 +508,7 @@ td_error_t td_font_replace_char(
     return TD_ERR_OK;
 }
 
-td_texture_t *td_render_char(const td_font* font, const td_i32 character)
+td_texture_t *td_font_get_char(const td_font* font, const td_i32 character)
 {
     return tdp_codepoint_resolve(font, character);
 }
@@ -518,11 +519,10 @@ td_error_t td_render_string_into(
         const char *str,
         const td_u64 str_len,
         td_texture_t *dst,
-        const td_texture_merge_mode_t merge_mode
 )
 {
     if(!font || !str || !dst || pos.x < 0 || pos.y < 0)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     if(!str_len || pos.x >= dst->size.x || pos.y >= dst->size.y)
         return TD_ERR_OK;
 
@@ -545,6 +545,7 @@ td_error_t td_render_string_into(
         td_texture_t *glyph_tex = tdp_codepoint_resolve(font, str[i]);
         if(!glyph_tex)
             continue;
+         
         td_texture_merge(dst, glyph_tex, (td_ivec2){.x = char_x, .y = line_y}, merge_mode);
         char_x += glyph_tex->size.x + TDP_FONT_SPACING;
     }

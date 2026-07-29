@@ -28,6 +28,7 @@ SOFTWARE.
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -82,9 +83,37 @@ void tdp_term_set_stop_handle(const tdp_sighand_t handle)
 td_ivec2 tdp_term_get_size(void)
 {
     struct winsize ws = {0};
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1)
-        return (td_ivec2){.x=ws.ws_col, .y=ws.ws_row};
-    return (td_ivec2){0};
+    int columns = 80;
+    int lines = 24;
+
+    char *env_columns = NULL;
+    char *env_lines = NULL;
+
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != -1 &&
+        ws.ws_col > 0 &&
+        ws.ws_row > 0)
+    {
+        return (td_ivec2){.x = ws.ws_col, .y = ws.ws_row};
+    }
+
+    env_columns = getenv("COLUMNS");
+    env_lines = getenv("LINES");
+
+    if (env_columns != NULL)
+    {
+        int value = atoi(env_columns);
+        if (value > 0)
+            columns = value;
+    }
+
+    if (env_lines != NULL)
+    {
+        int value = atoi(env_lines);
+        if (value > 0)
+            lines = value;
+    }
+
+    return (td_ivec2){.x = columns, .y = lines};
 }
 
 void tdp_term_clear(void)

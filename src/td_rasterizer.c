@@ -270,9 +270,17 @@ void tdp_rasterize_triangle(
 
     // Setup local vertex structures with screen space positions for edge equations
     // We also store 1/w for perspective-correct interpolation
-    td_f32 inv_w0 = 1.0f / v0.pos.w;
-    td_f32 inv_w1 = 1.0f / v1.pos.w;
-    td_f32 inv_w2 = 1.0f / v2.pos.w;
+    tdp_vertex_t vv0 = v0;
+    tdp_vertex_t vv1 = v1;
+    tdp_vertex_t vv2 = v2;
+
+    td_f32 inv_w0 = 0.0f;
+    td_f32 inv_w1 = 0.0f;
+    td_f32 inv_w2 = 0.0f;
+
+    inv_w0 = 1.0f / vv0.pos.w;
+    inv_w1 = 1.0f / vv1.pos.w;
+    inv_w2 = 1.0f / vv2.pos.w;
 
     td_f32 area = 0.0f, inv_area = 0.0f;
     td_i32 min_x = 0, min_y = 0, max_x = 0, max_y = 0;
@@ -285,13 +293,16 @@ void tdp_rasterize_triangle(
     td_i32 tex_ch = 0;
 
     // Edge function using floating-point screen coordinates for accuracy
-    area = (s2.x - s0.x) * (s1.y - s0.y) - (s2.y - s0.y) * (s1.x - s0.x);
-    
+    //area = (s2.x - s0.x) * (s1.y - s0.y) - (s2.y - s0.y) * (s1.x - s0.x);
+    area = (s1.x - s0.x) * (s2.y - s0.y)
+     - (s1.y - s0.y) * (s2.x - s0.x);
     // Backface culling / Winding order check
-    if (area > 0) {
-        // Swap vertices 1 and 2 to adjust winding
+    if (area > 0)
+    {
         TDP_SWAP(s1, s2, td_vec2);
-        td_f32 temp_w = inv_w1; inv_w1 = inv_w2; inv_w2 = temp_w;
+        TDP_SWAP(vv1, vv2, tdp_vertex_t);
+        TDP_SWAP(inv_w1, inv_w2, td_f32);
+
         area = -area;
     }
     if (fabs(area) < 0.00001f) return; // Degenerate triangle
@@ -315,13 +326,6 @@ void tdp_rasterize_triangle(
         tex_size = tex->size;
         tex_ch = (td_i32)tex->type;
     }
-
-    // Pre-calculate attribute values divided by w for perspective correction
-    // If you swapped s1 and s2 above, ensure you pull from the matching swapped vertex data!
-    // For simplicity, we sample from v0, v1, v2 using conditions matching our swap:
-    const tdp_vertex_t* pv0 = &v0;
-    const tdp_vertex_t* pv1 = (area > 0) ? &v2 : &v1;
-    const tdp_vertex_t* pv2 = (area > 0) ? &v1 : &v2;
 
     for (int y = min_y; y <= max_y; y++) 
     {
@@ -355,10 +359,10 @@ void tdp_rasterize_triangle(
 
                 // Interpolate vertex color
                 td_u8 final_color[4] = {
-                    (td_u8)(p_w0 * pv0->color.r + p_w1 * pv1->color.r + p_w2 * pv2->color.r),
-                    (td_u8)(p_w0 * pv0->color.g + p_w1 * pv1->color.g + p_w2 * pv2->color.g),
-                    (td_u8)(p_w0 * pv0->color.b + p_w1 * pv1->color.b + p_w2 * pv2->color.b),
-                    (td_u8)(p_w0 * pv0->color.a + p_w1 * pv1->color.a + p_w2 * pv2->color.a)
+                    (td_u8)(p_w0 * vv0.color.r + p_w1 * vv1.color.r + p_w2 * vv2.color.r),
+                    (td_u8)(p_w0 * vv0.color.g + p_w1 * vv1.color.g + p_w2 * vv2.color.g),
+                    (td_u8)(p_w0 * vv0.color.b + p_w1 * vv1.color.b + p_w2 * vv2.color.b),
+                    (td_u8)(p_w0 * vv0.color.a + p_w1 * vv1.color.a + p_w2 * vv2.color.a)
                 };
                 
                 if (tex_data) 
@@ -367,8 +371,8 @@ void tdp_rasterize_triangle(
                     td_u8 texel[4] = {0};
 
                     // Perspective correct UV coordinates
-                    u = p_w0 * pv0->uv.x + p_w1 * pv1->uv.x + p_w2 * pv2->uv.x;
-                    v = p_w0 * pv0->uv.y + p_w1 * pv1->uv.y + p_w2 * pv2->uv.y;
+                    u = p_w0 * vv0.uv.x + p_w1 * vv1.uv.x + p_w2 * vv2.uv.x;
+                    v = p_w0 * vv0.uv.y + p_w1 * vv1.uv.y + p_w2 * vv2.uv.y;
 
                     td_f32 tex_u = u * (float)(tex_size.x - 1);
                     td_f32 tex_v = (1.0f - v) * (float)(tex_size.y - 1);
@@ -393,7 +397,11 @@ void tdp_rasterize_triangle(
                 }
 (void)pix_depth;
                 // Set pixel
-                // tdp_rasterize_pixel(fb, depth_buf, (td_ivec2){.x=x,.y=y}, pix_depth, final_color);
+                tdp_rasterize_pixel_fixed(
+                        fb, NULL, 
+                        (td_ivec2){.x=x,.y=y}, 
+                        0, 
+                        final_color);
             }
             w0_row += A0;
             w1_row += A1;
@@ -401,143 +409,3 @@ void tdp_rasterize_triangle(
         }
     }
 }
-/*
-void tdp_rasterize_triangle(
-    const td_texture_t* fb,
-    td_f32* depth_buf,
-    const tdp_vertex_t v0,
-    const tdp_vertex_t v1,
-    const tdp_vertex_t v2,
-    const td_texture_t* tex
-)
-{
-    tdp_vertex_t pv0 = v0, pv1 = v1, pv2 = v2;
-    td_vec3 ndc0 = {0}, ndc1 = {0}, ndc2 = {0};
-    td_ivec2 s0 = {0}, s1 = {0}, s2 = {0};
-    td_f32 area = 0.0f, inv_area = 0.0f;
-    td_i32 min_x = 0, min_y = 0, max_x = 0, max_y = 0;
-    td_i32 A0 = 0, B0 = 0, C0 = 0;
-    td_i32 A1 = 0, B1 = 0, C1 = 0;
-    td_i32 A2 = 0, B2 = 0, C2 = 0;
-
-    td_u8 *tex_data = 0;
-    td_ivec2 tex_size = (td_ivec2){0};
-    td_i32 tex_ch = 0;
-
-    if (
-            v0.pos.w <= 0.0f || 
-            v1.pos.w <= 0.0f || 
-            v2.pos.w <= 0.0f
-    ) return;
-
-    tdp_perspective_division(v0.pos, &ndc0);
-    tdp_perspective_division(v1.pos, &ndc1);
-    tdp_perspective_division(v2.pos, &ndc2);
-
-    area = tdp_edge_function(pv0.pos, pv1.pos, pv2.pos);
-    if(area > 0)
-    {
-        TDP_SWAP(pv1, pv2, tdp_vertex_t);
-        area = -area;
-        // return;
-    }
-    inv_area = 1.0f / area;
-    
-    // The bounding box
-    min_x = tdp_max(0, tdp_min(v0.pos.x, tdp_min(v1.pos.x, v2.pos.x)));
-    min_y = tdp_max(0, tdp_min(v0.pos.y, tdp_min(v1.pos.y, v2.pos.y)));
-    max_x = tdp_min(fb->size.x - 1, tdp_max(v0.pos.x, tdp_max(v1.pos.x, v2.pos.x)));
-    max_y = tdp_min(fb->size.y - 1, tdp_max(v0.pos.y, tdp_max(v1.pos.y, v2.pos.y)));
-
-    A0 = pv1.pos.y - pv2.pos.y; 
-    B0 = pv2.pos.x - pv1.pos.x; 
-    C0 = pv1.pos.x * pv2.pos.y - pv2.pos.x * pv1.pos.y;
-    A1 = pv2.pos.y - pv0.pos.y; 
-    B1 = pv0.pos.x - pv2.pos.x; 
-    C1 = pv2.pos.x * pv0.pos.y - pv0.pos.x * pv2.pos.y;
-    A2 = pv0.pos.y - pv1.pos.y; 
-    B2 = pv1.pos.x - pv0.pos.x; 
-    C2 = pv0.pos.x * pv1.pos.y - pv1.pos.x * pv0.pos.y;
-
-    if(tex)
-    {
-        tex_data = tex->data;
-        tex_size = tex->size;
-        tex_ch = (td_i32)tex->type;
-    }
-
-    for (int y = min_y; y <= max_y; y++) 
-    {
-        int w0_row = A0 * min_x + B0 * y + C0;
-        int w1_row = A1 * min_x + B1 * y + C1;
-        int w2_row = A2 * min_x + B2 * y + C2;
-
-        for (int x = min_x; x <= max_x; x++) 
-        {
-            // Compute barycentric coordinates
-            float w0 = (float)w0_row * inv_area;
-            float w1 = (float)w1_row * inv_area;
-            float w2 = (float)w2_row * inv_area;
-
-            // Check if inside triangle
-            if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                td_f32 pix_depth = w0 * pv0.depth + w1 * pv1.depth + w2 * pv2.depth;
-
-                // Interpolate color
-                td_u8 final_color[4] = {
-                    (td_u8)(w0 * pv0.color.r + w1 * pv1.color.r + w2 * pv2.color.r),
-                    (td_u8)(w0 * pv0.color.g + w1 * pv1.color.g + w2 * pv2.color.g),
-                    (td_u8)(w0 * pv0.color.b + w1 * pv1.color.b + w2 * pv2.color.b),
-                    (td_u8)(w0 * pv0.color.a + w1 * pv1.color.a + w2 * pv2.color.a)
-                };
-                
-                if (tex_data) 
-                {
-                    td_f32 u = 0.0f, v = 0.0f;
-                    td_u8 texel[4] = {0};
-
-                    u = w0 * pv0.uv.x + w1 * pv1.uv.x + w2 * pv2.uv.x;
-                    v = w0 * pv0.uv.y + w1 * pv1.uv.y + w2 * pv2.uv.y;
-
-                    td_f32 tex_u = u * (float)(tex_size.x - 1);
-                    td_f32 tex_v = (1.0f - v) * (float)(tex_size.y - 1);
-
-                    td_i32 ixf = tdp_floor(tex_u);
-                    td_i32 ixc = tdp_min(ixf + 1, tex_size.x - 1);
-                    td_i32 iyf = tdp_floor(tex_v);
-                    td_i32 iyc = tdp_min(iyf + 1, tex_size.y - 1);
-
-                    td_f32 tx = tex_u - (td_f32)ixf;
-                    td_f32 ty = tex_v - (td_f32)iyf;
-
-                    td_u64 i00 = tdp_calculate_pos((td_ivec2){.x=ixf, .y=iyf}, 
-                            tex_size.x, tex_ch);
-                    td_u64 i10 = tdp_calculate_pos((td_ivec2){.x=ixc, .y=iyf}, 
-                            tex_size.x, tex_ch);
-                    td_u64 i01 = tdp_calculate_pos((td_ivec2){.x=ixf, .y=iyc}, 
-                            tex_size.x, tex_ch);
-                    td_u64 i11 = tdp_calculate_pos((td_ivec2){.x=ixc, .y=iyc}, 
-                            tex_size.x, tex_ch);
-
-                    for (td_u8 c = 0; c < tex_ch; c++)
-                        texel[c] = bilerp(
-                            tex_data[i00 + c],
-                            tex_data[i10 + c],
-                            tex_data[i01 + c],
-                            tex_data[i11 + c],
-                            tx, ty
-                        );
-                    
-                    tdp_blend(final_color, texel, 4, tex_ch, final_color);
-                }
-
-                // Set pixel
-                tdp_rasterize_pixel(fb, depth_buf, (td_ivec2){.x=x,.y=y}, pix_depth, final_color);
-            }
-            w0_row += A0;
-            w1_row += A1;
-            w2_row += A2;
-        }
-    }
-}
-*/

@@ -56,7 +56,7 @@ typedef void (*tdp_sighand_t)(int);
 #define TDP_MIN(x, y) ((x) < (y) ? (x) : (y))
 #define TDP_MAX(x, y) ((x) > (y) ? (x) : (y))
 #define TDP_ABS(x) ((x) < 0 ? -(x) : (x))
-
+#define TDP_CLAMP(x, low, high) (((x) < (low)) ? (low) : (((x) > (high)) ? (high) : (x)))
 TD_INLINE td_i32 tdp_floor(const float x) {
     return (td_i32)x;
 }

@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <td_timer.h>
 
 int exu_ask_yes_no(void)
 {
@@ -36,15 +37,14 @@ int exu_ask_yes_no(void)
     return 0;
 }
 
-exu_paramaters_t exu_parse_args(
+int exu_parse_args(
     int argc, char **argv,
-    aparse_arg *custom_args,
-    int custom_count,
-    aparse_arg **merged_args
-)
+    aparse_arg *extended_args,
+    exu_paramaters_t *out)
 {
-    exu_paramaters_t p = {
-        .auto_resize = TD_FALSE,
+    int ret = 0;
+    exu_paramaters_t params = {
+        .auto_resize = 0,
         .px_w = 2,
         .px_h = 1,
 //        .display_type = td_display_truecolor,
@@ -55,10 +55,11 @@ exu_paramaters_t exu_parse_args(
     const char *pos_raw = 0;
     const char *size_raw = 0;
 
-    const aparse_arg example_args[] = {
+    aparse_arg default_args[] = 
+    {
         aparse_arg_option(
             "-autorsz", "--auto-resize",
-            &p.auto_resize, sizeof(p.auto_resize),
+            &params.auto_resize, sizeof(params.auto_resize),
             APARSE_ARG_TYPE_BOOL,
             "Automatic resizing the display"
         ),
@@ -76,87 +77,135 @@ exu_paramaters_t exu_parse_args(
         ),
         aparse_arg_option(
             "-pxw", "--pixel-width",
-            &p.px_w, sizeof(p.px_w),
+            &params.px_w, sizeof(params.px_w),
             APARSE_ARG_TYPE_UNSIGNED,
             "Pixel width of display in terminal cells"
         ),
         aparse_arg_option(
             "-pxh", "--pixel-height",
-            &p.px_h, sizeof(p.px_h),
+            &params.px_h, sizeof(params.px_h),
             APARSE_ARG_TYPE_UNSIGNED,
             "Pixel height of display in terminal cells"
         ),
         aparse_arg_option(
             "-type", "--display-type",
-            &p.display_type, sizeof(p.display_type),
+            &params.display_type, sizeof(params.display_type),
             APARSE_ARG_TYPE_UNSIGNED,
             "Type of display (grayscale, truecolor, etc.)"
         ),
         aparse_arg_option(
             "-rot", "--display-rotate",
-            &p.rotation, sizeof(p.rotation),
+            &params.rotation, sizeof(params.rotation),
             APARSE_ARG_TYPE_UNSIGNED,
             "Display orientation / rotation"
         ),
         aparse_arg_option(
             "-fps", "--maximum-fps",
-            &p.max_fps, sizeof(p.max_fps),
+            &params.max_fps, sizeof(params.max_fps),
             APARSE_ARG_TYPE_UNSIGNED,
             "Maximum Frame-per-Second of display"
         ),
         aparse_arg_end_marker
     };
 
-    const int example_count =
-        (int)(sizeof(example_args) / sizeof(example_args[0])) - 1;
+    static const int default_count =
+        (int)(sizeof(default_args) / sizeof(default_args[0])) - 1;
 
-    const int total_count = custom_count + example_count + 1;
-    aparse_arg *args = calloc(total_count, sizeof(*args));
-    if (!args)
-        exit(EXIT_FAILURE);
+    aparse_arg *args = NULL;
 
-    memcpy(args, custom_args, custom_count * sizeof(*args));
-    memcpy(args + custom_count, example_args, example_count * sizeof(*args));
-
-    if (aparse_parse(argc, argv, args, 0,
-            "Example program of term-display library")
-        == APARSE_STATUS_FAILURE)
+    if(extended_args)
     {
-        free(args);
-        exit(EXIT_FAILURE);
+        int extended_count = 0;
+        for(aparse_arg *arg = extended_args; aparse_arg_nend(arg); arg++)
+            extended_count++;
+        args = malloc(
+                (default_count + extended_count + 1) * sizeof(*args));
+        if(!args)
+            return 0;
+        memcpy(args, default_args, default_count * sizeof(*default_args));
+        memcpy(args + default_count, extended_args, 
+                extended_count * sizeof(*extended_args));
+        args[default_count + extended_count] = aparse_arg_end_marker;
+    } else {
+        args = default_args;
     }
+
+    if (aparse_parse(
+                argc, argv, 
+                args, NULL,
+            "Example program of term-display library"
+        ) != APARSE_STATUS_OK)
+        goto cleanup;
 
     if (pos_raw &&
         sscanf(pos_raw, "%d,%d",
-               &p.pos.x,
-               &p.pos.y) != 2)
+               &params.pos.x,
+               &params.pos.y) != 2)
     {
         aparse_prog_error("invalid display position: \"%s\"", pos_raw);
-        free(args);
-        exit(EXIT_FAILURE);
+        goto cleanup;
     }
 
     if (size_raw &&
         sscanf(size_raw, "%dx%d",
-               &p.size.x,
-               &p.size.y) != 2)
+               &params.size.x,
+               &params.size.y) != 2)
     {
         aparse_prog_error("invalid display size: \"%s\"", size_raw);
-        free(args);
-        exit(EXIT_FAILURE);
+        goto cleanup;
     }
 
-    if (p.max_fps == 0) {
-        aparse_prog_error("invalid max fps was specified");
-        aparse_prog_info("this can make this example unable to exit");
-        free(args);
-        exit(EXIT_FAILURE);
+    if (params.max_fps == 0) {
+        aparse_prog_error("invalid fps was specified: %d fps", params.max_fps);
+        goto cleanup;
     }
 
-    if (merged_args)
-        *merged_args = args;
-    else
-        free(args);
+    *out = params;
+    ret = 1;
 
-    return p;
+cleanup:
+    if(args != default_args)
+        free(args);
+    return ret;
+}
+
+exu_file_t *exu_fopen(void)
+{
+    return fopen("exu_statics.txt", "w");
+}
+
+void exu_fprintf(
+        exu_file_t *file, 
+        const td_u64 log_interval,
+        td_u64 *last_log, 
+        const char *fmt, ...)
+{
+    va_list va;
+    td_u64 timestamp = 0ULL;
+    if(!file || !fmt)
+        return;
+
+    timestamp = td_get_ticks();
+    if(timestamp - *last_log < log_interval)
+        return;
+    *last_log = timestamp;
+
+    fprintf(file, "[%02llu:%02llu.%03llu] ",
+            timestamp / (60ULL * 1000ULL),
+            (timestamp / 1000ULL) % 60ULL,
+            timestamp % 1000ULL);
+
+    va_start(va, fmt);
+    vfprintf(file, fmt, va);
+    va_end(va);
+
+    fputc('\n', file);
+}
+
+void exu_fclose(
+        exu_file_t *file)
+{
+    if(!file)
+        return;
+    fclose(file);
 }

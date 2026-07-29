@@ -9,7 +9,7 @@
 #define M_PI 3.14159265358979323846
 int main(int argc, char** argv)
 {
-    double speed = 1.0, hz = 0.0;
+    double speed = 0.5, hz = 0.0;
     aparse_arg extended_args[] = 
     {
         aparse_arg_option(
@@ -108,18 +108,13 @@ int main(int argc, char** argv)
         td_texture_destroy(texture);
 */
         td_window_present(window);
-        while (td_get_performance_counter() - frame_start < target_dt)
-            ;
+        elapsed += ((double)dt / freq) * speed;
 
-        dt = td_get_performance_counter() - frame_start;
-        elapsed += (double)dt / freq * speed;
-        exu_fprintf(
-            file,
-            1000 / 30,
-            &last_log,
-            "frametime=%.03fms, fps=%.03ffps",
-            (double)dt * 1000.0 / freq,
-            1.0 / ((double)dt / freq));
+        while ((dt = td_get_performance_counter() - frame_start) < target_dt)
+            ;
+        exu_fprintf(file, 1000 / 30, &last_log, "frametime=%.03fms",
+                ((double)dt / freq) * 1000.0);
+        
     }
 
 cleanup:

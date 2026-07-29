@@ -12,7 +12,7 @@ const char *td_strerror(const td_error_t err)
         [TD_ERR_NOT_TERMINAL]       = "not a terminal",
         [TD_ERR_NOT_INITIALIZED]    = "not initialized",
         [TD_ERR_OUT_OF_MEMORY]      = "out of memory",
-        [TD_ERR_INVALID_ARG]        = "invalid argument",
+        [TD_ERR_PARAM]        = "invalid argument",
         [TD_ERR_EXISTED]            = "already existed"
     };
 

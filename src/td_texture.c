@@ -115,7 +115,7 @@ td_error_t td_texture_set_buffer(td_texture_t *texture,
         !texture ||
         TDP_OUT_RANGE(type, 1, 4) ||
         size.x < 0 || size.y < 0
-      ) return TD_ERR_INVALID_ARG;
+      ) return TD_ERR_PARAM;
 
     if(!buffer)
     {
@@ -178,7 +178,7 @@ td_error_t td_texture_fill(const td_texture_t *texture, const td_rgba color)
     td_i32 ch = (td_i32)texture->type;
 
     if (!texture)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     if(!texture->data || color.a == 0)
         return TD_ERR_OK;
 
@@ -203,7 +203,7 @@ td_error_t td_texture_resize_buffer(td_texture_t *texture,
             !texture ||
             new_size.x < 0 ||
             new_size.y < 0)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
    
     if(texture->size.x == new_size.x && 
             texture->size.y == new_size.y)
@@ -236,7 +236,7 @@ td_error_t td_texture_resize_buffer(td_texture_t *texture,
 td_error_t td_texture_destroy(td_texture_t *texture)
 {
     if (!texture)
-        return TD_ERR_INVALID_ARG;
+        return TD_ERR_PARAM;
     if (texture->freeable)
         free(texture->data);
     free(texture);

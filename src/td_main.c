@@ -45,6 +45,7 @@ struct {
     void (*exit)(void);
 } tdp_susbsytems[] = {
     {0, tdp_debug_exit},
+    { tdp_term_init, tdp_term_exit }
 };
 td_error_t td_init(void)
 {
@@ -69,7 +70,6 @@ td_error_t td_init(void)
         }
     }
 
-    tdp_term_init();
     tdp_ctx->init_ts = td_get_performance_counter();
 
     return TD_ERR_OK;
@@ -77,7 +77,6 @@ td_error_t td_init(void)
 
 void td_quit(void)
 {
-    tdp_term_exit(); 
     for(td_i32 i = 0; i < (td_i32)TDP_ARRSZ(tdp_susbsytems); i++)
         tdp_susbsytems[i].exit();
     tdp_context_exit();

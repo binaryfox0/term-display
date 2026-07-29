@@ -108,8 +108,10 @@ static void tdp_mitm_key_callback(
                 virt_cur->cur_pos.x, virt_cur->cur_pos.y);
     }
     else
-        event->TDP_CALLBACK_NAME(key)(window, key, action, mod);
-
+    {
+        if(event->TDP_CALLBACK_NAME(key))
+            event->TDP_CALLBACK_NAME(key)(window, key, action, mod);
+    }
 }
 
 td_error_t td_set_virtual_cursor_keybind(
