@@ -40,6 +40,8 @@ function(target_add_asan target_name)
     endif()
 endfunction()
 
+add_subdirectory(softrast)
+
 set(TD_SOURCES
     #    src/td_dynarr.c
     #    src/td_priv.c
