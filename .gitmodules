@@ -1,6 +1,3 @@
-[submodule "example/deps/cglm"]
-	path = example/deps/cglm
+[submodule "deps/cglm"]
+	path = deps/cglm
 	url = https://github.com/recp/cglm.git
-[submodule "example/deps/aparse"]
-	path = example/deps/aparse
-	url = https://github.com/binaryfox0/aparse.git

@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 
 project(example)
 
-option(TD_EXAMPLE_ASAN "Enable AddressSanitizer in examples")
-
 set(EXTRA "")
 
 function(example_projects name)
