@@ -1,4 +1,5 @@
 #include "softrast/swrz_alloc.h"
+#include "swrz_alloc_priv.h"
 
 #include <stdlib.h>
 
@@ -71,6 +72,18 @@ void *swrz__malloc(
 {
     return swrz__allocator.malloc(
             swrz__allocator.userdata, size);
+}
+
+void *swrz__calloc(
+        size_t nmemb,
+        size_t size)
+{
+    void *ptr = swrz__allocator.malloc(
+            swrz__allocator.userdata, nmemb * size);
+    if(!ptr)
+        return NULL;
+    memset(ptr, 0, nmemb * size);
+    return ptr;
 }
 
 void *swrz__realloc(

@@ -5,6 +5,7 @@ typedef enum
 {
     SWRZ_ERR_OK,
     SWRZ_ERR_GENERIC,
+    SWRZ_ERR_UNHANDLED,
     SWRZ_ERR_PARAM,
     SWRZ_ERR_NO_MEM,
     SWRZ_ERR_THREAD

@@ -6,6 +6,10 @@
 void *swrz__malloc(
         size_t size);
 
+void *swrz__calloc(
+        size_t nmemb,
+        size_t size);
+
 void *swrz__realloc(
         void *ptr, 
         size_t size);

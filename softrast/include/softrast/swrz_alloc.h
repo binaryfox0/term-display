@@ -14,9 +14,4 @@ typedef struct
 
 swrz_error_t swrz_set_allocator(
         const swrz_allocator_t *allocator);
-
-void *swrz__malloc(size_t size);
-void *swrz__realloc(void *ptr, size_t size);
-void swrz__free(void *ptr);
-
 #endif
