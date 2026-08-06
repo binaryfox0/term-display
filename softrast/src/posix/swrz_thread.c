@@ -30,7 +30,7 @@ swrz_error_t swrz__thread_create(
 {
     int ret = 0;
     swrz__thread_t *tmp = 0;
-    if(!tmp || !cb)
+    if(!thread || !cb)
         return SWRZ_ERR_PARAM;
 
     tmp = swrz__malloc(sizeof(*tmp));

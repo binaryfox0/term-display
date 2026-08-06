@@ -52,7 +52,7 @@ cleanup:
 
 swrz_error_t swrz__condvar_wait(
         swrz__condvar_t *cv,
-        swrz__mutex_t *mtx)
+        struct swrz__mutex *mtx)
 {
     int res = 0;
     if(!cv || !mtx)

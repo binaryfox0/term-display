@@ -44,6 +44,7 @@ endfunction()
 set(SWRZ_SOURCES
     src/swrz_alloc.c
     src/swrz_texture.c
+    src/swrz_pool.c
     src/swrz_rasterizer.c
 )
 
@@ -114,7 +115,10 @@ if(SWRZ_BUILD_BENCHMARK)
     # add_subdirectory(deps/aparse)
     add_subdirectory(deps/stb_image_write)
 
-    add_executable(benchmark benchmark/main.c)
+    add_executable(benchmark 
+        benchmark/str.c
+        benchmark/cpu.c
+        benchmark/main.c)
     target_link_libraries(benchmark PRIVATE aparse softrast stb_image_write)
     target_add_strict_flags(benchmark)
     target_add_asan(benchmark)

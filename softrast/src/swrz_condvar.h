@@ -5,14 +5,14 @@
 #include "softrast/swrz_error.h"
 
 typedef struct swrz__condvar swrz__condvar_t;
-typedef struct swrz__mutex swrz__mutex_t;
+struct swrz__mutex;
 
 swrz_error_t swrz__condvar_create(
         swrz__condvar_t **cv);
 
 swrz_error_t swrz__condvar_wait(
         swrz__condvar_t *cv,
-        swrz__mutex_t *mtx);
+        struct swrz__mutex *mtx);
 
 /*
 swrz_error_t swrz__condvar_timedwait(

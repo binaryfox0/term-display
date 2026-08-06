@@ -3,9 +3,15 @@
 
 #include <stdint.h>
 #include <softrast/swrz_error.h>
+#include <softrast/swrz_vertex.h>
 
 typedef struct swrz_rasterizer swrz_rasterizer_t;
-typedef struct swrz_vertex_array swrz_vertex_array_t;
+
+typedef enum
+{
+    SWRZ_PRIMITIVE_TRIANGLE,
+    SWRZ__PRIMITIVE_COUNT
+} swrz_primitive_t;
 
 swrz_error_t swrz_rasterizer_create(
         swrz_rasterizer_t **rz,
@@ -19,6 +25,10 @@ swrz_error_t swrz_rasterizer_bind_vao(
         swrz_rasterizer_t *rz,
         swrz_vertex_array_t *vao);
 
+swrz_error_t swrz_rasterizer_bind_vertex_shader(
+        swrz_rasterizer_t *rz,
+        const swrz_vertex_shader_t shader);
+
 swrz_error_t swrz_rasterizer_clear_color(
         swrz_rasterizer_t *rz,
         const float r,
@@ -28,6 +38,7 @@ swrz_error_t swrz_rasterizer_clear_color(
 
 swrz_error_t swrz_rasterizer_draw_array(
         swrz_rasterizer_t *rz,
+        swrz_primitive_t primitive,
         const uint32_t first,
         const uint32_t count);
 
