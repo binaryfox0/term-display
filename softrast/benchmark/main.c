@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -22,6 +21,97 @@ static uint64_t get_time_ns(void)
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
+#include <stdlib.h>
+
+static int g_malloc_count = 0;
+static int g_free_count = 0;
+
+static size_t g_malloc_bytes = 0;
+static size_t g_free_bytes = 0;
+
+static void *custom_malloc(
+        void *userdata,
+        size_t size)
+{
+    size_t *h = NULL;
+    void *p = NULL;
+
+    (void)userdata;
+
+    g_malloc_count++;
+    g_malloc_bytes += size;
+
+    h = (size_t *)malloc(sizeof(size_t) + size);
+    if (h == NULL)
+        return NULL;
+
+    h[0] = size;
+    p = (void *)(h + 1);
+    return p;
+}
+
+static void *custom_realloc(
+        void *userdata,
+        void *p, 
+        size_t size)
+{
+    size_t *h = NULL;
+    size_t *new_h = NULL;
+    void *new_p = NULL;
+    size_t old_size = 0;
+    
+    (void)userdata;
+
+    if (p == NULL)
+        return custom_malloc(NULL, size);
+
+    h = ((size_t *)p) - 1;
+    old_size = h[0];
+
+    new_h = realloc(h, sizeof(size_t) + size);
+    if (new_h == NULL)
+        return NULL;
+
+    if (size > old_size)
+        g_malloc_bytes += (size - old_size);
+    else
+        g_free_bytes += (old_size - size);
+
+    new_h[0] = size;
+    new_p = (void *)(new_h + 1);
+    return new_p;
+}
+
+static void custom_free(
+        void *userdata,
+        void *p)
+{
+    size_t *h = NULL;
+
+    (void)userdata;
+    if (p == NULL)
+        return;
+
+    g_free_count++;
+    h = ((size_t *)p) - 1;
+    g_free_bytes += h[0];
+
+    free(h);
+}
+
+static void print_memory_stat(void)
+{
+    info("memory stats:");
+    info("    malloc: %d times, %zu bytes",
+            g_malloc_count, g_malloc_bytes);
+    info("    free: %d times, %zu bytes",
+            g_free_count, g_free_bytes);
+    info("    live: %zu bytes",
+            (g_malloc_bytes > g_free_bytes)
+               ? (g_malloc_bytes - g_free_bytes)
+               : 0);
 }
 
 #define NANOSECOND(s) ((uint64_t)((s) * 1000000000ULL))
@@ -115,6 +205,12 @@ int main(int argc, char **argv)
             main_args, NULL, 
             NULL) != APARSE_STATUS_OK)
         return 1;
+
+    swrz_set_allocator(&(swrz_allocator_t){
+            .malloc = custom_malloc,
+            .realloc = custom_realloc,
+            .free = custom_free
+    });
     
     err = swrz_rasterizer_create(&rz, 1920, 1080);
     if(err != SWRZ_ERR_OK)
@@ -191,6 +287,7 @@ int main(int argc, char **argv)
              elapsed % NANOSECOND(1),
              avg_frametime / NANOSECOND(1),
              avg_frametime % NANOSECOND(1));
+    print_memory_stat();
 
     
     return 0;

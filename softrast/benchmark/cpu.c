@@ -19,6 +19,60 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define ARRSZ(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
+static inline bool read_file_fixed(
+        int fd,
+        char *buf,
+        const size_t size)
+{
+    struct stat st = {0};
+    size_t read_size = 0;
+    size_t total_read = 0;
+
+    if(fd < 0 || !buf || size == 0)
+        return false;
+
+    if(fstat(fd, &st) < 0)
+        return false;
+
+    read_size = MIN(size - 1, (size_t) st.st_size);
+    while(total_read < read_size)
+    {
+        ssize_t success = read(
+                fd,
+                buf + total_read,
+                read_size - total_read);
+
+        if(success < 0)
+            return false;
+
+        if(success == 0)
+            break;
+
+        total_read += (size_t) success;
+    }
+
+    buf[total_read] = '\0';
+    return true;
+}
+
+static inline bool read_file_fixed_rel(
+        int dir_fd,
+        const char *name,
+        char *buf,
+        const size_t size)
+{
+    int fd = -1;
+    if(dir_fd < 0 || !name || !buf || size == 0)
+        return false;
+    
+    fd = openat(dir_fd, name, O_RDONLY);
+    if(fd < 0)
+        return false;
+    read_file_fixed(fd, buf, size);
+    close(fd);
+    return true;
+}
+
 static bool get_android_cpu_vendor(
         char *prop_value)
 {
@@ -182,21 +236,25 @@ static void exynos_cpu_to_name(
 }
 
 static void cpu__query_name(
-        cpu_info_t *cpu)
+        cpu_info_t *cpu_info)
 {
     char prop_vendor[PROP_VALUE_MAX] = {0};
     char prop_cpu[PROP_VALUE_MAX] = {0};
     if(__system_property_get("ro.cpu.model", prop_cpu) > 0)
-        str_copy(cpu->name, sizeof(cpu->name), prop_cpu); 
+    {
+        str_copy(cpu_info->name, 
+                sizeof(cpu_info->name), prop_cpu); 
+    }
     
     get_android_cpu_vendor(prop_vendor);
     if(str_compare(prop_vendor, "QTI"))
     {
         if(!str_starts_with(prop_cpu, "SM"))
             warn("unhandled qualcomm cpu model: \"%s\"", prop_cpu);
-        str_copy(cpu->vendor, sizeof(cpu->vendor), "Qualcomm");
+        str_copy(cpu_info->vendor, sizeof(cpu_info->vendor), 
+                "Qualcomm");
         cpu__qualcomm_model_to_name(prop_cpu, 
-                cpu->name, sizeof(cpu->name)); 
+                cpu_info->name, sizeof(cpu_info->name)); 
         return;
     }
     
@@ -205,9 +263,10 @@ static void cpu__query_name(
         __system_property_get("ro.mediatek.platform", prop_cpu);
         if(!str_starts_with(prop_cpu, "MT"))
             warn("unhandled mediatek cpu model: \"%s\"", prop_cpu);
-        str_copy(cpu->vendor, sizeof(cpu->vendor), "MediaTek");
+        str_copy(cpu_info->vendor, sizeof(cpu_info->vendor), 
+                "MediaTek");
         cpu__mediatek_model_to_name(prop_cpu, 
-                cpu->name, sizeof(cpu->name)); 
+                cpu_info->name, sizeof(cpu_info->name)); 
         return;
     }
 
@@ -215,13 +274,14 @@ static void cpu__query_name(
     {
         if(!str_starts_with(prop_cpu, "s5e"))
             warn("unhandled exynos cpu model: \"%s\"", prop_cpu);
-        str_copy(cpu->vendor, sizeof(cpu->vendor), "Samsung");
+        str_copy(cpu_info->vendor, sizeof(cpu_info->vendor), 
+                "Samsung");
 
         // cosmetic
-        cpu->name[0] = 'S';
-        cpu->name[2] = 'E';
+        cpu_info->name[0] = 'S';
+        cpu_info->name[2] = 'E';
         exynos_cpu_to_name(prop_cpu, 
-                cpu->name, sizeof(cpu->name)); 
+                cpu_info->name, sizeof(cpu_info->name)); 
         return;
     }
 
@@ -270,59 +330,7 @@ static void cpu__parse_cpuinfo(cpu_info_t *cpu_info)
     fclose(file);
 }
 
-static inline bool read_file_fixed(
-        int fd,
-        char *buf,
-        const size_t size)
-{
-    struct stat st = {0};
-    size_t read_size = 0;
-    size_t total_read = 0;
 
-    if(fd < 0 || !buf || size == 0)
-        return false;
-
-    if(fstat(fd, &st) < 0)
-        return false;
-
-    read_size = MIN(size - 1, (size_t) st.st_size);
-    while(total_read < read_size)
-    {
-        ssize_t success = read(
-                fd,
-                buf + total_read,
-                read_size - total_read);
-
-        if(success < 0)
-            return false;
-
-        if(success == 0)
-            break;
-
-        total_read += (size_t) success;
-    }
-
-    buf[total_read] = '\0';
-    return true;
-}
-
-static inline bool read_file_fixed_rel(
-        int dir_fd,
-        const char *name,
-        char *buf,
-        const size_t size)
-{
-    int fd = -1;
-    if(dir_fd < 0 || !name || !buf || size == 0)
-        return false;
-    
-    fd = openat(dir_fd, name, O_RDONLY);
-    if(fd < 0)
-        return false;
-    read_file_fixed(fd, buf, size);
-    close(fd);
-    return true;
-}
 
 static void cpu__query_frequency(cpu_info_t *cpu_info)
 {
@@ -407,6 +415,12 @@ next:   close(policy_fd);
     closedir(dir);
 }
 
+static void cpu__query_cores(
+        cpu_info_t *cpu_info)
+{
+    cpu_info->core_logical = (uint16_t)sysconf(_SC_NPROCESSORS_CONF);
+    cpu_info->core_online = (uint16_t)sysconf(_SC_NPROCESSORS_ONLN);
+}
 
 static void cpu__query_feature(
         cpu_info_t *cpu_info)
@@ -438,6 +452,7 @@ cpu_info_t cpu_query_info(void)
     cpu_info_t cpu_info = {0};
     cpu__query_name(&cpu_info);
     cpu__parse_cpuinfo(&cpu_info);
+    cpu__query_cores(&cpu_info);
     cpu__query_frequency(&cpu_info);
     cpu__query_feature(&cpu_info);
     return cpu_info;
