@@ -14,5 +14,7 @@
 
 #define SWRZ__MIN(a, b) ((a) < (b) ? (a) : (b))
 #define SWRZ__MAX(a, b) ((a) > (b) ? (a) : (b))
+#define SWRZ__MIN3(a, b, c) SWRZ__MIN(SWRZ__MIN((a), (b)), (c))
+#define SWRZ__MAX3(a, b, c) SWRZ__MAX(SWRZ__MAX((a), (b)), (c))
 
 #endif

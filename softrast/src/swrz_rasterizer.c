@@ -185,17 +185,31 @@ swrz_error_t swrz_rasterizer_draw_array(
         const uint32_t first,
         const uint32_t count)
 {
+    swrz_vertex_output_t processed[3] = {0};
+    int processed_idx = 0;
     if(!rz || !SWRZ__ENUM_IN_RANGE(PRIMITIVE, primitive))
         return SWRZ_ERR_PARAM;
     if(!rz->bound_vao || !rz->bound_vertex_shader)
         return SWRZ_ERR_INVALID;
 
-    for(uint32_t i = first; i < first + count; i++)
+    for(uint32_t i = 0; i < count; i++)
     {
         swrz_vertex_input_t input = {0};
-        swrz_vertex_output_t output = {0};
-        swrz__vertex_fetch(rz->bound_vao, i, &input);
-        rz->bound_vertex_shader(&input, &output);
+        swrz__vertex_fetch(rz->bound_vao, 
+                first + i, &input);
+        rz->bound_vertex_shader(&input, 
+                &processed[processed_idx]);
+        processed_idx++;
+        // TODO: add arbitary vertices count for each primitive
+        if(processed_idx % 3)
+        {
+            swrz__pool_rasterize_triangle(
+                    &rz->pool,
+                    rz->fb,
+                    processed[0],
+                    processed[1],
+                    processed[2]);
+        }
     }
     
     return SWRZ_ERR_OK;
