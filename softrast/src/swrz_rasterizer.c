@@ -110,7 +110,7 @@ swrz_error_t swrz_rasterizer_clear_color(
     for(uint32_t x = 0; x < width; x++)
         row[x] = color;
     for(uint32_t y = 1; y < height; y++)
-        memcpy(data + y * row_pitch, data, row_pitch);
+        memcpy(data + (size_t)y * row_pitch, data, row_pitch);
 
     return SWRZ_ERR_OK;
 }
