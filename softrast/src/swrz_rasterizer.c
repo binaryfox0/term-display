@@ -25,7 +25,7 @@ swrz_error_t swrz_rasterizer_create(
     if(!rz)
         return SWRZ_ERR_PARAM;
 
-    tmp = swrz__malloc(sizeof(*tmp));
+    tmp = swrz__calloc(1, sizeof(*tmp));
     if(!tmp)
         return SWRZ_ERR_NO_MEM;
 
@@ -201,7 +201,7 @@ swrz_error_t swrz_rasterizer_draw_array(
                 &processed[processed_idx]);
         processed_idx++;
         // TODO: add arbitary vertices count for each primitive
-        if(processed_idx % 3)
+        if(processed_idx % 3 == 0)
         {
             swrz__pool_rasterize_triangle(
                     &rz->pool,
