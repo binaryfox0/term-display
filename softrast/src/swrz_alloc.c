@@ -2,6 +2,7 @@
 #include "swrz_alloc_priv.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 static void *swrz__default_malloc(
         void *userdata, 

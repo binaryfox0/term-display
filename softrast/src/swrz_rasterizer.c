@@ -206,9 +206,9 @@ swrz_error_t swrz_rasterizer_draw_array(
             swrz__pool_rasterize_triangle(
                     &rz->pool,
                     rz->fb,
-                    processed[0],
-                    processed[1],
-                    processed[2]);
+                    &processed[0],
+                    &processed[1],
+                    &processed[2]);
         }
     }
     

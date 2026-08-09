@@ -44,6 +44,7 @@ endfunction()
 set(SWRZ_SOURCES
     src/swrz_alloc.c
     src/swrz_texture.c
+    src/swrz_arena.c
     src/swrz_pool.c
     src/swrz_rasterizer.c
 )
@@ -112,14 +113,29 @@ target_add_strict_flags(softrast)
 target_add_asan(softrast)
 
 if(SWRZ_BUILD_BENCHMARK)
-    # add_subdirectory(deps/aparse)
+    # remove when softrast a separated repository
+    if(NOT TARGET aparse)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/deps/aparse ${CMAKE_CURRENT_BINARY_DIR}/aparse)
+    endif()
+
     add_subdirectory(deps/stb_image_write)
 
     add_executable(benchmark 
         benchmark/str.c
         benchmark/cpu.c
         benchmark/main.c)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i[3-6]86)$")
+        if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR
+        CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            set_source_files_properties(
+                benchmark/cpu.c
+                PROPERTIES
+                    COMPILE_OPTIONS "-mxsave"
+            )
+        endif()
+    endif()
     target_link_libraries(benchmark PRIVATE aparse softrast stb_image_write)
+    target_compile_definitions(benchmark PRIVATE _GNU_SOURCE)
     target_add_strict_flags(benchmark)
     target_add_asan(benchmark)
     

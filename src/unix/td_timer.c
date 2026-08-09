@@ -9,8 +9,8 @@ td_u64 td_get_performance_counter(void)
 
     clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    return ((uint64_t)ts.tv_sec * 1000000000ULL)
-         + (uint64_t)ts.tv_nsec;
+    return ((td_u64)ts.tv_sec * 1000000000ULL)
+         + (td_u64)ts.tv_nsec;
 }
 
 td_u64 td_get_performance_frequency(void)
