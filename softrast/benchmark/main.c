@@ -163,16 +163,22 @@ int main(int argc, char **argv)
         -1.0f,  1.0f
     };
 
+    bool no_output = false;
     const char *output = "output.png";
     double duration = 10.0;
     double interval = 0.5;
     aparse_arg main_args[] =
     {
         aparse_arg_option(
+                "-no", "--no-output", 
+                &no_output, sizeof(no_output),
+                APARSE_ARG_TYPE_BOOL,
+                "Disable saving final framebuffer frame (default: false)"),
+        aparse_arg_option(
                 "-o", "--output", 
                 &output, 0,
                 APARSE_ARG_TYPE_STRING,
-                "Path to saved final framebuffer (default: output.png"),
+                "Path to saved final framebuffer frame (default: output.png"),
         aparse_arg_option(
                 "-d", "--duration",
                 &duration, sizeof(duration),
@@ -268,15 +274,18 @@ int main(int argc, char **argv)
             break;
     }
 
-    debug("saving final framebuffer frame into \"%s\"", output);
-    fb = swrz_rasterizer_get_framebuffer(rz);
-    stbi_write_png(output, 
-            (int)swrz_texture_get_width(fb),
-            (int)swrz_texture_get_height(fb),
-            4,
-            swrz_texture_get_data(fb),
-            (int)swrz_texture_get_row_pitch(fb));
-    info("saved final frame into \"%s\" successfully", output);
+    if(!no_output)
+    {
+        debug("saving final framebuffer frame into \"%s\"", output);
+        fb = swrz_rasterizer_get_framebuffer(rz);
+        stbi_write_png(output, 
+                (int)swrz_texture_get_width(fb),
+                (int)swrz_texture_get_height(fb),
+                4,
+                swrz_texture_get_data(fb),
+                (int)swrz_texture_get_row_pitch(fb));
+        info("saved final frame into \"%s\" successfully", output);
+    }
     swrz_rasterizer_destroy(rz);
 
     print_cpu_info();

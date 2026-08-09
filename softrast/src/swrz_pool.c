@@ -123,12 +123,36 @@ static void swrz__pool_partial(
     int64_t e1_row = 0;
     int64_t e2_row = 0;
 
+    int64_t step_x0 = 0;
+    int64_t step_x1 = 0;
+    int64_t step_x2 = 0;
+
+    int64_t step_y0 = 0;
+    int64_t step_y1 = 0;
+    int64_t step_y2 = 0;
+
     uint32_t px = 0;
     uint32_t py = 0;
 
-    e0_row = a[0] * bbox->x0 + b[0] * bbox->y0 + c[0];
-    e1_row = a[1] * bbox->x0 + b[1] * bbox->y0 + c[1];
-    e2_row = a[2] * bbox->x0 + b[2] * bbox->y0 + c[2];
+    int64_t fx = 0;
+    int64_t fy = 0;
+
+    fx = (int64_t)bbox->x0 << SWRZ__FIXED_FRAC_BITS;
+    fy = (int64_t)bbox->y0 << SWRZ__FIXED_FRAC_BITS;
+
+    e0_row = a[0] * fx + b[0] * fy + c[0];
+    e1_row = a[1] * fx + b[1] * fy + c[1];
+    e2_row = a[2] * fx + b[2] * fy + c[2];
+
+    // Move one pixel horizontally
+    step_x0 = a[0] * SWRZ__FIXED_ONE;
+    step_x1 = a[1] * SWRZ__FIXED_ONE;
+    step_x2 = a[2] * SWRZ__FIXED_ONE;
+
+    // Move one pixel vertically
+    step_y0 = b[0] * SWRZ__FIXED_ONE;
+    step_y1 = b[1] * SWRZ__FIXED_ONE;
+    step_y2 = b[2] * SWRZ__FIXED_ONE;
 
     for (py = bbox->y0; py < bbox->y1; py++)
     {
@@ -142,24 +166,27 @@ static void swrz__pool_partial(
 
         for (px = bbox->x0; px < bbox->x1; px++)
         {
-            // inverted
             if (e0 <= 0 && e1 <= 0 && e2 <= 0)
             {
                 uint32_t pixel = 0xff0000ff;
-                memcpy((uint8_t*)fb->data + 
-                        (py * fb->row_pitch + px * sizeof(pixel)),
-                        &pixel, sizeof(pixel));
 
+                memcpy(
+                    (uint8_t *)fb->data +
+                    py * fb->row_pitch +
+                    px * sizeof(pixel),
+                    &pixel,
+                    sizeof(pixel)
+                );
             }
 
-            e0 += a[0];
-            e1 += a[1];
-            e2 += a[2];
+            e0 += step_x0;
+            e1 += step_x1;
+            e2 += step_x2;
         }
 
-        e0_row += b[0];
-        e1_row += b[1];
-        e2_row += b[2];
+        e0_row += step_y0;
+        e1_row += step_y1;
+        e2_row += step_y2;
     }
 }
 
