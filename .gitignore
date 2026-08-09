@@ -3,3 +3,4 @@ build
 **/td_log.txt
 **/statics.txt
 **/.cache
+.vscode
