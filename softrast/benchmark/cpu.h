@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #define MAX_CPU_NAME_LENGTH 128
-#define MAX_CPU_VENDOR_LENGTH 32
 #define MAX_CLUSTER_COUNT 16
 #define MAX_CPU_PER_CLUSTER_COUNT 32
 
@@ -47,7 +46,6 @@ enum
 typedef struct
 {
     char name[MAX_CPU_NAME_LENGTH];
-    char vendor[MAX_CPU_VENDOR_LENGTH];
 
     uint16_t core_logical;
     uint16_t core_online;
