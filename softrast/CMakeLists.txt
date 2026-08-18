@@ -4,6 +4,7 @@ project(softrast C)
 
 option(SWRZ_BUILD_WITH_ASAN "Build softrast with AddressSanitizer" OFF)
 option(SWRZ_BUILD_BENCHMARK "Build benchmark for softrast" OFF)
+option(SWRZ_BUILD_REFERENCE "Build reference implementation for softrast" OFF)
 
 set(SWRZ_BUILD_DEBUG FALSE)
 
@@ -118,7 +119,9 @@ if(SWRZ_BUILD_BENCHMARK)
         add_subdirectory(${CMAKE_SOURCE_DIR}/deps/aparse ${CMAKE_CURRENT_BINARY_DIR}/aparse)
     endif()
 
-    add_subdirectory(deps/stb_image_write)
+    if(NOT TARGET stb_image_write)
+        add_subdirectory(deps/stb_image_write)
+    endif()
 
     add_executable(benchmark 
         benchmark/str.c
@@ -140,4 +143,38 @@ if(SWRZ_BUILD_BENCHMARK)
     target_add_strict_flags(benchmark)
     target_add_asan(benchmark)
     
+endif()
+
+
+if(SWRZ_BUILD_REFERENCE)
+    find_package(OpenGL REQUIRED)
+    find_package(glfw3 REQUIRED)
+    add_subdirectory(deps/glad)
+    add_subdirectory(deps/stb_image)
+
+    # remove when softrast a separated repository
+    if(NOT TARGET aparse)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/deps/aparse ${CMAKE_CURRENT_BINARY_DIR}/aparse)
+    endif()
+
+    if(NOT TARGET stb_image_write)
+        add_subdirectory(deps/stb_image_write)
+    endif()
+
+    add_executable(reference reference/main.c)
+    target_link_libraries(reference PRIVATE 
+        OpenGL::GL
+        glfw
+        glad
+        aparse 
+        softrast 
+        stb_image_write)
+    target_add_strict_flags(reference)
+
+    add_executable(imgdiff reference/imgdiff.c)
+    target_link_libraries(imgdiff PRIVATE 
+        aparse
+        stb_image
+        stb_image_write)
+    target_add_strict_flags(imgdiff)
 endif()
