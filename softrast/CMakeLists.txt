@@ -123,6 +123,7 @@ if(SWRZ_BUILD_BENCHMARK)
     add_executable(benchmark 
         benchmark/str.c
         benchmark/cpu.c
+        benchmark/sha256.c
         benchmark/main.c)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|i[3-6]86)$")
         if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR

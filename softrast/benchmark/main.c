@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <ctype.h>
 #include <inttypes.h>
 
 
@@ -14,6 +13,7 @@
 
 #include "log.h"
 #include "cpu.h"
+#include "sha256.h"
 
 
 static uint64_t get_time_ns(void)
@@ -130,9 +130,15 @@ static void vertex_shader(
 static void print_cpu_info(void)
 {
     cpu_info_t cpu_info = cpu_query_info();
+    char hash[65] = {0};
 
-    info("cpu vendor: %s", cpu_info.vendor);
-    info("cpu name: %s", cpu_info.name);
+    info("cpu name: \"%s\"", cpu_info.name);
+    info("arch: \"%s\"", cpu_info.arch);
+    info("cache size: ");
+    info("    L1 size: %u KB", cpu_info.l1_size / 1024);
+    info("    L2 size: %u KB", cpu_info.l2_size / 1024);
+    info("    L3 size: %u KB", cpu_info.l3_size / 1024);
+
     info("logical/online: %d/%d", cpu_info.core_logical, cpu_info.core_online);
     for(int i = 0; i < cpu_info.cluster_count; i++)
     {
@@ -152,6 +158,8 @@ static void print_cpu_info(void)
                 cpu_get_feature_description(i));
     }
 
+    sha256_easy_hash_hex(&cpu_info, sizeof(cpu_info), hash);
+    info("cpu info hash: \"%s\"", hash);
 }
 
 int main(int argc, char **argv)
@@ -163,12 +171,18 @@ int main(int argc, char **argv)
         -1.0f,  1.0f
     };
 
+    bool spec_only = false;
     bool no_output = false;
     const char *output = "output.png";
     double duration = 10.0;
     double interval = 0.5;
     aparse_arg main_args[] =
     {
+        aparse_arg_option(
+                "-so", "--spec-only", 
+                &spec_only, sizeof(spec_only),
+                APARSE_ARG_TYPE_BOOL,
+                "Only export machine specs (default: false)"),
         aparse_arg_option(
                 "-no", "--no-output", 
                 &no_output, sizeof(no_output),
@@ -211,6 +225,12 @@ int main(int argc, char **argv)
             main_args, NULL, 
             NULL) != APARSE_STATUS_OK)
         return 1;
+
+    if(spec_only)
+    {
+        print_cpu_info();
+        return 0;
+    }
 
     swrz_set_allocator(&(swrz_allocator_t){
             .malloc = custom_malloc,
@@ -288,7 +308,6 @@ int main(int argc, char **argv)
     }
     swrz_rasterizer_destroy(rz);
 
-    print_cpu_info();
     info("performance: %u frames in %" PRIu64 ".%09" PRIu64 "s, "
             "average: %" PRIu64 ".%09" PRIu64 "s",
              frame_count,
