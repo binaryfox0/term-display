@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* Source commit: e539c21fa3f4b445b070ae335de47b0dc3a6460b */
+/* Source commit: b1f798ae27cde6734c5d7732cf734580d8ba6696 */
 
 #ifndef APARSE_H
 #define APARSE_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Dynamic array container.
@@ -282,19 +282,19 @@ void aparse_list_free(aparse_list* list);
  * @brief Print informational message to stderr, with color if supported
  */
 #define aparse_prog_info(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__INFO_LABEL, __VA_ARGS__)
 
 /**
  * @brief Print warning message to stderr, with color if supported
  */
 #define aparse_prog_warn(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__WARN_LABEL, __VA_ARGS__)
 
 /**
  * @brief Print error message to stderr, with color if supported
  */
 #define aparse_prog_error(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__ERROR_LABEL, __VA_ARGS__)
 
 
 #ifdef __cplusplus
@@ -953,88 +953,18 @@ const char* aparse_error_msg(const aparse_status status);
 
 #ifdef APARSE_IMPLEMENTATION
 
+#include <stdio.h>
 #include <math.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <limits.h>
 #include <errno.h>
-#include <string.h>
-#include <stdio.h>
 #include <ctype.h>
+#include <string.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <float.h>
+#include <stdlib.h>
 
-/* --------/home/binaryfox0/proj/aparse/src/aparse_list.c BEGIN--------- */
-
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
-int aparse_list_new(
-        aparse_list* list, 
-        const size_t init_size, 
-        const size_t var_size) 
-{
-    if(!list || var_size == 0)
-        return 0;
-    list->itemsz = var_size;
-    list->size = 0;
-    list->ptr = NULL;
-    list->capacity = 0;
-    return init_size > 0 ? aparse_list_resize(list, init_size) : 1;
-}
-
-int aparse_list_resize(
-        aparse_list* list, 
-        const size_t new_size) 
-{
-    if (!list || !list->itemsz)
-        return 0;
-
-    if (new_size) 
-    {
-        void* tmp = realloc(list->ptr, new_size * list->itemsz);
-        if (!tmp) 
-            return 0;
-        list->ptr = tmp;
-        list->capacity = new_size;
-        list->size = min(list->size, new_size);
-    } else {
-        free(list->ptr);
-        list->ptr = NULL;
-        list->capacity = 0;
-        list->size = 0;
-    }
-    return 1;
-}
-
-int aparse_list_add(
-        aparse_list* list, 
-        const void* data) 
-{
-    if (!list->itemsz)
-        return 0;
-
-    if (list->size >= list->capacity) 
-    {
-        size_t new_capacity = list->capacity ? list->capacity * 2 : 4;
-        if (!aparse_list_resize(list, new_capacity))
-            return 0;
-    }
-
-    memcpy((uint8_t*)list->ptr + list->size * list->itemsz, data, list->itemsz);
-    list->size++;
-    return 1;
-}
-
-void aparse_list_free(aparse_list* list) 
-{
-    if(!list)
-        return;
-    free(list->ptr);
-    memset(list, 0, sizeof(*list));
-}
-/* ---------/home/binaryfox0/proj/aparse/src/aparse_list.c END---------- */
-
-/* -----------/home/binaryfox0/proj/aparse/src/aparse.c BEGIN----------- */
+/* ---/data/data/com.termux/files/home/proj/aparse/src/aparse.c BEGIN--- */
 
 #ifdef _WIN32
 #   include <windows.h>
@@ -2567,7 +2497,77 @@ static int aparse__get_term_width(void)
 
     return 80;
 }
-/* ------------/home/binaryfox0/proj/aparse/src/aparse.c END------------ */
+/* ----/data/data/com.termux/files/home/proj/aparse/src/aparse.c END---- */
+
+/* /data/data/com.termux/files/home/proj/aparse/src/aparse_list.c BEGIN- */
+
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
+int aparse_list_new(
+        aparse_list* list, 
+        const size_t init_size, 
+        const size_t var_size) 
+{
+    if(!list || var_size == 0)
+        return 0;
+    list->itemsz = var_size;
+    list->size = 0;
+    list->ptr = NULL;
+    list->capacity = 0;
+    return init_size > 0 ? aparse_list_resize(list, init_size) : 1;
+}
+
+int aparse_list_resize(
+        aparse_list* list, 
+        const size_t new_size) 
+{
+    if (!list || !list->itemsz)
+        return 0;
+
+    if (new_size) 
+    {
+        void* tmp = realloc(list->ptr, new_size * list->itemsz);
+        if (!tmp) 
+            return 0;
+        list->ptr = tmp;
+        list->capacity = new_size;
+        list->size = min(list->size, new_size);
+    } else {
+        free(list->ptr);
+        list->ptr = NULL;
+        list->capacity = 0;
+        list->size = 0;
+    }
+    return 1;
+}
+
+int aparse_list_add(
+        aparse_list* list, 
+        const void* data) 
+{
+    if (!list->itemsz)
+        return 0;
+
+    if (list->size >= list->capacity) 
+    {
+        size_t new_capacity = list->capacity ? list->capacity * 2 : 4;
+        if (!aparse_list_resize(list, new_capacity))
+            return 0;
+    }
+
+    memcpy((uint8_t*)list->ptr + list->size * list->itemsz, data, list->itemsz);
+    list->size++;
+    return 1;
+}
+
+void aparse_list_free(aparse_list* list) 
+{
+    if(!list)
+        return;
+    free(list->ptr);
+    memset(list, 0, sizeof(*list));
+}
+/* -/data/data/com.termux/files/home/proj/aparse/src/aparse_list.c END-- */
 
 
 #endif /* APARSE_IMPLEMENTATION */

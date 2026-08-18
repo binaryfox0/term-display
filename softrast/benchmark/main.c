@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
-
 #include <time.h>
 
 #include <aparse.h>
@@ -15,15 +14,12 @@
 #include "cpu.h"
 #include "sha256.h"
 
-
 static uint64_t get_time_ns(void)
 {
     struct timespec ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
 }
-
-#include <stdlib.h>
 
 static int g_malloc_count = 0;
 static int g_free_count = 0;

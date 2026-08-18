@@ -19,12 +19,19 @@ int main(int argc, char **argv)
 
     const char *ref_fname = NULL;
     const char *test_fname = NULL;
+    const char *out_fname = "diff.png";
     aparse_arg main_args[] =
     {
         aparse_arg_string("reference", 
-                &ref_fname, 0, "reference image"),
+                &ref_fname, 0, 
+                "Path to reference framebuffer image"),
         aparse_arg_string("test", 
-                &test_fname, 0, "test image"),
+                &test_fname, 0, 
+                "Path to test framebuffer image"),
+        aparse_arg_option(
+                "-o", "--output", 
+                &out_fname, 0, APARSE_ARG_TYPE_STRING, 
+                "Path to saved final framebuffer frame (default: diff.png)"),
         aparse_arg_end_marker
     };
 
@@ -115,17 +122,17 @@ int main(int argc, char **argv)
         }
     }
 
-    info("writing differences into diff.png\n");
+    info("writing differences into \"%s\"", out_fname);
     stbi_write_png(
-        "diff.png",
-        width,
-        height,
-        4,
-        diff,
-        width * 4
+            out_fname,
+            width,
+            height,
+            4,
+            diff,
+            width * 4
     );
 
-    info("different pixels: %zu / %zu (%.2f%%)\n",
+    info("different pixels: %zu / %zu (%.2f%%)",
             diff_count, pixel_count,
             100.0 * (double)diff_count / (double)pixel_count);
 

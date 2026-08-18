@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-/* Source commit: e539c21fa3f4b445b070ae335de47b0dc3a6460b */
+/* Source commit: b1f798ae27cde6734c5d7732cf734580d8ba6696 */
 
 #ifndef APARSE_H
 #define APARSE_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 /**
  * @brief Dynamic array container.
@@ -282,19 +282,19 @@ void aparse_list_free(aparse_list* list);
  * @brief Print informational message to stderr, with color if supported
  */
 #define aparse_prog_info(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__INFO_LABEL, __VA_ARGS__)
 
 /**
  * @brief Print warning message to stderr, with color if supported
  */
 #define aparse_prog_warn(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__WARN_LABEL, __VA_ARGS__)
 
 /**
  * @brief Print error message to stderr, with color if supported
  */
 #define aparse_prog_error(...) \
-    aparse_log(aparse_progname, APARSE__DEBUG_LABEL, __VA_ARGS__)
+    aparse_log(aparse_progname, APARSE__ERROR_LABEL, __VA_ARGS__)
 
 
 #ifdef __cplusplus
@@ -953,18 +953,18 @@ const char* aparse_error_msg(const aparse_status status);
 
 #ifdef APARSE_IMPLEMENTATION
 
+#include <limits.h>
+#include <errno.h>
+#include <float.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
+#include <stdarg.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <float.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdarg.h>
-#include <limits.h>
-#include <string.h>
-#include <ctype.h>
-#include <math.h>
 
-/* --------/home/binaryfox0/proj/aparse/src/aparse_list.c BEGIN--------- */
+/* /data/data/com.termux/files/home/proj/aparse/src/aparse_list.c BEGIN- */
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
@@ -1032,9 +1032,9 @@ void aparse_list_free(aparse_list* list)
     free(list->ptr);
     memset(list, 0, sizeof(*list));
 }
-/* ---------/home/binaryfox0/proj/aparse/src/aparse_list.c END---------- */
+/* -/data/data/com.termux/files/home/proj/aparse/src/aparse_list.c END-- */
 
-/* -----------/home/binaryfox0/proj/aparse/src/aparse.c BEGIN----------- */
+/* ---/data/data/com.termux/files/home/proj/aparse/src/aparse.c BEGIN--- */
 
 #ifdef _WIN32
 #   include <windows.h>
@@ -2567,7 +2567,7 @@ static int aparse__get_term_width(void)
 
     return 80;
 }
-/* ------------/home/binaryfox0/proj/aparse/src/aparse.c END------------ */
+/* ----/data/data/com.termux/files/home/proj/aparse/src/aparse.c END---- */
 
 
 #endif /* APARSE_IMPLEMENTATION */
