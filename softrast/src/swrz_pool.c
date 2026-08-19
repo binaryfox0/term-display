@@ -163,41 +163,78 @@ static void swrz__pool_partial(
         const uint32_t x,
         const uint32_t y)
 {
-    uint16_t tl_mask = 0, br_mask = 0;
-    uint16_t full_mask = 0, inside_mask = 0;
-    uint32_t tile_px = 0, tile_py = 0;
+    uint16_t tl_mask = 0;
+    uint16_t br_mask = 0;
+    uint16_t full_mask = 0;
+    uint16_t inside_mask = 0;
 
-    for(int i = 0; i < 3; i++)
-    {
-        // A, B to next tile top-left corner
-        int64_t scaled_a = 0;
-        int64_t scaled_b = 0;
+    uint32_t tile_px = 0;
+    uint32_t tile_py = 0;
 
-        scaled_a = a[i] * 16;
-        scaled_b = b[i] * 16;
+    int64_t tile_fx = 0;
+    int64_t tile_fy = 0;
 
-        tl_mask |= swrz__build_masks_scalar(scaled_a, scaled_b, c[i]);
-        br_mask |= swrz__build_masks_scalar(
-                scaled_a, scaled_b, 
-                c[i] + scaled_a * 15 + scaled_b * 15);
-    }
-
-    if(tl_mask == 0xFFFF)
-        return;
-
-    full_mask = ~br_mask & 0xFFFF;
-    inside_mask = ~tl_mask & br_mask;
     tile_px = x * SWRZ__TILE_SIZE;
     tile_py = y * SWRZ__TILE_SIZE;
-    while(full_mask != 0)
+
+    tile_fx = (int64_t)tile_px * SWRZ__FIXED_ONE;
+    tile_fy = (int64_t)tile_py * SWRZ__FIXED_ONE;
+
+    for (int i = 0; i < 3; i++)
+    {
+        int64_t edge_c = 0;
+        int64_t edge_a = 0;
+        int64_t edge_b = 0;
+
+        edge_a = a[i] * 16;
+        edge_b = b[i] * 16;
+        edge_c = c[i]
+                + tile_fx * a[i]
+                + tile_fy * b[i];
+
+
+        tl_mask |= swrz__build_masks_scalar(
+                edge_a,
+                edge_b,
+                edge_c);
+        br_mask |= swrz__build_masks_scalar(
+                edge_a,
+                edge_b,
+                edge_c
+                + a[i] * 15
+                + b[i] * 15);
+    }
+    printf("%04X ", tl_mask);
+    if (tl_mask == 0xFFFF)
+        return;
+
+    full_mask = (uint16_t)~br_mask;
+    inside_mask = (uint16_t)(~tl_mask & br_mask);
+    while (full_mask != 0)
     {
         int bit_idx = 0;
-        uint32_t subtile_px = 0, subtile_py = 0;
-        bit_idx = swrz__ffs(full_mask); 
-        subtile_px = tile_px + (uint32_t)((bit_idx & 3) << 4); // % 4 
-        subtile_py = tile_py + (uint32_t)((bit_idx >> 2) << 4); // / 4
-        swrz__pool_fill_impl(fb, subtile_px, subtile_py, 16, 16);
+        uint32_t subtile_px = 0;
+        uint32_t subtile_py = 0;
+
+        bit_idx = swrz__ffs(full_mask);
+
+        bit_idx--;
+        full_mask &= (uint16_t)~(1u << bit_idx);
+
+        subtile_px = tile_px + (uint32_t)((bit_idx & 3) << 4);
+        subtile_py = tile_py + (uint32_t)((bit_idx >> 2) << 4);
+
+        swrz__pool_fill_impl(
+                fb,
+                subtile_px,
+                subtile_py,
+                16,
+                16);
     }
+
+    /*
+     * TODO: rasterize the partial subtiles in inside_mask.
+     */
     (void)inside_mask;
 }
 
@@ -218,9 +255,6 @@ swrz_error_t swrz__pool_rasterize_triangle(
     int64_t bb_fx0 = 0, bb_fy0 = 0;
     int64_t bb_fx1 = 0, bb_fy1 = 0;
     
-    uint32_t bb_x0 = 0, bb_y0 = 0;
-    uint32_t bb_x1 = 0, bb_y1 = 0;
-
     int64_t a[3] = {0}, b[3] = {0}, c[3] = {0};
 
     uint32_t tile_x0 = 0, tile_y0 = 0;
@@ -258,61 +292,6 @@ swrz_error_t swrz__pool_rasterize_triangle(
     bb_fy0 = SWRZ__MAX(bb_fy0, 0);
     bb_fx1 = SWRZ__MIN(bb_fx1, (int64_t)fb->width * SWRZ__FIXED_ONE);
     bb_fy1 = SWRZ__MIN(bb_fy1, (int64_t)fb->height * SWRZ__FIXED_ONE);
-
-    bb_x0 = (uint32_t)(bb_fx0 >> SWRZ__FIXED_FRAC_BITS);
-    bb_y0 = (uint32_t)(bb_fy0 >> SWRZ__FIXED_FRAC_BITS);
-    bb_x1 = (uint32_t)(bb_fx1 >> SWRZ__FIXED_FRAC_BITS);
-    bb_y1 = (uint32_t)(bb_fy1 >> SWRZ__FIXED_FRAC_BITS);
-
-    a[0] = (int64_t)v0_y - v1_y;
-    b[0] = (int64_t)v1_x - v0_x;
-    c[0] = (int64_t)v0_x * v1_y - (int64_t)v1_x * v0_y;
-
-    a[1] = (int64_t)v1_y - v2_y;
-    b[1] = (int64_t)v2_x - v1_x;
-
-    if(!pool || !fb || !v0 || !v1 || !v2)
-        return SWRZ_ERR_PARAM;
-
-    v0_x = (int32_t)((v0->position[0] / v0->position[3] + 1.0f) 
-        * 0.5f * (float)fb->width * SWRZ__FIXED_ONE);
-    v0_y = (int32_t)((1.0f - v0->position[1] / v0->position[3]) 
-            * 0.5f * (float)fb->height * SWRZ__FIXED_ONE);
-    v1_x = (int32_t)((v1->position[0] / v1->position[3] + 1.0f) 
-            * 0.5f * (float)fb->width * SWRZ__FIXED_ONE);
-    v1_y = (int32_t)((1.0f - v1->position[1] / v1->position[3]) 
-            * 0.5f * (float)fb->height * SWRZ__FIXED_ONE);
-    v2_x = (int32_t)((v2->position[0] / v2->position[3] + 1.0f) 
-            * 0.5f * (float)fb->width * SWRZ__FIXED_ONE);
-    v2_y = (int32_t)((1.0f - v2->position[1] / v2->position[3]) 
-            * 0.5f * (float)fb->height * SWRZ__FIXED_ONE);
-
-    area = (int64_t)(v1_x - v0_x) * (v2_y - v0_y) -
-            (int64_t)(v1_y - v0_y) * (v2_x - v0_x);
-
-    // This is inverted because we has inverted y-axis in screen space
-    if(area >= 0)
-        return SWRZ_ERR_OK;
-    
-    bb_fx0 = SWRZ__MIN3(v0_x, v1_x, v2_x);
-    bb_fy0 = SWRZ__MIN3(v0_y, v1_y, v2_y);
-    bb_fx1 = SWRZ__MAX3(v0_x, v1_x, v2_x);
-    bb_fy1 = SWRZ__MAX3(v0_y, v1_y, v2_y);
-
-    bb_fx0 = SWRZ__MAX(bb_fx0, 0);
-    bb_fy0 = SWRZ__MAX(bb_fy0, 0);
-    bb_fx1 = SWRZ__MIN(bb_fx1, (int64_t)fb->width * SWRZ__FIXED_ONE);
-    bb_fy1 = SWRZ__MIN(bb_fy1, (int64_t)fb->height * SWRZ__FIXED_ONE);
-
-    bb_x0 = (uint32_t)(bb_fx0 >> SWRZ__FIXED_FRAC_BITS);
-    bb_y0 = (uint32_t)(bb_fy0 >> SWRZ__FIXED_FRAC_BITS);
-    bb_x1 = (uint32_t)(bb_fx1 >> SWRZ__FIXED_FRAC_BITS);
-    bb_y1 = (uint32_t)(bb_fy1 >> SWRZ__FIXED_FRAC_BITS);
-
-    (void)bb_x0;
-    (void)bb_x1;
-    (void)bb_y0;
-    (void)bb_y1;
 
     a[0] = (int64_t)v0_y - v1_y;
     b[0] = (int64_t)v1_x - v0_x;
@@ -378,7 +357,8 @@ swrz_error_t swrz__pool_rasterize_triangle(
 
             if(full)
             {
-                swrz__pool_fill_impl(fb, x, y, 
+                swrz__pool_fill_impl(fb, 
+                        x * SWRZ__TILE_SIZE, y * SWRZ__TILE_SIZE, 
                         SWRZ__TILE_SIZE, SWRZ__TILE_SIZE);
             } else {
                 swrz__pool_partial(
