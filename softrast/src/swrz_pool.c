@@ -12,6 +12,8 @@
 #include "softrast/swrz_vertex.h"
 #include "swrz_texture_priv.h"
 
+/* Convention: < 0 is inside, > 0 is outside */
+
 static void swrz__pool_thread(
         void *param)
 {
@@ -81,7 +83,8 @@ static void swrz__pool_fill_impl(
         const uint32_t x,
         const uint32_t y,
         const uint32_t w,
-        const uint32_t h)
+        const uint32_t h,
+        const uint32_t color)
 {
     uint8_t *data = (uint8_t *)fb->data;
     size_t row_size = 0;
@@ -92,8 +95,7 @@ static void swrz__pool_fill_impl(
         (size_t)x * sizeof(uint32_t);
 
     for (uint32_t col = 0; col < w; ++col) {
-        uint32_t pixel = 0xff0000ff;
-        memcpy(row + col * sizeof(pixel), &pixel, sizeof(pixel));
+        memcpy(row + col * sizeof(color), &color, sizeof(color));
     }
 
     for (uint32_t i = 1; i < h; i++) 
@@ -151,7 +153,8 @@ static uint16_t swrz__build_masks_scalar(
     mask |= swrz__sign_bit(c3 + 2 * a) & (1 << 14);
     mask |= swrz__sign_bit(c3 + 3 * a) & (1 << 15);
 
-    return mask;
+    /* inverted */
+    return (uint16_t)~mask;
 }
 
 
@@ -186,8 +189,8 @@ static void swrz__pool_partial(
         int64_t edge_a = 0;
         int64_t edge_b = 0;
 
-        edge_a = a[i] * 16;
-        edge_b = b[i] * 16;
+        edge_a = a[i] * (16 << SWRZ__FIXED_FRAC_BITS);
+        edge_b = -b[i] * (16 << SWRZ__FIXED_FRAC_BITS);
         edge_c = c[i]
                 + tile_fx * a[i]
                 + tile_fy * b[i];
@@ -201,10 +204,9 @@ static void swrz__pool_partial(
                 edge_a,
                 edge_b,
                 edge_c
-                + a[i] * 15
-                + b[i] * 15);
+                + a[i] * (16 << SWRZ__FIXED_FRAC_BITS)
+                + b[i] * (16 << SWRZ__FIXED_FRAC_BITS));
     }
-    printf("%04X ", tl_mask);
     if (tl_mask == 0xFFFF)
         return;
 
@@ -215,21 +217,28 @@ static void swrz__pool_partial(
         int bit_idx = 0;
         uint32_t subtile_px = 0;
         uint32_t subtile_py = 0;
+        uint32_t subtile_w = 0;
+        uint32_t subtile_h = 0;
 
         bit_idx = swrz__ffs(full_mask);
-
-        bit_idx--;
         full_mask &= (uint16_t)~(1u << bit_idx);
 
         subtile_px = tile_px + (uint32_t)((bit_idx & 3) << 4);
         subtile_py = tile_py + (uint32_t)((bit_idx >> 2) << 4);
 
+        subtile_w = SWRZ__MIN(16, fb->width - subtile_px);
+        subtile_h = SWRZ__MIN(16, fb->height - subtile_py);
+
+        if(subtile_w == 0 || subtile_h == 0)
+            continue;
+        //printf("%u, %u\n", subtile_w, subtile_h);
         swrz__pool_fill_impl(
-                fb,
-                subtile_px,
-                subtile_py,
-                16,
-                16);
+            fb,
+            subtile_px,
+            subtile_py,
+            subtile_w,
+            subtile_h,
+            0xff0000ff);
     }
 
     /*
@@ -359,7 +368,7 @@ swrz_error_t swrz__pool_rasterize_triangle(
             {
                 swrz__pool_fill_impl(fb, 
                         x * SWRZ__TILE_SIZE, y * SWRZ__TILE_SIZE, 
-                        SWRZ__TILE_SIZE, SWRZ__TILE_SIZE);
+                        SWRZ__TILE_SIZE, SWRZ__TILE_SIZE, 0xff0000ff);
             } else {
                 swrz__pool_partial(
                     fb,
