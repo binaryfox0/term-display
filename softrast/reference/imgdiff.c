@@ -4,19 +4,90 @@
 #include <string.h>
 
 #include <aparse.h>
-#include <stb_image.h>
-#include <stb_image_write.h>
+#include <lodepng.h>
 
 #define debug aparse_prog_debug
 #define info aparse_prog_info
 #define warn aparse_prog_warn
 #define error aparse_prog_error
 
+#define WIDTH  1920
+#define HEIGHT 1080
+
+#define CHECK(x, err, label) \
+    if(((err) = x) != 0) goto label
+
+typedef struct 
+{
+    uint8_t *data;
+} png_t;
+
+static bool png_decode_rgba(
+        const char *path,
+        png_t *out)
+{
+    unsigned err = 0;
+    LodePNGState state = {0};
+    uint8_t *png = NULL;
+    size_t png_size = 0;
+    uint32_t width = 0, height = 0;
+
+    if(!path || !out)
+        return false;
+
+    CHECK(lodepng_load_file(&png, &png_size, 
+                path), err, cleanup);
+
+    lodepng_state_init(&state);
+    state.info_raw.bitdepth = 8;
+    state.info_raw.colortype = LCT_RGBA;
+
+    CHECK(lodepng_decode(
+            &out->data, 
+            &width, &height, 
+            &state, 
+            png, png_size), err, cleanup);
+
+    if(width != WIDTH || height != HEIGHT)
+    {
+        error("expected png at \"%s\" to be %dx%d px", path, 
+                WIDTH, HEIGHT);
+        info("png resolution: %ux%u px", width, height);
+        err = 0xFFFFFFFF;
+    }
+
+    for (unsigned i = 0; i < state.info_png.text_num; i++) 
+    {
+        debug(
+            "%s = %s",
+            state.info_png.text_keys[i],
+            state.info_png.text_strings[i]
+        );
+    }
+
+cleanup:
+    if(err != 0 && err != 0xFFFFFFFF)
+    {
+        error("failed to decode png from \"%s\"", path);
+        info("reason: %s", lodepng_error_text(err));
+    }
+    lodepng_state_cleanup(&state);
+    free(png);
+    return err == 0;
+}
+
+static inline void png_destroy(
+        png_t *png)
+{
+    if(!png)
+        return;
+    free(png->data);
+}
+
+
+
 int main(int argc, char **argv)
 {
-    static const int width = 1920;
-    static const int height = 1080;
-
     const char *ref_fname = NULL;
     const char *test_fname = NULL;
     const char *out_fname = "diff.png";
@@ -36,15 +107,12 @@ int main(int argc, char **argv)
     };
 
     int ret = 1;
-    int ref_width = 0;
-    int ref_height = 0;
-    int ref_channels = 0;
+    unsigned err = 0;
 
-    int test_width = 0;
-    int test_height = 0;
-    int test_channels = 0;
+    png_t ref_png = {0};
+    png_t test_png = {0};
 
-    unsigned char *reference = NULL;
+    unsigned char *ref = NULL;
     unsigned char *test = NULL;
     unsigned char *diff = NULL;
 
@@ -56,40 +124,15 @@ int main(int argc, char **argv)
                     "softrast image diff tool") != APARSE_STATUS_OK)
         return 1; 
 
-    reference = stbi_load(
-        argv[1],
-        &ref_width,
-        &ref_height,
-        &ref_channels,
-        4
-    );
-    if(!reference)
-    {
-        error("failed to load reference image\n");
+    if(!png_decode_rgba(ref_fname, &ref_png))
+        return 1;
+    if(!png_decode_rgba(test_fname, &test_png))
         goto cleanup;
-    }
 
-    test = stbi_load(
-        argv[2],
-        &test_width,
-        &test_height,
-        &test_channels,
-        4
-    );
-    if(!test)
-    {
-        error("failed to load test image\n");
-        goto cleanup;
-    }
+    ref = ref_png.data;
+    test = test_png.data;
 
-    if (ref_width != width || ref_height != height ||
-        test_width != width || test_height != height)
-    {
-        error("images must both be 1920x1080\n");
-        goto cleanup;
-    }
-
-    pixel_count = (size_t)width * height;
+    pixel_count = (size_t)WIDTH * HEIGHT;
     diff = malloc(pixel_count * 4);
     if (!diff)
     {
@@ -101,10 +144,10 @@ int main(int argc, char **argv)
     {
         size_t p = i * 4;
 
-        if (reference[p + 0] != test[p + 0] ||
-            reference[p + 1] != test[p + 1] ||
-            reference[p + 2] != test[p + 2] ||
-            reference[p + 3] != test[p + 3])
+        if (ref[p + 0] != test[p + 0] ||
+            ref[p + 1] != test[p + 1] ||
+            ref[p + 2] != test[p + 2] ||
+            ref[p + 3] != test[p + 3])
         {
             diff[p + 0] = 255;
             diff[p + 1] = 255;
@@ -123,14 +166,8 @@ int main(int argc, char **argv)
     }
 
     info("writing differences into \"%s\"", out_fname);
-    stbi_write_png(
-            out_fname,
-            width,
-            height,
-            4,
-            diff,
-            width * 4
-    );
+    CHECK(lodepng_encode32_file(out_fname, diff, 
+                WIDTH, HEIGHT), err, cleanup);
 
     info("different pixels: %zu / %zu (%.2f%%)",
             diff_count, pixel_count,
@@ -139,8 +176,14 @@ int main(int argc, char **argv)
     ret = 0;
 
 cleanup:
+    if(err != 0)
+    {
+        error("failed to encode png to \"%s\"", out_fname);
+        info("reason: %s", lodepng_error_text(err));
+    }
+
     free(diff);
-    stbi_image_free(reference);
-    stbi_image_free(test);
+    png_destroy(&ref_png); 
+    png_destroy(&test_png);
     return ret;
 }

@@ -32,7 +32,7 @@ function(target_add_asan target)
 
     if (CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(${target} PRIVATE
-            -fsanitize=address,undefined
+            -fsanitize=address,leak,undefined
             -fno-omit-frame-pointer
         )
 
@@ -118,9 +118,9 @@ if(SWRZ_BUILD_BENCHMARK)
     if(NOT TARGET aparse)
         add_subdirectory(${CMAKE_SOURCE_DIR}/deps/aparse ${CMAKE_CURRENT_BINARY_DIR}/aparse)
     endif()
-
-    if(NOT TARGET stb_image_write)
-        add_subdirectory(deps/stb_image_write)
+    
+    if(NOT TARGET lodepng)
+        add_subdirectory(deps/lodepng)
     endif()
 
     add_executable(benchmark 
@@ -138,7 +138,7 @@ if(SWRZ_BUILD_BENCHMARK)
             )
         endif()
     endif()
-    target_link_libraries(benchmark PRIVATE aparse softrast stb_image_write)
+    target_link_libraries(benchmark PRIVATE aparse softrast lodepng)
     target_compile_definitions(benchmark PRIVATE _GNU_SOURCE)
     target_add_strict_flags(benchmark)
     target_add_asan(benchmark)
@@ -150,15 +150,14 @@ if(SWRZ_BUILD_REFERENCE)
     find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     add_subdirectory(deps/glad)
-    add_subdirectory(deps/stb_image)
 
     # remove when softrast a separated repository
     if(NOT TARGET aparse)
-        add_subdirectory(${CMAKE_SOURCE_DIR}/deps/aparse ${CMAKE_CURRENT_BINARY_DIR}/aparse)
+        add_subdirectory(deps/aparse)
     endif()
-
-    if(NOT TARGET stb_image_write)
-        add_subdirectory(deps/stb_image_write)
+    
+    if(NOT TARGET lodepng)
+        add_subdirectory(deps/lodepng)
     endif()
 
     add_executable(reference reference/main.c)
@@ -168,13 +167,14 @@ if(SWRZ_BUILD_REFERENCE)
         glad
         aparse 
         softrast 
-        stb_image_write)
+        lodepng)
     target_add_strict_flags(reference)
+    target_add_asan(reference)
 
     add_executable(imgdiff reference/imgdiff.c)
     target_link_libraries(imgdiff PRIVATE 
         aparse
-        stb_image
-        stb_image_write)
+        lodepng)
     target_add_strict_flags(imgdiff)
+    target_add_asan(imgdiff)
 endif()

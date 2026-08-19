@@ -1,16 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
 #include <aparse.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <stb_image_write.h>
+#include <lodepng.h>
 
 #define debug aparse_prog_debug
 #define info aparse_prog_info
 #define warn aparse_prog_warn
 #define error aparse_prog_error
 
+#define WIDTH  1920
+#define HEIGHT 1080
 
 static void glfw_error_callback(
         int err, 
@@ -130,11 +134,89 @@ cleanup:
     return ret;
 }
 
+#define CHECK(x, err, label) \
+    if(((err) = x) != 0) goto label
+
+static bool flip_vertical_rgba(
+        unsigned char *pixels)
+{
+    size_t row_size = 0;
+    uint8_t *tmp = NULL;
+
+    if(!pixels)
+        return false;
+
+    row_size = (size_t)WIDTH * 4;
+    tmp = malloc(row_size);
+    if(!tmp)
+    {
+        error("failed to allocate temporary buffer for flipping");
+        return false;
+    }
+
+    for(uint32_t y = 0; y < HEIGHT / 2; y++) 
+    {
+        uint8_t *top = NULL;
+        uint8_t *bottom = NULL;
+
+        top = pixels + (size_t)y * row_size;
+        bottom = pixels + (size_t)(HEIGHT - 1 - y) * row_size;
+
+        memcpy(tmp, top, row_size);
+        memcpy(top, bottom, row_size);
+        memcpy(bottom, tmp, row_size);
+    }
+
+    free(tmp);
+    return true;
+}
+
+static void encode_png_rgba(
+        const char *path,
+        const uint8_t *data)
+{
+    unsigned err = 0;
+    LodePNGState state = {0};
+    uint8_t *png = NULL;
+    size_t png_size = 0;
+
+    if(!path || !data)
+        return;
+
+    lodepng_state_init(&state);
+    CHECK(lodepng_add_text(&state.info_png, "swrz_type", 
+                "reference"), err, cleanup);
+    CHECK(lodepng_add_text(&state.info_png, "swrz_vendor", 
+                (const char*)glGetString(GL_VENDOR)), err, cleanup);
+    CHECK(lodepng_add_text(&state.info_png, "swrz_renderer", 
+                (const char*)glGetString(GL_RENDERER)), err, cleanup);
+    CHECK(lodepng_add_text(&state.info_png, "swrz_version", 
+                (const char*)glGetString(GL_VERSION)), err, cleanup);
+
+    state.info_raw.colortype = LCT_RGBA;
+    state.info_raw.bitdepth = 8;
+
+    CHECK(lodepng_encode(
+            &png, &png_size, 
+            data, WIDTH, HEIGHT, 
+            &state), err, cleanup);
+
+    CHECK(lodepng_save_file(png, png_size, 
+                path), err, cleanup);
+
+cleanup:
+    if(err != 0)
+    {
+        error("failed to encode png to \"%s\"", path);
+        info("reason: %s", lodepng_error_text(err));
+    }
+
+    free(png);
+    lodepng_state_cleanup(&state);
+}
+
 int main(int argc, char **argv)
 {
-    static const int width = 1920;
-    static const int height = 1080;
-
     static const float vertices[] =
     {
         -1.0f, -1.0f,
@@ -195,7 +277,7 @@ int main(int argc, char **argv)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     window = glfwCreateWindow(
-            width, height, 
+            WIDTH, HEIGHT,
             "softrast OpenGL reference", 
             NULL, NULL);
     if (!window)
@@ -215,7 +297,7 @@ int main(int argc, char **argv)
     info("renderer: \"%s\"", (const char*)glGetString(GL_RENDERER));
     info("opengl version: \"%s\"", (const char*)glGetString(GL_VERSION));
 
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, WIDTH, HEIGHT);
     if(!compile_shader(
                 vertex_shader_source, 
                 fragment_shader_source,
@@ -252,7 +334,7 @@ int main(int argc, char **argv)
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    pixels = malloc((size_t)width * height * 4);
+    pixels = malloc((size_t)WIDTH * HEIGHT * 4);
     if (!pixels)
     {
         error("failed to create pixel buffer");
@@ -262,19 +344,14 @@ int main(int argc, char **argv)
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(
         0, 0,
-        width, height,
+        WIDTH, HEIGHT,
         GL_RGBA, GL_UNSIGNED_BYTE,
         pixels
     );
 
-    stbi_flip_vertically_on_write(true);
-    stbi_write_png(
-        output,
-        width, height,
-        4,
-        pixels,
-        width * 4
-    );
+    if(!flip_vertical_rgba(pixels))
+        goto cleanup;
+    encode_png_rgba(output, pixels);
 
 cleanup:
     free(pixels);
