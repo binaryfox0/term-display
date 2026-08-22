@@ -8,10 +8,13 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #   define SWRZ__INLINE static inline __attribute__((always_inline))
+#   define SWRZ__ALIGN(n) __attribute__((align(n)))
 #elif defined(_MSC_VER)
 #   define SWRZ__INLINE __forceinline
+#   define SWRZ__ALIGN(n) __declspec(align(n))
 #else
 #   define SWRZ__INLINE
+#   define SWRZ__ALIGN(n)
 #endif
 
 #define SWRZ__IN_RANGE(value, begin, end) \

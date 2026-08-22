@@ -202,6 +202,14 @@ swrz_error_t swrz__pool_rasterize_triangle(
     int64_t tri_a[SWRZ__MAX_PLANES] = {0}, 
             tri_b[SWRZ__MAX_PLANES] = {0},
             tri_c[SWRZ__MAX_PLANES] = {0},
+    /*
+     * eo = Edge Out: offset to the tile corner with the worst edge value.
+     * ei = Edge In:  offset to the tile corner with the best edge value.
+     *
+     * E > 0: inside, E < 0: outside.
+     * E + eo < 0 -> tile is fully outside.
+     * E + ei > 0 -> tile is fully inside.
+     */
             tri_eo[SWRZ__MAX_PLANES] = {0},
             tri_ei[SWRZ__MAX_PLANES] = {0};
 
@@ -248,17 +256,17 @@ swrz_error_t swrz__pool_rasterize_triangle(
     bbox_tile.y1 = bbox.y1 >> SWRZ__TILE_ORDER;
 
     // coefficients was invertes due to inverted y coords
-tri_a[0] = v1_y - v0_y;
-tri_a[1] = v2_y - v1_y;
-tri_a[2] = v0_y - v2_y;
+    tri_a[0] = v1_y - v0_y;
+    tri_a[1] = v2_y - v1_y;
+    tri_a[2] = v0_y - v2_y;
 
-tri_b[0] = v0_x - v1_x;
-tri_b[1] = v1_x - v2_x;
-tri_b[2] = v2_x - v0_x;
+    tri_b[0] = v0_x - v1_x;
+    tri_b[1] = v1_x - v2_x;
+    tri_b[2] = v2_x - v0_x;
 
-tri_c[0] = v1_x * v0_y - v0_x * v1_y;
-tri_c[1] = v2_x * v1_y - v1_x * v2_y;
-tri_c[2] = v0_x * v2_y - v2_x * v0_y;
+    tri_c[0] = v1_x * v0_y - v0_x * v1_y;
+    tri_c[1] = v2_x * v1_y - v1_x * v2_y;
+    tri_c[2] = v0_x * v2_y - v2_x * v0_y;
 
     for(int i = 0; i < SWRZ__MAX_PLANES; i++)
     {
@@ -328,7 +336,6 @@ tri_c[2] = v0_x * v2_y - v2_x * v0_y;
             c[i] += b[i];
     }
 
-    (void)bbox_tile;
     (void)pool;
     (void)swrz__pool_fill_impl;
     (void)swrz__build_masks_scalar;
@@ -341,6 +348,7 @@ void swrz__pool_destroy(
 {
     if(!pool)
         return;
+
     swrz__atomic_store(&pool->abort, 1);
     swrz__condvar_broadcast(pool->work_cv);
     for(int i = 0; i < pool->thread_count; i++)
@@ -352,4 +360,5 @@ void swrz__pool_destroy(
     swrz__arena_destroy(&pool->arena);
     swrz__condvar_destroy(pool->work_cv);
     swrz__mutex_destroy(pool->mutex);
+    *pool = (swrz__pool_t){0};
 }

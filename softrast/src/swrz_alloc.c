@@ -100,3 +100,39 @@ void swrz__free(
 {
     swrz__allocator.free(swrz__allocator.userdata, ptr);
 }
+
+void *swrz__aligned_alloc(
+        size_t alignment, 
+        size_t size)
+{
+    void *raw = NULL;
+    uintptr_t address = 0;
+    uintptr_t aligned = 0;
+
+    if (alignment == 0 ||
+        (alignment & (alignment - 1)) != 0)
+        return NULL;
+
+    if (size > SIZE_MAX - alignment + 1 - sizeof(void *))
+        return NULL;
+
+    raw = swrz__malloc(size + alignment - 1 + sizeof(void *));
+    if(!raw)
+        return NULL;
+
+    address = (uintptr_t)raw + sizeof(void *);
+    aligned = (address + alignment - 1) &
+              ~(uintptr_t)(alignment - 1);
+
+    ((void **)aligned)[-1] = raw;
+    return (void *)aligned;
+}
+
+void swrz__aligned_free(
+        void *p)
+{
+    if (!p)
+        return;
+
+    swrz__free(((void **)p)[-1]);
+}

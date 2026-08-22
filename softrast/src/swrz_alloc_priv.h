@@ -17,4 +17,11 @@ void *swrz__realloc(
 void swrz__free(
         void *ptr);
 
+void *swrz__aligned_alloc(
+        size_t alignment, 
+        size_t size);
+
+void swrz__aligned_free(
+        void *p);
+
 #endif
