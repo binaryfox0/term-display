@@ -47,6 +47,7 @@ set(SWRZ_SOURCES
     src/swrz_texture.c
     src/swrz_arena.c
     src/swrz_pool.c
+    src/swrz_scene.c
     src/swrz_rasterizer.c
 )
 

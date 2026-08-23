@@ -9,6 +9,7 @@
 #include "swrz_thread.h"
 #include "swrz_mutex.h"
 #include "swrz_condvar.h"
+#include "swrz_const.h"
 #include "softrast/swrz_vertex.h"
 #include "swrz_texture_priv.h"
 

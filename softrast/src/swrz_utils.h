@@ -35,6 +35,8 @@
 #define SWRZ__MIN3(a, b, c) SWRZ__MIN(SWRZ__MIN((a), (b)), (c))
 #define SWRZ__MAX3(a, b, c) SWRZ__MAX(SWRZ__MAX((a), (b)), (c))
 
+#define SWRZ__CEILDIV(a, b) (((a) + (b) - 1) / (b))
+
 SWRZ__INLINE int swrz__ffs(
         uint32_t x)
 {

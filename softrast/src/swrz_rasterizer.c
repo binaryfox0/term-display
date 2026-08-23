@@ -6,10 +6,15 @@
 #include "swrz_alloc_priv.h"
 #include "swrz_texture_priv.h"
 #include "swrz_pool.h"
+#include "swrz_scene.h"
+#include "swrz_const.h"
+
+#define SWRZ__SCENE_CMD_MEM_MAX (8 * 1024)
 
 struct swrz_rasterizer
 {
     swrz__pool_t pool;
+    swrz__scene_t scene;
     swrz_texture_t *fb;
     swrz_vertex_array_t *bound_vao;
     swrz_vertex_shader_t bound_vertex_shader;
@@ -39,6 +44,11 @@ swrz_error_t swrz_rasterizer_create(
             NULL,
             0), ret, fail);
 
+    SWRZ__CHECK(swrz__scene_init(&tmp->scene,
+                SWRZ__SCENE_CMD_MEM_MAX), ret, fail);
+    SWRZ__CHECK(swrz__scene_resize(&tmp->scene,
+                SWRZ__CEILDIV(width, SWRZ__TILE_SIZE), 
+                SWRZ__CEILDIV(height, SWRZ__TILE_SIZE)), ret, fail);
     SWRZ__CHECK(swrz__pool_init(&tmp->pool), ret, fail);
     *rz = tmp;
     return SWRZ_ERR_OK;
@@ -216,11 +226,12 @@ swrz_error_t swrz_rasterizer_draw_array(
 }
 
 void swrz_rasterizer_destroy(
-        swrz_rasterizer_t *rast)
+        swrz_rasterizer_t *rz)
 {
-    if(!rast)
+    if(!rz)
         return;
-    swrz__pool_destroy(&rast->pool);
-    swrz_texture_destroy(rast->fb);
-    swrz__free(rast);
+    swrz__scene_destroy(&rz->scene);
+    swrz__pool_destroy(&rz->pool);
+    swrz_texture_destroy(rz->fb);
+    swrz__free(rz);
 }
